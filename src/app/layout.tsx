@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-csuite-bg text-csuite-text-primary antialiased">
+      <body style={{ background: "#0D0D0F", color: "#FFFFFF", margin: 0 }}>
         <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
