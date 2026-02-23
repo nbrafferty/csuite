@@ -1,4 +1,4 @@
-import { UserRole } from "@/generated/prisma";
+import { UserRole } from "@/generated/prisma/enums";
 
 declare module "next-auth" {
   interface Session {
