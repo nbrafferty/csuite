@@ -10,6 +10,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        surface: {
+          bg: "#0D0D0F",
+          card: "#1A1A1E",
+          border: "#333338",
+        },
+        coral: {
+          DEFAULT: "#E85D5D",
+          light: "#F28B8B",
+          dark: "#C44444",
+        },
         brand: {
           50: "#eef2ff",
           100: "#e0e7ff",
@@ -24,11 +34,11 @@ const config: Config = {
           950: "#1e1b4b",
         },
         sidebar: {
-          bg: "#0f172a",
-          hover: "#1e293b",
-          active: "#1e40af",
-          text: "#94a3b8",
-          "text-active": "#ffffff",
+          bg: "#0D0D0F",
+          hover: "#1A1A1E",
+          active: "#1A1A1E",
+          text: "#9999A1",
+          "text-active": "#FFFFFF",
         },
       },
     },

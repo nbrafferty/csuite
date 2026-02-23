@@ -2,107 +2,140 @@
 
 import { useSession } from "next-auth/react";
 import {
+  FolderOpen,
+  FileText,
   ShoppingCart,
-  Clock,
   CheckCircle,
-  DollarSign,
-  TrendingUp,
   ArrowUpRight,
+  Clock,
 } from "lucide-react";
+
+/* ── Placeholder data ── */
 
 const stats = [
   {
+    label: "Active Projects",
+    value: "12",
+    change: "+2 this week",
+    icon: FolderOpen,
+    iconColor: "text-blue-400",
+    iconBg: "bg-blue-400/10",
+  },
+  {
+    label: "Open Quotes",
+    value: "8",
+    change: "3 awaiting approval",
+    icon: FileText,
+    iconColor: "text-coral",
+    iconBg: "bg-coral/10",
+  },
+  {
     label: "Active Orders",
     value: "24",
-    change: "+12%",
+    change: "+5 this month",
     icon: ShoppingCart,
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
+    iconColor: "text-amber-400",
+    iconBg: "bg-amber-400/10",
   },
   {
-    label: "Pending Proofs",
-    value: "8",
-    change: "+3",
-    icon: Clock,
-    color: "text-amber-400",
-    bgColor: "bg-amber-400/10",
-  },
-  {
-    label: "Completed",
+    label: "Completed Projects",
     value: "156",
-    change: "+18%",
+    change: "+18 this quarter",
     icon: CheckCircle,
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
-  },
-  {
-    label: "Revenue (MTD)",
-    value: "$48,250",
-    change: "+22%",
-    icon: DollarSign,
-    color: "text-brand-400",
-    bgColor: "bg-brand-400/10",
+    iconColor: "text-emerald-400",
+    iconBg: "bg-emerald-400/10",
   },
 ];
 
-const recentOrders = [
+const activeProjects = [
   {
-    id: "CS-8891",
-    title: "Spring Gala Polos",
-    status: "IN_PRODUCTION",
+    id: "PRJ-1041",
+    name: "Spring Gala Uniforms",
+    client: "Riverside Events Co.",
+    deadline: "Mar 15, 2026",
+    progress: 72,
+  },
+  {
+    id: "PRJ-1039",
+    name: "Corporate Rebrand Polos",
+    client: "TechNova Inc.",
+    deadline: "Mar 8, 2026",
+    progress: 45,
+  },
+  {
+    id: "PRJ-1037",
+    name: "Trade Show Merchandise",
+    client: "Summit Partners",
+    deadline: "Apr 2, 2026",
+    progress: 28,
+  },
+  {
+    id: "PRJ-1035",
+    name: "Team Hoodies 2026",
+    client: "Greenfield Academy",
+    deadline: "Mar 22, 2026",
+    progress: 90,
+  },
+];
+
+const recentQuotes = [
+  {
+    id: "QT-2240",
+    title: "Embroidered Caps (x200)",
+    amount: "$4,800",
+    status: "Pending",
+    date: "Feb 22, 2026",
+  },
+  {
+    id: "QT-2238",
+    title: "Custom Tees – Summer Run",
+    amount: "$6,200",
+    status: "Approved",
     date: "Feb 20, 2026",
   },
   {
-    id: "CS-8890",
-    title: "Corporate Tees – Q1",
-    status: "AWAITING_PROOF",
+    id: "QT-2236",
+    title: "Safety Vests – Bulk",
+    amount: "$3,150",
+    status: "Pending",
     date: "Feb 19, 2026",
   },
   {
-    id: "CS-8889",
-    title: "Trade Show Hats",
-    status: "APPROVED",
-    date: "Feb 18, 2026",
-  },
-  {
-    id: "CS-8888",
-    title: "Team Hoodies 2026",
-    status: "SHIPPED",
+    id: "QT-2234",
+    title: "Executive Gift Set",
+    amount: "$1,900",
+    status: "Declined",
     date: "Feb 17, 2026",
   },
   {
-    id: "CS-8887",
-    title: "Client Gift Bags",
-    status: "COMPLETED",
+    id: "QT-2232",
+    title: "Marathon Runner Kits",
+    amount: "$8,400",
+    status: "Approved",
     date: "Feb 15, 2026",
   },
 ];
 
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-gray-700 text-gray-300",
-  SUBMITTED: "bg-blue-900 text-blue-300",
-  IN_REVIEW: "bg-purple-900 text-purple-300",
-  AWAITING_PROOF: "bg-amber-900 text-amber-300",
-  APPROVED: "bg-emerald-900 text-emerald-300",
-  IN_PRODUCTION: "bg-indigo-900 text-indigo-300",
-  READY: "bg-teal-900 text-teal-300",
-  SHIPPED: "bg-cyan-900 text-cyan-300",
-  COMPLETED: "bg-green-900 text-green-300",
-  CANCELLED: "bg-red-900 text-red-300",
+const quoteStatusColor: Record<string, string> = {
+  Pending: "text-amber-400",
+  Approved: "text-emerald-400",
+  Declined: "text-red-400",
 };
+
+/* ── Component ── */
 
 export default function DashboardPage() {
   const { data: session } = useSession();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold text-white">
           Welcome back{session?.user?.name ? `, ${session.user.name}` : ""}
         </h1>
         <p className="mt-1 text-sm text-gray-400">
-          Here&apos;s what&apos;s happening with your orders today.
+          Here&apos;s an overview of your projects and activity.
         </p>
       </div>
 
@@ -112,57 +145,115 @@ export default function DashboardPage() {
           <div key={stat.label} className="stat-card">
             <div className="flex items-center justify-between">
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.bgColor}`}
+                className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.iconBg}`}
               >
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
               </div>
-              <span className="flex items-center gap-1 text-xs font-medium text-emerald-400">
-                <TrendingUp className="h-3 w-3" />
-                {stat.change}
-              </span>
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold text-white">{stat.value}</p>
               <p className="text-sm text-gray-400">{stat.label}</p>
             </div>
+            <p className="mt-1 text-xs text-gray-500">{stat.change}</p>
           </div>
         ))}
       </div>
 
-      {/* Recent orders */}
-      <div className="rounded-xl border border-gray-800 bg-gray-900">
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">Recent Orders</h2>
-          <button className="flex items-center gap-1 text-sm font-medium text-brand-400 hover:text-brand-300">
-            View all <ArrowUpRight className="h-4 w-4" />
-          </button>
+      {/* Main content: Projects + Quotes sidebar */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Active Projects – takes 2 cols */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">
+              Active Projects
+            </h2>
+            <button className="flex items-center gap-1 text-sm font-medium text-coral hover:text-coral-light">
+              View all <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {activeProjects.map((project) => (
+              <div
+                key={project.id}
+                className="rounded-xl border border-surface-border bg-surface-card p-5 transition-colors hover:border-gray-600"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-gray-500">
+                        {project.id}
+                      </span>
+                      <h3 className="text-sm font-semibold text-white">
+                        {project.name}
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {project.client}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <Clock className="h-3.5 w-3.5" />
+                    {project.deadline}
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-gray-400">Progress</span>
+                    <span className="font-medium text-white">
+                      {project.progress}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-border">
+                    <div
+                      className="h-full rounded-full bg-coral transition-all"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="divide-y divide-gray-800">
-          {recentOrders.map((order) => (
-            <div
-              key={order.id}
-              className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-gray-800/50"
-            >
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-sm text-gray-400">
-                  {order.id}
-                </span>
-                <span className="text-sm font-medium text-white">
-                  {order.title}
-                </span>
+
+        {/* Recent Quotes sidebar – takes 1 col */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Recent Quotes</h2>
+            <button className="flex items-center gap-1 text-sm font-medium text-coral hover:text-coral-light">
+              View all <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-surface-border bg-surface-card divide-y divide-surface-border">
+            {recentQuotes.map((quote) => (
+              <div
+                key={quote.id}
+                className="px-4 py-3.5 transition-colors hover:bg-white/[0.02]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white truncate mr-2">
+                    {quote.title}
+                  </span>
+                  <span className="text-sm font-semibold text-white whitespace-nowrap">
+                    {quote.amount}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-gray-500">
+                    {quote.id} &middot; {quote.date}
+                  </span>
+                  <span
+                    className={`font-medium ${quoteStatusColor[quote.status] ?? "text-gray-400"}`}
+                  >
+                    {quote.status}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    statusColors[order.status] || "bg-gray-700 text-gray-300"
-                  }`}
-                >
-                  {order.status.replace(/_/g, " ")}
-                </span>
-                <span className="text-sm text-gray-500">{order.date}</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
