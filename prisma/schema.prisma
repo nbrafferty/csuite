@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   // "ccc_staff" | "client_admin" | "client_user"
+  avatarUrl String?
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedThreads Thread[]  @relation("ThreadAssignee")
+  messages        Message[]
+}
+
+model Tenant {
+  id               String   @id @default(cuid())
+  companyName      String
+  primaryContact   String
+  billingStatus    String   @default("good") // "good" | "overdue" | "suspended"
+  activeOrderCount Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users   User[]
+  threads Thread[]
+}
+
+model Thread {
+  id         String   @id @default(cuid())
+  subject    String
+  orderId    String
+  orderTitle String
+  status     String   @default("open") // "open" | "waiting_client" | "waiting_staff" | "resolved"
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  assigneeId String?
+  assignee   User?    @relation("ThreadAssignee", fields: [assigneeId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages  Message[]
+  readState ThreadReadState[]
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  threadId    String
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User     @relation(fields: [senderId], references: [id])
+  senderType  String   // "client" | "staff" | "internal"
+  text        String
+  attachments String   @default("[]") // JSON array of attachment URLs
+  createdAt   DateTime @default(now())
+}
+
+model ThreadReadState {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  userId    String
+  readAt    DateTime @default(now())
+
+  @@unique([threadId, userId])
+}
