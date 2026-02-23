@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { type Session } from "next-auth";
-import { UserRole } from "@/generated/prisma/enums";
+import { UserRole } from "@prisma/client";
 
 export type TRPCContext = {
   session: Session | null;
