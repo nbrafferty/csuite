@@ -1,0 +1,483 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────
+
+enum UserRole {
+  CLIENT_ADMIN
+  CLIENT_USER
+  CCC_STAFF
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  AWAITING_PROOF
+  PROOF_APPROVED
+  IN_PRODUCTION
+  READY
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProofStatus {
+  DRAFT
+  SENT
+  ANNOTATING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+  VOID
+}
+
+enum PaymentType {
+  DEPOSIT
+  FULL
+  PARTIAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}
+
+enum ThreadStatus {
+  OPEN
+  CLOSED
+}
+
+// ──────────────────────────────────────────
+// Company (Tenant)
+// ──────────────────────────────────────────
+
+model Company {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String   @unique
+  logoUrl          String?
+  inviteCode       String   @unique @default(uuid())
+  stripeCustomerId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users          User[]
+  locations      Location[]
+  orders         Order[]
+  savedProducts  SavedProduct[]
+  artworkAssets  ArtworkAsset[]
+  invoices       Invoice[]
+  messageThreads MessageThread[]
+  inventoryItems InventoryItem[]
+  auditLogs      AuditLogEvent[]
+}
+
+// ──────────────────────────────────────────
+// User
+// ──────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole
+  companyId    String    @db.Uuid
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders           Order[]           @relation("CreatedBy")
+  artworkUploads   ArtworkAsset[]    @relation("UploadedBy")
+  artworkVersions  ArtworkVersion[]  @relation("VersionUploadedBy")
+  proofsPublished  Proof[]           @relation("PublishedBy")
+  proofsApproved   Proof[]           @relation("ApprovedBy")
+  annotations      ProofAnnotation[]
+  payments         Payment[]
+  messages         Message[]
+  threadsCreated   MessageThread[]   @relation("ThreadCreatedBy")
+  ledgerEntries    InventoryLedgerEntry[]
+  auditLogs        AuditLogEvent[]
+
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────
+// Location (shipping address)
+// ──────────────────────────────────────────
+
+model Location {
+  id           String  @id @default(uuid()) @db.Uuid
+  companyId    String  @db.Uuid
+  label        String
+  address1     String
+  address2     String?
+  city         String
+  state        String
+  zip          String
+  country      String  @default("US")
+  contactName  String?
+  contactPhone String?
+  isDefault    Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shipments      Shipment[]
+  inventoryItems InventoryItem[]
+
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────
+// Order
+// ──────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  companyId       String      @db.Uuid
+  createdById     String      @db.Uuid
+  orderNumber     String      @unique
+  status          OrderStatus @default(DRAFT)
+  projectName     String?
+  poNumber        String?
+  eventName       String?
+  dueDate         DateTime?
+  notes           String?
+  reorderedFromId String?     @db.Uuid
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("CreatedBy", fields: [createdById], references: [id])
+  reorderedFrom Order?         @relation("Reorder", fields: [reorderedFromId], references: [id])
+  reorders      Order[]        @relation("Reorder")
+  items         OrderItem[]
+  proofs        Proof[]
+  shipments     Shipment[]
+  invoices      Invoice[]
+  threads       MessageThread[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+}
+
+// ──────────────────────────────────────────
+// OrderItem
+// ──────────────────────────────────────────
+
+model OrderItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  orderId         String  @db.Uuid
+  savedProductId  String? @db.Uuid
+  productName     String
+  style           String?
+  color           String?
+  decorationNotes String?
+  sizeBreakdown   Json?   // e.g. {"S": 10, "M": 20, "L": 15}
+  unitPrice       Decimal? @db.Decimal(10, 2)
+  totalPrice      Decimal? @db.Decimal(10, 2)
+  sortOrder       Int     @default(0)
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  savedProduct SavedProduct? @relation(fields: [savedProductId], references: [id])
+
+  @@index([orderId])
+}
+
+// ──────────────────────────────────────────
+// SavedProduct
+// ──────────────────────────────────────────
+
+model SavedProduct {
+  id               String   @id @default(uuid()) @db.Uuid
+  companyId        String   @db.Uuid
+  name             String
+  sku              String?
+  style            String?
+  color            String?
+  decorationPreset Json?    // locations, ink colors, notes
+  defaultSizes     Json?    // template size breakdown
+  artworkAssetId   String?  @db.Uuid
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  artworkAsset ArtworkAsset? @relation(fields: [artworkAssetId], references: [id])
+  orderItems   OrderItem[]
+
+  @@index([companyId])
+}
+
+// ──────────────────────────────────────────
+// ArtworkAsset + ArtworkVersion
+// ──────────────────────────────────────────
+
+model ArtworkAsset {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @db.Uuid
+  uploadedById   String   @db.Uuid
+  name           String
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy    User             @relation("UploadedBy", fields: [uploadedById], references: [id])
+  versions      ArtworkVersion[]
+  savedProducts SavedProduct[]
+
+  @@index([companyId])
+}
+
+model ArtworkVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  assetId       String   @db.Uuid
+  version       Int
+  fileUrl       String
+  fileType      String
+  fileSizeBytes Int
+  uploadedById  String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  asset      ArtworkAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  uploadedBy User         @relation("VersionUploadedBy", fields: [uploadedById], references: [id])
+
+  @@unique([assetId, version])
+}
+
+// ──────────────────────────────────────────
+// Proof + ProofAnnotation
+// ──────────────────────────────────────────
+
+model Proof {
+  id            String      @id @default(uuid()) @db.Uuid
+  orderId       String      @db.Uuid
+  version       Int
+  status        ProofStatus @default(DRAFT)
+  imageUrls     Json        // array of image URLs
+  pdfUrl        String?
+  publishedById String?     @db.Uuid
+  approvedById  String?     @db.Uuid
+  approvedAt    DateTime?
+  lockedAt      DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  publishedBy User?             @relation("PublishedBy", fields: [publishedById], references: [id])
+  approvedBy  User?             @relation("ApprovedBy", fields: [approvedById], references: [id])
+  annotations ProofAnnotation[]
+  threads     MessageThread[]
+
+  @@index([orderId])
+  @@unique([orderId, version])
+}
+
+model ProofAnnotation {
+  id         String    @id @default(uuid()) @db.Uuid
+  proofId    String    @db.Uuid
+  authorId   String    @db.Uuid
+  imageIndex Int
+  pinX       Float     // 0-1 normalized
+  pinY       Float     // 0-1 normalized
+  comment    String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  proof  Proof @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id])
+
+  @@index([proofId])
+}
+
+// ──────────────────────────────────────────
+// Invoice + Payment
+// ──────────────────────────────────────────
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  companyId       String        @db.Uuid
+  orderId         String?       @db.Uuid
+  invoiceNumber   String        @unique
+  status          InvoiceStatus @default(UNPAID)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  depositRequired Decimal?      @db.Decimal(10, 2)
+  depositPaid     Decimal       @default(0) @db.Decimal(10, 2)
+  amountPaid      Decimal       @default(0) @db.Decimal(10, 2)
+  dueDate         DateTime?
+  issuedAt        DateTime      @default(now())
+  paidAt          DateTime?
+  stripeInvoiceId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [orderId], references: [id])
+  payments Payment[]
+
+  @@index([companyId, status])
+}
+
+model Payment {
+  id                    String        @id @default(uuid()) @db.Uuid
+  invoiceId             String        @db.Uuid
+  amount                Decimal       @db.Decimal(10, 2)
+  type                  PaymentType
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  status                PaymentStatus @default(PENDING)
+  paidById              String        @db.Uuid
+  createdAt             DateTime      @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paidBy  User    @relation(fields: [paidById], references: [id])
+
+  @@index([invoiceId])
+}
+
+// ──────────────────────────────────────────
+// Shipment
+// ──────────────────────────────────────────
+
+model Shipment {
+  id             String         @id @default(uuid()) @db.Uuid
+  orderId        String         @db.Uuid
+  locationId     String         @db.Uuid
+  carrier        String?
+  trackingNumber String?
+  packingSlipUrl String?
+  status         ShipmentStatus @default(PENDING)
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@index([orderId])
+}
+
+// ──────────────────────────────────────────
+// MessageThread + Message
+// ──────────────────────────────────────────
+
+model MessageThread {
+  id          String       @id @default(uuid()) @db.Uuid
+  companyId   String       @db.Uuid
+  orderId     String?      @db.Uuid
+  proofId     String?      @db.Uuid
+  subject     String
+  status      ThreadStatus @default(OPEN)
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order     Order?    @relation(fields: [orderId], references: [id])
+  proof     Proof?    @relation(fields: [proofId], references: [id])
+  createdBy User      @relation("ThreadCreatedBy", fields: [createdById], references: [id])
+  messages  Message[]
+
+  @@index([companyId])
+}
+
+model Message {
+  id             String   @id @default(uuid()) @db.Uuid
+  threadId       String   @db.Uuid
+  authorId       String   @db.Uuid
+  body           String
+  attachmentUrls Json?    // array of URLs
+  createdAt      DateTime @default(now())
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id])
+
+  @@index([threadId])
+}
+
+// ──────────────────────────────────────────
+// Inventory
+// ──────────────────────────────────────────
+
+model InventoryItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @db.Uuid
+  locationId  String   @db.Uuid
+  sku         String
+  productName String
+  color       String?
+  size        String?
+  onHand      Int      @default(0)
+  reserved    Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  company  Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location Location               @relation(fields: [locationId], references: [id])
+  ledger   InventoryLedgerEntry[]
+
+  @@index([companyId, locationId])
+}
+
+model InventoryLedgerEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  itemId         String   @db.Uuid
+  adjustedById   String   @db.Uuid
+  quantityChange Int      // positive = add, negative = remove
+  reason         String
+  createdAt      DateTime @default(now())
+
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  adjustedBy User          @relation(fields: [adjustedById], references: [id])
+
+  @@index([itemId])
+}
+
+// ──────────────────────────────────────────
+// Audit Log
+// ──────────────────────────────────────────
+
+model AuditLogEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String?  @db.Uuid
+  userId     String?  @db.Uuid
+  action     String   // e.g. "order.created", "proof.approved"
+  entityType String   // e.g. "Order", "Proof"
+  entityId   String?  @db.Uuid
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+}
