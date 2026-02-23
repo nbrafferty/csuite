@@ -1,0 +1,452 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────
+
+enum UserRole {
+  CLIENT_ADMIN
+  CLIENT_USER
+  CCC_STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  AWAITING_PROOF
+  APPROVED
+  IN_PRODUCTION
+  READY
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProofStatus {
+  DRAFT
+  SENT
+  ANNOTATING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  DEPOSIT_PAID
+  PAID
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  MANUAL
+}
+
+enum PaymentStatus {
+  SUCCEEDED
+  FAILED
+  PENDING
+}
+
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+}
+
+enum SupplierSource {
+  SS_ACTIVEWEAR
+  SANMAR
+  MANUAL
+}
+
+enum LedgerReason {
+  SYNC
+  MANUAL
+  ORDER_RESERVED
+  ORDER_FULFILLED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────
+
+model Company {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  inviteCode        String   @unique @map("invite_code")
+  logoUrl           String?  @map("logo_url")
+  stripeCustomerId  String?  @unique @map("stripe_customer_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  users             User[]
+  locations         Location[]
+  orders            Order[]
+  savedProducts     SavedProduct[]
+  artworkAssets     ArtworkAsset[]
+  invoices          Invoice[]
+  messageThreads    MessageThread[]
+  inventoryItems    InventoryItem[]
+  auditLogEvents    AuditLogEvent[]
+
+  @@map("companies")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  companyId     String     @map("company_id")
+  email         String     @unique
+  passwordHash  String     @map("password_hash")
+  name          String
+  role          UserRole
+  status        UserStatus @default(INVITED)
+  avatarUrl     String?    @map("avatar_url")
+  invitedBy     String?    @map("invited_by")
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  company       Company    @relation(fields: [companyId], references: [id])
+  inviter       User?      @relation("UserInvites", fields: [invitedBy], references: [id])
+  invitees      User[]     @relation("UserInvites")
+
+  ordersCreated    Order[]          @relation("OrderCreator")
+  artworkUploads   ArtworkVersion[] @relation("ArtworkUploader")
+  proofsPublished  Proof[]          @relation("ProofPublisher")
+  proofsApproved   Proof[]          @relation("ProofApprover")
+  proofAnnotations ProofAnnotation[]
+  threadsCreated   MessageThread[]  @relation("ThreadCreator")
+  messagesSent     Message[]
+  ledgerEntries    InventoryLedgerEntry[]
+  auditLogEvents   AuditLogEvent[]
+  artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
+  savedProductsCreated SavedProduct[] @relation("SavedProductCreator")
+
+  @@index([companyId])
+  @@index([companyId, role])
+  @@map("users")
+}
+
+model Location {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  label         String
+  addressLine1  String   @map("address_line1")
+  addressLine2  String?  @map("address_line2")
+  city          String
+  state         String
+  zip           String
+  country       String   @default("US")
+  contactName   String?  @map("contact_name")
+  contactPhone  String?  @map("contact_phone")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  company        Company         @relation(fields: [companyId], references: [id])
+  shipments      Shipment[]
+  inventoryItems InventoryItem[]
+
+  @@index([companyId])
+  @@map("locations")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  companyId   String      @map("company_id")
+  createdBy   String      @map("created_by")
+  displayId   String      @unique @map("display_id")
+  title       String
+  status      OrderStatus @default(DRAFT)
+  dueDate     DateTime?   @map("due_date")
+  poNumber    String?     @map("po_number")
+  eventName   String?     @map("event_name")
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  company     Company     @relation(fields: [companyId], references: [id])
+  creator     User        @relation("OrderCreator", fields: [createdBy], references: [id])
+  items       OrderItem[]
+  proofs      Proof[]
+  invoices    Invoice[]
+  shipments   Shipment[]
+  threads     MessageThread[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String        @id @default(uuid())
+  orderId         String        @map("order_id")
+  savedProductId  String?       @map("saved_product_id")
+  productName     String        @map("product_name")
+  sku             String?
+  color           String?
+  decorationNotes String?       @map("decoration_notes")
+  sizeBreakdown   Json?         @map("size_breakdown")
+  unitPrice       Decimal       @map("unit_price") @db.Decimal(10, 2)
+  quantity        Int
+  subtotal        Decimal       @db.Decimal(10, 2)
+
+  order           Order         @relation(fields: [orderId], references: [id])
+  savedProduct    SavedProduct? @relation(fields: [savedProductId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model SavedProduct {
+  id                   String   @id @default(uuid())
+  companyId            String   @map("company_id")
+  name                 String
+  sku                  String?
+  color                String?
+  decorationPreset     Json?    @map("decoration_preset")
+  defaultSizeTemplate  Json?    @map("default_size_template")
+  thumbnailUrl         String?  @map("thumbnail_url")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  company              Company     @relation(fields: [companyId], references: [id])
+  creator              User        @relation("SavedProductCreator", fields: [createdBy], references: [id])
+  orderItems           OrderItem[]
+
+  @@index([companyId])
+  @@map("saved_products")
+}
+
+model ArtworkAsset {
+  id             String           @id @default(uuid())
+  companyId      String           @map("company_id")
+  filename       String
+  currentVersion Int              @default(1) @map("current_version")
+  createdBy      String           @map("created_by")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  creator        User             @relation("ArtworkCreator", fields: [createdBy], references: [id])
+  versions       ArtworkVersion[]
+
+  @@index([companyId])
+  @@map("artwork_assets")
+}
+
+model ArtworkVersion {
+  id            String       @id @default(uuid())
+  artworkId     String       @map("artwork_id")
+  versionNumber Int          @map("version_number")
+  fileUrl       String       @map("file_url")
+  fileSize      Int          @map("file_size")
+  mimeType      String       @map("mime_type")
+  uploadedBy    String       @map("uploaded_by")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  artwork       ArtworkAsset @relation(fields: [artworkId], references: [id])
+  uploader      User         @relation("ArtworkUploader", fields: [uploadedBy], references: [id])
+
+  @@index([artworkId])
+  @@map("artwork_versions")
+}
+
+model Proof {
+  id           String        @id @default(uuid())
+  orderId      String        @map("order_id")
+  version      Int
+  imageUrl     String?       @map("image_url")
+  pdfUrl       String?       @map("pdf_url")
+  status       ProofStatus   @default(DRAFT)
+  publishedBy  String        @map("published_by")
+  approvedBy   String?       @map("approved_by")
+  approvedAt   DateTime?     @map("approved_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  order        Order         @relation(fields: [orderId], references: [id])
+  publisher    User          @relation("ProofPublisher", fields: [publishedBy], references: [id])
+  approver     User?         @relation("ProofApprover", fields: [approvedBy], references: [id])
+  annotations  ProofAnnotation[]
+
+  @@index([orderId])
+  @@map("proofs")
+}
+
+model ProofAnnotation {
+  id        String   @id @default(uuid())
+  proofId   String   @map("proof_id")
+  authorId  String   @map("author_id")
+  pinX      Float    @map("pin_x")
+  pinY      Float    @map("pin_y")
+  body      String
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  proof     Proof             @relation(fields: [proofId], references: [id])
+  author    User              @relation(fields: [authorId], references: [id])
+  parent    ProofAnnotation?  @relation("AnnotationThread", fields: [parentId], references: [id])
+  replies   ProofAnnotation[] @relation("AnnotationThread")
+
+  @@index([proofId])
+  @@map("proof_annotations")
+}
+
+model Invoice {
+  id               String        @id @default(uuid())
+  orderId          String        @map("order_id")
+  companyId        String        @map("company_id")
+  displayId        String        @unique @map("display_id")
+  amountTotal      Decimal       @map("amount_total") @db.Decimal(10, 2)
+  depositRequired  Decimal       @default(0) @map("deposit_required") @db.Decimal(10, 2)
+  depositPaid      Decimal       @default(0) @map("deposit_paid") @db.Decimal(10, 2)
+  balanceRemaining Decimal       @map("balance_remaining") @db.Decimal(10, 2)
+  status           InvoiceStatus @default(UNPAID)
+  stripeInvoiceId  String?       @map("stripe_invoice_id")
+  dueDate          DateTime?     @map("due_date")
+  issuedAt         DateTime      @default(now()) @map("issued_at")
+  paidAt           DateTime?     @map("paid_at")
+
+  order            Order         @relation(fields: [orderId], references: [id])
+  company          Company       @relation(fields: [companyId], references: [id])
+  payments         Payment[]
+
+  @@index([companyId])
+  @@index([orderId])
+  @@map("invoices")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  invoiceId             String        @map("invoice_id")
+  amount                Decimal       @db.Decimal(10, 2)
+  stripePaymentIntentId String?       @map("stripe_payment_intent_id")
+  stripeChargeId        String?       @map("stripe_charge_id")
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  invoice               Invoice       @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model Shipment {
+  id             String         @id @default(uuid())
+  orderId        String         @map("order_id")
+  locationId     String         @map("location_id")
+  carrier        String?
+  trackingNumber String?        @map("tracking_number")
+  packingSlipUrl String?        @map("packing_slip_url")
+  status         ShipmentStatus @default(PENDING)
+  shippedAt      DateTime?      @map("shipped_at")
+  deliveredAt    DateTime?      @map("delivered_at")
+
+  order          Order          @relation(fields: [orderId], references: [id])
+  location       Location       @relation(fields: [locationId], references: [id])
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+model MessageThread {
+  id        String    @id @default(uuid())
+  companyId String    @map("company_id")
+  orderId   String?   @map("order_id")
+  subject   String
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  company   Company   @relation(fields: [companyId], references: [id])
+  order     Order?    @relation(fields: [orderId], references: [id])
+  creator   User      @relation("ThreadCreator", fields: [createdBy], references: [id])
+  messages  Message[]
+
+  @@index([companyId])
+  @@map("message_threads")
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  threadId       String        @map("thread_id")
+  authorId       String        @map("author_id")
+  body           String
+  attachmentUrls Json?         @map("attachment_urls")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  thread         MessageThread @relation(fields: [threadId], references: [id])
+  author         User          @relation(fields: [authorId], references: [id])
+
+  @@index([threadId])
+  @@map("messages")
+}
+
+model InventoryItem {
+  id            String         @id @default(uuid())
+  companyId     String         @map("company_id")
+  sku           String
+  productName   String         @map("product_name")
+  locationId    String         @map("location_id")
+  onHand        Int            @default(0) @map("on_hand")
+  reserved      Int            @default(0)
+  available     Int            @default(0)
+  supplier      SupplierSource
+  lastSyncedAt  DateTime?      @map("last_synced_at")
+
+  company       Company        @relation(fields: [companyId], references: [id])
+  location      Location       @relation(fields: [locationId], references: [id])
+  ledgerEntries InventoryLedgerEntry[]
+
+  @@index([companyId])
+  @@index([companyId, sku])
+  @@map("inventory_items")
+}
+
+model InventoryLedgerEntry {
+  id              String        @id @default(uuid())
+  inventoryItemId String        @map("inventory_item_id")
+  adjustment      Int
+  reason          LedgerReason
+  performedBy     String        @map("performed_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  performer       User          @relation(fields: [performedBy], references: [id])
+
+  @@index([inventoryItemId])
+  @@map("inventory_ledger_entries")
+}
+
+model AuditLogEvent {
+  id         String      @id @default(uuid())
+  companyId  String      @map("company_id")
+  userId     String      @map("user_id")
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  action     AuditAction
+  changes    Json?
+  ipAddress  String?     @map("ip_address")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, entityType])
+  @@map("audit_log_events")
+}
