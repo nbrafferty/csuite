@@ -1,11 +1,7 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { hashSync } from "bcryptjs";
 
-const prisma = new PrismaClient({
-  datasourceUrl:
-    process.env["DATABASE_URL"] ||
-    "postgresql://csuite:csuite_dev@localhost:5432/csuite?schema=public",
-});
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("Seeding database...");
