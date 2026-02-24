@@ -1,5 +1,5 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "@/lib/trpc/router";
+import { appRouter } from "@/server/trpc/root";
 import type { TRPCContext } from "@/lib/trpc/init";
 import { prisma } from "@/lib/db";
 
