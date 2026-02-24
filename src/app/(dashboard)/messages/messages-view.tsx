@@ -7,7 +7,7 @@ import { ChatPanel } from "./chat-panel";
 import { ContextSidebar } from "./context-sidebar";
 import { MessageSquare } from "lucide-react";
 
-type StatusFilter = "all" | "open" | "waiting_on_client" | "waiting_on_ccc" | "resolved";
+type StatusFilter = "all" | "unread" | "open" | "waiting_on_client" | "waiting_on_ccc" | "resolved";
 
 export function MessagesView() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -21,7 +21,8 @@ export function MessagesView() {
   // Threads list
   const { data: threadsData } = trpc.thread.list.useQuery(
     {
-      status: statusFilter === "all" ? undefined : statusFilter,
+      status: statusFilter === "all" || statusFilter === "unread" ? undefined : statusFilter,
+      unread: statusFilter === "unread" ? true : undefined,
       search: search || undefined,
     },
     { refetchInterval: 15_000 }

@@ -8,11 +8,13 @@ export const threadRouter = router({
       z.object({
         status: z.string().optional(),
         search: z.string().optional(),
+        unread: z.boolean().optional(),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(100).default(50),
       })
     )
     .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id as string;
       const where: any = {};
 
       // CCC staff sees all threads; clients see only their company's
@@ -26,6 +28,11 @@ export const threadRouter = router({
 
       if (input.search) {
         where.subject = { contains: input.search, mode: "insensitive" };
+      }
+
+      if (input.unread) {
+        // Unread = user has no read state for this thread
+        where.readStates = { none: { userId } };
       }
 
       const threads = await prisma.messageThread.findMany({
@@ -42,18 +49,44 @@ export const threadRouter = router({
             take: 1,
             select: { body: true, createdAt: true, senderType: true, authorId: true },
           },
+          readStates: {
+            where: { userId },
+            select: { lastReadAt: true },
+            take: 1,
+          },
           _count: { select: { messages: true } },
         },
       });
 
+      // Compute unread flag per thread: no read state, or thread updated after last read
+      const threadsWithUnread = threads.map((t) => {
+        const readState = t.readStates[0];
+        const isUnread = !readState || t.updatedAt > readState.lastReadAt;
+        const { readStates: _, ...rest } = t;
+        return { ...rest, isUnread };
+      });
+
       let nextCursor: string | undefined;
-      if (threads.length > input.limit) {
-        const nextItem = threads.pop();
+      if (threadsWithUnread.length > input.limit) {
+        const nextItem = threadsWithUnread.pop();
         nextCursor = nextItem?.id;
       }
 
-      return { threads, nextCursor };
+      return { threads: threadsWithUnread, nextCursor };
     }),
+
+  unreadCount: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.user.id as string;
+    const where: any = {
+      readStates: { none: { userId } },
+    };
+
+    if (ctx.role !== "CCC_STAFF") {
+      where.companyId = ctx.companyId;
+    }
+
+    return prisma.messageThread.count({ where });
+  }),
 
   get: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))

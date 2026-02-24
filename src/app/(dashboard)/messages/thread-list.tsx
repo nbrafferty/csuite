@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
+  { label: "Unread", value: "unread" },
   { label: "Open", value: "open" },
   { label: "Waiting on Client", value: "waiting_on_client" },
   { label: "Waiting on CCC", value: "waiting_on_ccc" },
@@ -27,6 +28,7 @@ type Thread = {
   subject: string;
   status: string;
   updatedAt: Date;
+  isUnread: boolean;
   company: { name: string };
   creator: { id: string; name: string };
   assignee: { id: string; name: string } | null;
@@ -113,6 +115,9 @@ export function ThreadList({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
+                    {thread.isUnread && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />
+                    )}
                     <span className="truncate text-sm font-medium text-white">
                       {thread.subject}
                     </span>

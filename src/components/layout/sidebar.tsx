@@ -16,6 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { trpc } from "@/lib/trpc";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -31,6 +32,9 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-border bg-sidebar-bg">
@@ -61,6 +65,11 @@ export function Sidebar() {
             >
               <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-coral")} />
               {item.label}
+              {item.href === "/messages" && !!unreadCount && unreadCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-xs font-medium text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
