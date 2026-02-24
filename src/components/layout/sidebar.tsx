@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -32,40 +33,74 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [expanded, setExpanded] = useState(false);
   const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-border bg-sidebar-bg">
+    <aside
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-surface-border bg-sidebar-bg transition-[width] duration-200 ease-in-out",
+        expanded ? "w-64" : "w-16"
+      )}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-surface-border px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-coral font-bold text-white text-sm">
+      <div className="flex h-16 shrink-0 items-center border-b border-surface-border px-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-coral text-sm font-bold text-white">
           CS
         </div>
-        <span className="text-lg font-semibold text-white">C-Suite</span>
+        <span
+          className={cn(
+            "ml-3 whitespace-nowrap text-lg font-semibold text-white transition-opacity duration-200",
+            expanded ? "opacity-100" : "opacity-0"
+          )}
+        >
+          C-Suite
+        </span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
+          const showBadge =
+            item.href === "/messages" && !!unreadCount && unreadCount > 0;
+
           return (
             <Link
               key={item.href}
               href={item.href}
+              title={expanded ? undefined : item.label}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-sidebar-active text-sidebar-text-active"
                   : "text-sidebar-text hover:bg-sidebar-hover hover:text-white"
               )}
             >
               <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-coral")} />
-              {item.label}
-              {item.href === "/messages" && !!unreadCount && unreadCount > 0 && (
+
+              {/* Collapsed badge — small dot */}
+              {!expanded && showBadge && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-coral" />
+              )}
+
+              <span
+                className={cn(
+                  "ml-3 whitespace-nowrap transition-opacity duration-200",
+                  expanded ? "opacity-100" : "opacity-0"
+                )}
+              >
+                {item.label}
+              </span>
+
+              {/* Expanded badge — count */}
+              {expanded && showBadge && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-xs font-medium text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
@@ -76,13 +111,21 @@ export function Sidebar() {
       </nav>
 
       {/* Sign out */}
-      <div className="border-t border-surface-border p-3">
+      <div className="border-t border-surface-border p-2">
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-white"
+          title={expanded ? undefined : "Sign Out"}
+          className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-white"
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          Sign Out
+          <span
+            className={cn(
+              "ml-3 whitespace-nowrap transition-opacity duration-200",
+              expanded ? "opacity-100" : "opacity-0"
+            )}
+          >
+            Sign Out
+          </span>
         </button>
       </div>
     </aside>
