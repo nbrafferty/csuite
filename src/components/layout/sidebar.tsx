@@ -17,7 +17,7 @@ import {
   Building2,
   LogOut,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 
 type NavItem = {
@@ -43,8 +43,8 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
-  const { data: me } = trpc.auth.me.useQuery();
-  const isStaff = me?.role === "CCC_STAFF";
+  const { data: session } = useSession();
+  const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
