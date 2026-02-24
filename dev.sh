@@ -9,13 +9,8 @@ echo "==> Pulling latest from $BRANCH..."
 git pull origin "$BRANCH" --ff-only
 
 echo ""
-echo "==> Checking for dependency changes..."
-if git diff HEAD@{1} --name-only 2>/dev/null | grep -q "package.json\|package-lock.json"; then
-  echo "    Dependencies changed — running npm install..."
-  npm install
-else
-  echo "    No dependency changes, skipping install."
-fi
+echo "==> Installing dependencies..."
+npm install
 
 echo ""
 echo "==> Generating Prisma client..."
