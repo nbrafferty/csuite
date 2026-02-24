@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "[ -f .env ] || cp .env.example .env && docker compose up -d --wait && npx prisma generate && npx prisma db push && npm run db:seed && next dev",
     "dev:next": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && tsx prisma/seed.ts && next build",
+    "build": "prisma generate && next build",
     "start": "npx prisma db push --accept-data-loss && npm run db:seed && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
@@ -13,8 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate",
-    "postbuild": "npx prisma db push --accept-data-loss && npx tsx prisma/seed.ts"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.1",
