@@ -49,17 +49,26 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center border-b border-surface-border px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-coral text-sm font-bold text-white">
-          CS
-        </div>
-        <span
+        <img
+          src="/ccc-logo.svg"
+          alt="C-Suite"
+          width={34}
+          height={34}
           className={cn(
-            "ml-3 whitespace-nowrap text-lg font-semibold text-white transition-opacity duration-200",
-            expanded ? "opacity-100" : "opacity-0"
+            "shrink-0 transition-opacity duration-200",
+            expanded ? "absolute opacity-0" : "opacity-100"
           )}
-        >
-          C-Suite
-        </span>
+        />
+        <img
+          src="/ccc-wordmark.svg"
+          alt="C-Suite"
+          width={150}
+          height={34}
+          className={cn(
+            "shrink-0 transition-opacity duration-200",
+            expanded ? "opacity-100" : "absolute opacity-0"
+          )}
+        />
       </div>
 
       {/* Navigation */}
