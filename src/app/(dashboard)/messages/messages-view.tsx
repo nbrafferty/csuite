@@ -56,6 +56,23 @@ export function MessagesView() {
   // Mutations
   const utils = trpc.useUtils();
 
+  const invalidateReadState = () => {
+    utils.thread.list.invalidate();
+    utils.thread.unreadCount.invalidate();
+  };
+
+  const markRead = trpc.thread.markRead.useMutation({
+    onSuccess: invalidateReadState,
+  });
+
+  const markUnread = trpc.thread.markUnread.useMutation({
+    onSuccess: invalidateReadState,
+  });
+
+  const markAllRead = trpc.thread.markAllRead.useMutation({
+    onSuccess: invalidateReadState,
+  });
+
   const sendMessage = trpc.message.send.useMutation({
     onSuccess: () => {
       utils.message.list.invalidate({ threadId: selectedThreadId! });
@@ -76,6 +93,11 @@ export function MessagesView() {
       utils.thread.list.invalidate();
     },
   });
+
+  const handleSelectThread = (id: string) => {
+    setSelectedThreadId(id);
+    markRead.mutate({ threadId: id });
+  };
 
   const handleSend = (body: string, senderType: "client" | "staff" | "internal") => {
     if (!selectedThreadId) return;
@@ -98,11 +120,14 @@ export function MessagesView() {
       <ThreadList
         threads={threads}
         selectedThreadId={selectedThreadId}
-        onSelectThread={setSelectedThreadId}
+        onSelectThread={handleSelectThread}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         search={search}
         onSearchChange={setSearch}
+        onMarkRead={(id) => markRead.mutate({ threadId: id })}
+        onMarkUnread={(id) => markUnread.mutate({ threadId: id })}
+        onMarkAllRead={() => markAllRead.mutate()}
       />
 
       {/* Center — Chat Panel */}

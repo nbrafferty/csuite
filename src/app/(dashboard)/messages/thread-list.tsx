@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
+import { Search, MoreHorizontal, Eye, EyeOff, CheckCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const STATUS_FILTERS = [
@@ -44,6 +44,9 @@ interface ThreadListProps {
   onStatusFilterChange: (status: StatusFilter) => void;
   search: string;
   onSearchChange: (search: string) => void;
+  onMarkRead: (id: string) => void;
+  onMarkUnread: (id: string) => void;
+  onMarkAllRead: () => void;
 }
 
 export function ThreadList({
@@ -54,7 +57,27 @@ export function ThreadList({
   onStatusFilterChange,
   search,
   onSearchChange,
+  onMarkRead,
+  onMarkUnread,
+  onMarkAllRead,
 }: ThreadListProps) {
+  const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuThreadId(null);
+      }
+    };
+    if (menuThreadId) {
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }
+  }, [menuThreadId]);
+
+  const unreadCount = threads.filter((t) => t.isUnread).length;
   return (
     <div className="flex h-full flex-col border-r border-surface-border" style={{ width: 380 }}>
       {/* Search */}
@@ -72,7 +95,7 @@ export function ThreadList({
       </div>
 
       {/* Status filter pills */}
-      <div className="flex flex-wrap gap-1.5 border-b border-surface-border px-3 py-2">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-surface-border px-3 py-2">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -87,6 +110,15 @@ export function ThreadList({
             {f.label}
           </button>
         ))}
+        {unreadCount > 0 && (
+          <button
+            onClick={onMarkAllRead}
+            className="ml-auto flex items-center gap-1 text-xs text-gray-500 transition-colors hover:text-coral"
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            Mark all read
+          </button>
+        )}
       </div>
 
       {/* Thread items */}
@@ -100,50 +132,95 @@ export function ThreadList({
           const lastMessage = thread.messages[0];
           const badge = STATUS_BADGE[thread.status] ?? STATUS_BADGE.open;
           const isSelected = selectedThreadId === thread.id;
+          const isMenuOpen = menuThreadId === thread.id;
 
           return (
-            <button
-              key={thread.id}
-              onClick={() => onSelectThread(thread.id)}
-              className={cn(
-                "w-full border-b border-surface-border px-4 py-3 text-left transition-colors",
-                isSelected
-                  ? "bg-surface-card"
-                  : "hover:bg-surface-card/50"
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    {thread.isUnread && (
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />
-                    )}
-                    <span className="truncate text-sm font-medium text-white">
-                      {thread.subject}
-                    </span>
+            <div key={thread.id} className="relative">
+              <button
+                onClick={() => onSelectThread(thread.id)}
+                className={cn(
+                  "w-full border-b border-surface-border px-4 py-3 text-left transition-colors",
+                  isSelected
+                    ? "bg-surface-card"
+                    : "hover:bg-surface-card/50"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {thread.isUnread && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />
+                      )}
+                      <span className="truncate text-sm font-medium text-white">
+                        {thread.subject}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-500">{thread.company.name}</p>
                   </div>
-                  <p className="mt-0.5 text-xs text-gray-500">{thread.company.name}</p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="text-xs text-gray-500">
+                      {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuThreadId(isMenuOpen ? null : thread.id);
+                      }}
+                      className="rounded p-0.5 text-gray-600 transition-colors hover:bg-surface-border hover:text-gray-300"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <span className="shrink-0 text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
-                </span>
-              </div>
 
-              {lastMessage && (
-                <p className="mt-1.5 truncate text-xs text-gray-400">
-                  {lastMessage.body}
-                </p>
+                {lastMessage && (
+                  <p className="mt-1.5 truncate text-xs text-gray-400">
+                    {lastMessage.body}
+                  </p>
+                )}
+
+                <div className="mt-2 flex items-center gap-2">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+                    {badge.label}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    {thread._count.messages} message{thread._count.messages !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </button>
+
+              {/* Context menu */}
+              {isMenuOpen && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-3 top-8 z-10 w-44 rounded-lg border border-surface-border bg-surface-card py-1 shadow-lg"
+                >
+                  {thread.isUnread ? (
+                    <button
+                      onClick={() => {
+                        onMarkRead(thread.id);
+                        setMenuThreadId(null);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-surface-border hover:text-white"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Mark as Read
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        onMarkUnread(thread.id);
+                        setMenuThreadId(null);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-surface-border hover:text-white"
+                    >
+                      <EyeOff className="h-3.5 w-3.5" />
+                      Mark as Unread
+                    </button>
+                  )}
+                </div>
               )}
-
-              <div className="mt-2 flex items-center gap-2">
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
-                  {badge.label}
-                </span>
-                <span className="text-[10px] text-gray-500">
-                  {thread._count.messages} message{thread._count.messages !== 1 ? "s" : ""}
-                </span>
-              </div>
-            </button>
+            </div>
           );
         })}
       </div>

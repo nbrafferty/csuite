@@ -150,4 +150,48 @@ export const threadRouter = router({
         select: { id: true, name: true, email: true, role: true, avatarUrl: true },
       });
     }),
+
+  markRead: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id as string;
+      await prisma.threadReadState.upsert({
+        where: { threadId_userId: { threadId: input.threadId, userId } },
+        update: { lastReadAt: new Date() },
+        create: { threadId: input.threadId, userId, lastReadAt: new Date() },
+      });
+    }),
+
+  markUnread: protectedProcedure
+    .input(z.object({ threadId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id as string;
+      await prisma.threadReadState.deleteMany({
+        where: { threadId: input.threadId, userId },
+      });
+    }),
+
+  markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id as string;
+    const where: any = { readStates: { none: { userId } } };
+    if (ctx.role !== "CCC_STAFF") {
+      where.companyId = ctx.companyId;
+    }
+
+    const unreadThreads = await prisma.messageThread.findMany({
+      where,
+      select: { id: true },
+    });
+
+    if (unreadThreads.length > 0) {
+      await prisma.threadReadState.createMany({
+        data: unreadThreads.map((t) => ({
+          threadId: t.id,
+          userId,
+          lastReadAt: new Date(),
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }),
 });
