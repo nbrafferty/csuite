@@ -137,6 +137,9 @@ export default function DashboardPage() {
         <p className="mt-1 text-sm text-gray-400">
           Here&apos;s an overview of your projects and activity.
         </p>
+        <p className="mt-2 text-sm text-emerald-400">
+          ✅ Workflow validated — 2026-02-24T12:00:00Z
+        </p>
       </div>
 
       {/* Stat cards */}
