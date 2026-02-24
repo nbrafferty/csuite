@@ -43,7 +43,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   open: { label: "Open", className: "bg-green-500/20 text-green-400" },
   waiting_on_client: { label: "Waiting on Client", className: "bg-yellow-500/20 text-yellow-400" },
   waiting_on_ccc: { label: "Waiting on CCC", className: "bg-blue-500/20 text-blue-400" },
-  resolved: { label: "Resolved", className: "bg-gray-500/20 text-gray-400" },
+  resolved: { label: "Resolved", className: "bg-gray-500/20 text-foreground-secondary" },
 };
 
 type Thread = {
@@ -106,13 +106,13 @@ export function ThreadList({
       {/* Search */}
       <div className="border-b border-surface-border p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
           <input
             type="text"
             placeholder="Search threads..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-surface-border bg-surface-bg py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-bg py-2 pl-10 pr-3 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
           />
         </div>
       </div>
@@ -127,7 +127,7 @@ export function ThreadList({
               "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
               statusFilter === f.value
                 ? "bg-coral text-white"
-                : "bg-surface-card text-gray-400 hover:text-white"
+                : "bg-surface-card text-foreground-secondary hover:text-foreground"
             )}
           >
             {f.label}
@@ -136,7 +136,7 @@ export function ThreadList({
         {unreadCount > 0 && (
           <button
             onClick={onMarkAllRead}
-            className="ml-auto flex items-center gap-1 text-xs text-gray-500 transition-colors hover:text-coral"
+            className="ml-auto flex items-center gap-1 text-xs text-foreground-muted transition-colors hover:text-coral"
           >
             <CheckCheck className="h-3.5 w-3.5" />
             Mark all read
@@ -147,7 +147,7 @@ export function ThreadList({
       {/* Thread items */}
       <div className="flex-1 overflow-y-auto">
         {threads.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-gray-500">
+          <div className="px-4 py-8 text-center text-sm text-foreground-muted">
             No threads found.
           </div>
         )}
@@ -190,8 +190,8 @@ export function ThreadList({
                             className={cn(
                               "truncate text-sm",
                               thread.isUnread
-                                ? "font-semibold text-white"
-                                : "font-normal text-gray-400"
+                                ? "font-semibold text-foreground"
+                                : "font-normal text-foreground-secondary"
                             )}
                           >
                             {thread.subject}
@@ -200,14 +200,14 @@ export function ThreadList({
                         <p
                           className={cn(
                             "mt-0.5 text-xs",
-                            thread.isUnread ? "text-white" : "text-gray-400"
+                            thread.isUnread ? "text-foreground" : "text-foreground-secondary"
                           )}
                         >
                           {thread.company.name}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-foreground-muted">
                           {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
                         </span>
                         <button
@@ -215,7 +215,7 @@ export function ThreadList({
                             e.stopPropagation();
                             setMenuThreadId(isMenuOpen ? null : thread.id);
                           }}
-                          className="rounded p-0.5 text-gray-600 transition-colors hover:bg-surface-border hover:text-gray-300"
+                          className="rounded p-0.5 text-foreground-muted transition-colors hover:bg-surface-border hover:text-foreground-secondary"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
@@ -226,7 +226,7 @@ export function ThreadList({
                       <p
                         className={cn(
                           "mt-1.5 truncate text-xs",
-                          thread.isUnread ? "text-gray-300" : "text-gray-500"
+                          thread.isUnread ? "text-foreground-secondary" : "text-foreground-muted"
                         )}
                       >
                         {lastMessage.body}
@@ -237,7 +237,7 @@ export function ThreadList({
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                         {badge.label}
                       </span>
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-foreground-muted">
                         {thread._count.messages} message{thread._count.messages !== 1 ? "s" : ""}
                       </span>
                     </div>
@@ -257,7 +257,7 @@ export function ThreadList({
                         onMarkRead(thread.id);
                         setMenuThreadId(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-surface-border hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground-secondary hover:bg-surface-border hover:text-foreground"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       Mark as Read
@@ -268,7 +268,7 @@ export function ThreadList({
                         onMarkUnread(thread.id);
                         setMenuThreadId(null);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:bg-surface-border hover:text-white"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-foreground-secondary hover:bg-surface-border hover:text-foreground"
                     >
                       <EyeOff className="h-3.5 w-3.5" />
                       Mark as Unread

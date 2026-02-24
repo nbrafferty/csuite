@@ -29,7 +29,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 
 const ROLE_BADGE: Record<string, { label: string; className: string }> = {
   CLIENT_ADMIN: { label: "Admin", className: "bg-purple-500/20 text-[#A78BFA]" },
-  CLIENT_USER: { label: "User", className: "bg-gray-500/20 text-gray-400" },
+  CLIENT_USER: { label: "User", className: "bg-gray-500/20 text-foreground-secondary" },
 };
 
 const QUOTE_REQUEST_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -39,11 +39,11 @@ const QUOTE_REQUEST_STATUS_BADGE: Record<string, { label: string; className: str
 };
 
 const QUOTE_STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-gray-500/20 text-gray-400" },
+  draft: { label: "Draft", className: "bg-gray-500/20 text-foreground-secondary" },
   sent: { label: "Sent", className: "bg-blue-500/20 text-blue-400" },
   accepted: { label: "Accepted", className: "bg-green-500/20 text-[#34C759]" },
   declined: { label: "Declined", className: "bg-coral/20 text-coral" },
-  expired: { label: "Expired", className: "bg-gray-500/20 text-gray-600" },
+  expired: { label: "Expired", className: "bg-gray-500/20 text-foreground-muted" },
 };
 
 const ORDER_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -52,7 +52,7 @@ const ORDER_STATUS_BADGE: Record<string, { label: string; className: string }> =
   proofing: { label: "Proofing", className: "bg-yellow-500/20 text-[#FFD60A]" },
   in_production: { label: "In Production", className: "bg-green-500/20 text-[#34C759]" },
   ready: { label: "Ready", className: "bg-coral/20 text-coral" },
-  shipped: { label: "Shipped", className: "bg-gray-500/20 text-gray-400" },
+  shipped: { label: "Shipped", className: "bg-gray-500/20 text-foreground-secondary" },
 };
 
 type QuoteRequest = { id: string; title: string; date: string; status: string };
@@ -133,7 +133,7 @@ const RECENT_ORDERS: Record<string, Order[]> = {
 function SectionHeader({ title, viewAllHref }: { title: string; viewAllHref: string }) {
   return (
     <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-[13px] font-semibold text-white">{title}</h3>
+      <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
       <Link href={viewAllHref} className="text-xs text-coral hover:text-coral-light">
         View All →
       </Link>
@@ -195,14 +195,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
       {/* Panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-50 w-[400px] border-l border-[#333338] bg-[#0D0D0F] transition-transform duration-200 ease-in-out",
+          "fixed inset-y-0 right-0 z-50 w-[400px] border-l border-surface-border bg-surface-bg transition-transform duration-200 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
         {client && (
           <div className="flex h-full flex-col overflow-y-auto">
             {/* Header */}
-            <div className="flex items-start gap-4 border-b border-[#333338] p-6">
+            <div className="flex items-start gap-4 border-b border-surface-border p-6">
               <div className={cn(
                 "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-base font-bold text-white",
                 AVATAR_GRADIENTS[hashStr(client.name) % AVATAR_GRADIENTS.length]
@@ -210,7 +210,7 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                 {client.name[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-white">{client.name}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{client.name}</h2>
                 <span className={cn(
                   "mt-1 inline-block rounded-full px-2.5 py-1 text-[10px] font-medium",
                   (STATUS_BADGE[client.status] ?? STATUS_BADGE.active).className
@@ -220,38 +220,38 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-[#22222A] hover:text-white"
+                className="rounded-lg p-1.5 text-foreground-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Overview */}
-            <div className="border-b border-[#333338] p-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Overview</h3>
+            <div className="border-b border-surface-border p-6">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Overview</h3>
               <div className="space-y-2.5">
                 {client.primaryContact && (
                   <div>
-                    <p className="text-xs text-gray-500">Primary Contact</p>
-                    <p className="text-sm text-white">{client.primaryContact.name}</p>
-                    <p className="text-xs text-gray-400">{client.primaryContact.email}</p>
+                    <p className="text-xs text-foreground-muted">Primary Contact</p>
+                    <p className="text-sm text-foreground">{client.primaryContact.name}</p>
+                    <p className="text-xs text-foreground-secondary">{client.primaryContact.email}</p>
                   </div>
                 )}
                 {client.phone && (
                   <div>
-                    <p className="text-xs text-gray-500">Phone</p>
-                    <p className="text-sm text-white">{client.phone}</p>
+                    <p className="text-xs text-foreground-muted">Phone</p>
+                    <p className="text-sm text-foreground">{client.phone}</p>
                   </div>
                 )}
                 {client.address && (
                   <div>
-                    <p className="text-xs text-gray-500">Address</p>
-                    <p className="text-sm text-white">{client.address}</p>
+                    <p className="text-xs text-foreground-muted">Address</p>
+                    <p className="text-sm text-foreground">{client.address}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-gray-500">Account Created</p>
-                  <p className="text-sm text-white">
+                  <p className="text-xs text-foreground-muted">Account Created</p>
+                  <p className="text-sm text-foreground">
                     {new Date(client.createdAt).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
@@ -263,31 +263,31 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             </div>
 
             {/* Activity Summary */}
-            <div className="border-b border-[#333338] p-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Activity Summary</h3>
+            <div className="border-b border-surface-border p-6">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Activity Summary</h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg border border-[#333338] bg-[#22222A] p-3 text-center">
-                  <p className="text-xl font-bold text-white">{client.activeOrders}</p>
-                  <p className="text-[10px] text-gray-500">Active Orders</p>
+                <div className="rounded-lg border border-surface-border bg-surface-secondary p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{client.activeOrders}</p>
+                  <p className="text-[10px] text-foreground-muted">Active Orders</p>
                 </div>
-                <div className="rounded-lg border border-[#333338] bg-[#22222A] p-3 text-center">
-                  <p className="text-xl font-bold text-white">${(client.revenue / 1000).toFixed(1)}k</p>
-                  <p className="text-[10px] text-gray-500">Revenue</p>
+                <div className="rounded-lg border border-surface-border bg-surface-secondary p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">${(client.revenue / 1000).toFixed(1)}k</p>
+                  <p className="text-[10px] text-foreground-muted">Revenue</p>
                 </div>
-                <div className="rounded-lg border border-[#333338] bg-[#22222A] p-3 text-center">
-                  <p className="text-xl font-bold text-white">{client.userCount}</p>
-                  <p className="text-[10px] text-gray-500">Users</p>
+                <div className="rounded-lg border border-surface-border bg-surface-secondary p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{client.userCount}</p>
+                  <p className="text-[10px] text-foreground-muted">Users</p>
                 </div>
               </div>
             </div>
 
             {/* Quote Requests */}
-            <div className="border-b border-[#333338] p-6">
+            <div className="border-b border-surface-border p-6">
               <SectionHeader title="Quote Requests" viewAllHref={`/quotes/requests?client=${client.id}`} />
               {(() => {
                 const items = QUOTE_REQUESTS[client.slug] ?? [];
                 if (items.length === 0) {
-                  return <p className="text-sm text-gray-500">No open quote requests</p>;
+                  return <p className="text-sm text-foreground-muted">No open quote requests</p>;
                 }
                 return (
                   <div className="space-y-2">
@@ -297,11 +297,11 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                         <Link
                           key={qr.id}
                           href={`/quotes/requests/${qr.id}`}
-                          className="flex items-center justify-between rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm text-white">{qr.title}</p>
-                            <p className="text-xs text-gray-500">{qr.date}</p>
+                            <p className="truncate text-sm text-foreground">{qr.title}</p>
+                            <p className="text-xs text-foreground-muted">{qr.date}</p>
                           </div>
                           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                             {badge.label}
@@ -315,12 +315,12 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             </div>
 
             {/* Quotes */}
-            <div className="border-b border-[#333338] p-6">
+            <div className="border-b border-surface-border p-6">
               <SectionHeader title="Quotes" viewAllHref={`/quotes?client=${client.id}`} />
               {(() => {
                 const items = QUOTES[client.slug] ?? [];
                 if (items.length === 0) {
-                  return <p className="text-sm text-gray-500">No quotes</p>;
+                  return <p className="text-sm text-foreground-muted">No quotes</p>;
                 }
                 return (
                   <div className="space-y-2">
@@ -330,18 +330,18 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                         <Link
                           key={q.id}
                           href={`/quotes/${q.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-gray-500">{q.quoteId}</p>
-                            <p className="truncate text-sm text-white">{q.title}</p>
-                            <p className="text-xs text-gray-500">{q.subtext}</p>
+                            <p className="text-xs text-foreground-muted">{q.quoteId}</p>
+                            <p className="truncate text-sm text-foreground">{q.title}</p>
+                            <p className="text-xs text-foreground-muted">{q.subtext}</p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                               {badge.label}
                             </span>
-                            <span className="text-sm font-medium text-white">{q.amount}</span>
+                            <span className="text-sm font-medium text-foreground">{q.amount}</span>
                           </div>
                         </Link>
                       );
@@ -352,12 +352,12 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             </div>
 
             {/* Recent Orders */}
-            <div className="border-b border-[#333338] p-6">
+            <div className="border-b border-surface-border p-6">
               <SectionHeader title="Recent Orders" viewAllHref={`/orders?client=${client.id}`} />
               {(() => {
                 const items = RECENT_ORDERS[client.slug] ?? [];
                 if (items.length === 0) {
-                  return <p className="text-sm text-gray-500">No recent orders</p>;
+                  return <p className="text-sm text-foreground-muted">No recent orders</p>;
                 }
                 return (
                   <div className="space-y-2">
@@ -367,17 +367,17 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                         <Link
                           key={order.id}
                           href={`/orders/${order.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-gray-500">{order.id}</p>
-                            <p className="truncate text-sm text-white">{order.title}</p>
+                            <p className="text-xs text-foreground-muted">{order.id}</p>
+                            <p className="truncate text-sm text-foreground">{order.title}</p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                               {badge.label}
                             </span>
-                            <span className="text-sm font-medium text-white">{order.total}</span>
+                            <span className="text-sm font-medium text-foreground">{order.total}</span>
                           </div>
                         </Link>
                       );
@@ -394,16 +394,16 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             </div>
 
             {/* Team Members */}
-            <div className="border-b border-[#333338] p-6">
+            <div className="border-b border-surface-border p-6">
               <SectionHeader title="Team Members" viewAllHref={`/team?client=${client.id}`} />
               <div className="space-y-2">
                 {client.users.map((user) => {
                   const roleBadge = ROLE_BADGE[user.role] ?? ROLE_BADGE.CLIENT_USER;
                   return (
-                    <div key={user.id} className="flex items-center justify-between rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5">
+                    <div key={user.id} className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5">
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-white">{user.name}</p>
-                        <p className="truncate text-xs text-gray-500">{user.email}</p>
+                        <p className="truncate text-sm text-foreground">{user.name}</p>
+                        <p className="truncate text-xs text-foreground-muted">{user.email}</p>
                       </div>
                       <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", roleBadge.className)}>
                         {roleBadge.label}
@@ -415,8 +415,8 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             </div>
 
             {/* Internal Notes */}
-            <div className="border-b border-[#333338] p-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Internal Notes</h3>
+            <div className="border-b border-surface-border p-6">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Internal Notes</h3>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -427,16 +427,16 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                 }}
                 rows={4}
                 placeholder="Add internal notes about this client..."
-                className="w-full resize-none rounded-lg border border-[#333338] bg-[#1A1A1E] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
+                className="w-full resize-none rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
               />
             </div>
 
             {/* Quick Actions */}
             <div className="p-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Quick Actions</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Quick Actions</h3>
               <div className="space-y-2">
                 <div>
-                  <label className="mb-1.5 block text-xs text-gray-500">Change Status</label>
+                  <label className="mb-1.5 block text-xs text-foreground-muted">Change Status</label>
                   <select
                     value={client.status}
                     onChange={(e) => {
@@ -447,7 +447,7 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                         });
                       }
                     }}
-                    className="w-full rounded-lg border border-[#333338] bg-[#1A1A1E] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground focus:border-coral focus:outline-none"
                   >
                     <option value="active">Active</option>
                     <option value="paused">Paused</option>
@@ -456,14 +456,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                 </div>
                 <button
                   disabled
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#333338] bg-[#22222A] px-4 py-2.5 text-sm text-gray-400 opacity-50 cursor-not-allowed"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-secondary px-4 py-2.5 text-sm text-foreground-secondary opacity-50 cursor-not-allowed"
                 >
                   <ShoppingCart className="h-4 w-4" />
                   View Orders
                 </button>
                 <Link
                   href="/messages"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#333338] bg-[#22222A] px-4 py-2.5 text-sm text-gray-300 transition-colors hover:bg-[rgba(255,255,255,0.03)] hover:text-white"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-secondary px-4 py-2.5 text-sm text-foreground-secondary transition-colors hover:bg-foreground/[0.03] hover:text-foreground"
                 >
                   <MessageSquare className="h-4 w-4" />
                   Send Message

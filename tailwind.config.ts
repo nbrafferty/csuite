@@ -11,9 +11,10 @@ const config: Config = {
     extend: {
       colors: {
         surface: {
-          bg: "#0D0D0F",
-          card: "#1A1A1E",
-          border: "#333338",
+          bg: "rgb(var(--surface-bg) / <alpha-value>)",
+          card: "rgb(var(--surface-card) / <alpha-value>)",
+          secondary: "rgb(var(--surface-secondary) / <alpha-value>)",
+          border: "rgb(var(--surface-border) / <alpha-value>)",
         },
         coral: {
           DEFAULT: "#E85D5D",
@@ -34,11 +35,16 @@ const config: Config = {
           950: "#1e1b4b",
         },
         sidebar: {
-          bg: "#0D0D0F",
-          hover: "#1A1A1E",
-          active: "#1A1A1E",
-          text: "#9999A1",
-          "text-active": "#FFFFFF",
+          bg: "rgb(var(--sidebar-bg) / <alpha-value>)",
+          hover: "rgb(var(--sidebar-hover) / <alpha-value>)",
+          active: "rgb(var(--sidebar-active) / <alpha-value>)",
+          text: "rgb(var(--sidebar-text) / <alpha-value>)",
+          "text-active": "rgb(var(--sidebar-text-active) / <alpha-value>)",
+        },
+        foreground: {
+          DEFAULT: "rgb(var(--foreground) / <alpha-value>)",
+          secondary: "rgb(var(--foreground-secondary) / <alpha-value>)",
+          muted: "rgb(var(--foreground-muted) / <alpha-value>)",
         },
       },
     },

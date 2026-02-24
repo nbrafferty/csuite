@@ -53,20 +53,20 @@ export function ContextSidebar({
       {/* Linked Order */}
       {thread.orderTitle && (
         <div className="border-b border-surface-border p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
             <Package className="h-3.5 w-3.5" />
             Linked Order
           </div>
           <div className="rounded-lg border border-surface-border bg-surface-card p-3">
-            <p className="text-sm font-medium text-white">{thread.orderTitle}</p>
-            <p className="mt-0.5 text-xs text-gray-500">{thread.company.name}</p>
+            <p className="text-sm font-medium text-foreground">{thread.orderTitle}</p>
+            <p className="mt-0.5 text-xs text-foreground-muted">{thread.company.name}</p>
           </div>
         </div>
       )}
 
       {/* Status */}
       <div className="border-b border-surface-border p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
           <Tag className="h-3.5 w-3.5" />
           Status
         </div>
@@ -74,7 +74,7 @@ export function ContextSidebar({
           <select
             value={thread.status}
             onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground focus:border-coral focus:outline-none"
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -83,7 +83,7 @@ export function ContextSidebar({
             ))}
           </select>
         ) : (
-          <span className="inline-block rounded-full bg-surface-card px-3 py-1 text-sm text-gray-300">
+          <span className="inline-block rounded-full bg-surface-card px-3 py-1 text-sm text-foreground-secondary">
             {STATUS_OPTIONS.find((s) => s.value === thread.status)?.label ?? thread.status}
           </span>
         )}
@@ -91,7 +91,7 @@ export function ContextSidebar({
 
       {/* Assignee */}
       <div className="border-b border-surface-border p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
           <UserCircle className="h-3.5 w-3.5" />
           Assigned To
         </div>
@@ -99,7 +99,7 @@ export function ContextSidebar({
           <select
             value={thread.assignee?.id ?? ""}
             onChange={(e) => onAssigneeChange(e.target.value || null)}
-            className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground focus:border-coral focus:outline-none"
           >
             <option value="">Unassigned</option>
             {staffMembers.map((s) => (
@@ -109,7 +109,7 @@ export function ContextSidebar({
             ))}
           </select>
         ) : (
-          <p className="text-sm text-gray-300">
+          <p className="text-sm text-foreground-secondary">
             {thread.assignee?.name ?? "Unassigned"}
           </p>
         )}
@@ -117,26 +117,26 @@ export function ContextSidebar({
 
       {/* Client Info */}
       <div className="border-b border-surface-border p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
           <UserCircle className="h-3.5 w-3.5" />
           Client
         </div>
-        <p className="text-sm font-medium text-white">{thread.company.name}</p>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="text-sm font-medium text-foreground">{thread.company.name}</p>
+        <p className="mt-0.5 text-xs text-foreground-muted">
           Created by {thread.creator.name} ({thread.creator.email})
         </p>
       </div>
 
       {/* Participants */}
       <div className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
           <Users className="h-3.5 w-3.5" />
           Participants
         </div>
         <div className="space-y-2">
           {participants.map((p) => (
             <div key={p.id} className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-medium text-gray-300">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-card text-xs font-medium text-foreground-secondary">
                 {p.name
                   .split(" ")
                   .map((n) => n[0])
@@ -144,8 +144,8 @@ export function ContextSidebar({
                   .slice(0, 2)}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm text-white">{p.name}</p>
-                <p className="truncate text-xs text-gray-500">
+                <p className="truncate text-sm text-foreground">{p.name}</p>
+                <p className="truncate text-xs text-foreground-muted">
                   {p.role === "CCC_STAFF" ? "Staff" : p.role === "CLIENT_ADMIN" ? "Admin" : "User"}
                 </p>
               </div>

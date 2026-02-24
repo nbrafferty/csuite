@@ -131,10 +131,10 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-2xl font-bold text-foreground">
           Welcome back{session?.user?.name ? `, ${session.user.name}` : ""}
         </h1>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="mt-1 text-sm text-foreground-secondary">
           Here&apos;s an overview of your projects and activity.
         </p>
       </div>
@@ -151,10 +151,10 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-sm text-gray-400">{stat.label}</p>
+              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+              <p className="text-sm text-foreground-secondary">{stat.label}</p>
             </div>
-            <p className="mt-1 text-xs text-gray-500">{stat.change}</p>
+            <p className="mt-1 text-xs text-foreground-muted">{stat.change}</p>
           </div>
         ))}
       </div>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
         {/* Active Projects – takes 2 cols */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Active Projects
             </h2>
             <button className="flex items-center gap-1 text-sm font-medium text-coral hover:text-coral-light">
@@ -176,23 +176,23 @@ export default function DashboardPage() {
             {activeProjects.map((project) => (
               <div
                 key={project.id}
-                className="rounded-xl border border-surface-border bg-surface-card p-5 transition-colors hover:border-gray-600"
+                className="rounded-xl border border-surface-border bg-surface-card p-5 transition-colors hover:border-foreground-muted"
               >
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-gray-500">
+                      <span className="font-mono text-xs text-foreground-muted">
                         {project.id}
                       </span>
-                      <h3 className="text-sm font-semibold text-white">
+                      <h3 className="text-sm font-semibold text-foreground">
                         {project.name}
                       </h3>
                     </div>
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-foreground-secondary">
                       {project.client}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5 text-xs text-foreground-secondary">
                     <Clock className="h-3.5 w-3.5" />
                     {project.deadline}
                   </div>
@@ -201,8 +201,8 @@ export default function DashboardPage() {
                 {/* Progress bar */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-gray-400">Progress</span>
-                    <span className="font-medium text-white">
+                    <span className="text-foreground-secondary">Progress</span>
+                    <span className="font-medium text-foreground">
                       {project.progress}%
                     </span>
                   </div>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
         {/* Recent Quotes sidebar – takes 1 col */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Recent Quotes</h2>
+            <h2 className="text-lg font-semibold text-foreground">Recent Quotes</h2>
             <button className="flex items-center gap-1 text-sm font-medium text-coral hover:text-coral-light">
               View all <ArrowUpRight className="h-4 w-4" />
             </button>
@@ -231,22 +231,22 @@ export default function DashboardPage() {
             {recentQuotes.map((quote) => (
               <div
                 key={quote.id}
-                className="px-4 py-3.5 transition-colors hover:bg-white/[0.02]"
+                className="px-4 py-3.5 transition-colors hover:bg-foreground/[0.03]"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-white truncate mr-2">
+                  <span className="text-sm font-medium text-foreground truncate mr-2">
                     {quote.title}
                   </span>
-                  <span className="text-sm font-semibold text-white whitespace-nowrap">
+                  <span className="text-sm font-semibold text-foreground whitespace-nowrap">
                     {quote.amount}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-gray-500">
+                  <span className="text-foreground-muted">
                     {quote.id} &middot; {quote.date}
                   </span>
                   <span
-                    className={`font-medium ${quoteStatusColor[quote.status] ?? "text-gray-400"}`}
+                    className={`font-medium ${quoteStatusColor[quote.status] ?? "text-foreground-secondary"}`}
                   >
                     {quote.status}
                   </span>

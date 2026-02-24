@@ -45,8 +45,8 @@ interface ClientsGridProps {
 export function ClientsGrid({ clients, selectedClientId, onSelectClient }: ClientsGridProps) {
   if (clients.length === 0) {
     return (
-      <div className="rounded-xl border border-[#333338] bg-[#22222A] px-6 py-12 text-center">
-        <p className="text-sm text-gray-500">No clients match your filters.</p>
+      <div className="rounded-xl border border-surface-border bg-surface-secondary px-6 py-12 text-center">
+        <p className="text-sm text-foreground-muted">No clients match your filters.</p>
       </div>
     );
   }
@@ -63,10 +63,10 @@ export function ClientsGrid({ clients, selectedClientId, onSelectClient }: Clien
             key={client.id}
             onClick={() => onSelectClient(client.id)}
             className={cn(
-              "rounded-xl border bg-[#22222A] p-5 text-left transition-all duration-150 hover:-translate-y-0.5",
+              "rounded-xl border bg-surface-secondary p-5 text-left transition-all duration-150 hover:-translate-y-0.5",
               isSelected
                 ? "border-coral/40"
-                : "border-[#333338] hover:border-[#444448]"
+                : "border-surface-border hover:border-foreground-muted"
             )}
           >
             <div className="flex items-start justify-between">
@@ -81,28 +81,28 @@ export function ClientsGrid({ clients, selectedClientId, onSelectClient }: Clien
               </span>
             </div>
 
-            <h3 className="mt-3 text-sm font-semibold text-white">{client.name}</h3>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{client.name}</h3>
 
             {client.primaryContact && (
-              <p className="mt-1 text-xs text-gray-500">{client.primaryContact.name}</p>
+              <p className="mt-1 text-xs text-foreground-muted">{client.primaryContact.name}</p>
             )}
 
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div>
-                <p className="text-lg font-semibold text-white">{client.activeOrders}</p>
-                <p className="text-[10px] text-gray-500">Orders</p>
+                <p className="text-lg font-semibold text-foreground">{client.activeOrders}</p>
+                <p className="text-[10px] text-foreground-muted">Orders</p>
               </div>
               <div>
-                <p className="text-lg font-semibold text-white">${(client.revenue / 1000).toFixed(1)}k</p>
-                <p className="text-[10px] text-gray-500">Revenue</p>
+                <p className="text-lg font-semibold text-foreground">${(client.revenue / 1000).toFixed(1)}k</p>
+                <p className="text-[10px] text-foreground-muted">Revenue</p>
               </div>
               <div>
-                <p className="text-lg font-semibold text-white">{client.userCount}</p>
-                <p className="text-[10px] text-gray-500">Users</p>
+                <p className="text-lg font-semibold text-foreground">{client.userCount}</p>
+                <p className="text-[10px] text-foreground-muted">Users</p>
               </div>
             </div>
 
-            <p className="mt-3 text-[10px] text-gray-600">
+            <p className="mt-3 text-[10px] text-foreground-muted">
               Last active {formatDistanceToNow(new Date(client.lastActivity), { addSuffix: true })}
             </p>
           </button>

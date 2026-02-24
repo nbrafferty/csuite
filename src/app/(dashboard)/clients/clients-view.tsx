@@ -47,8 +47,8 @@ export function ClientsView() {
     <div className="relative">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Clients</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Clients</h1>
+        <p className="mt-1 text-sm text-foreground-muted">
           Managing {totalCount} client organization{totalCount !== 1 ? "s" : ""}
         </p>
       </div>
@@ -57,13 +57,13 @@ export function ClientsView() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
           <input
             type="text"
             placeholder="Search by name or contact..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-[#333338] bg-[#1A1A1E] py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-card py-2 pl-10 pr-3 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
           />
         </div>
 
@@ -77,7 +77,7 @@ export function ClientsView() {
                 "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === f.value
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-gray-400 hover:text-white"
+                  : "bg-surface-secondary text-foreground-secondary hover:text-foreground"
               )}
             >
               {f.label}
@@ -87,14 +87,14 @@ export function ClientsView() {
 
         <div className="ml-auto flex items-center gap-2">
           {/* View toggle */}
-          <div className="flex rounded-lg border border-[#333338] bg-[#1A1A1E]">
+          <div className="flex rounded-lg border border-surface-border bg-surface-card">
             <button
               onClick={() => setView("table")}
               className={cn(
                 "rounded-l-lg p-2 transition-colors",
                 view === "table"
-                  ? "bg-[#22222A] text-white"
-                  : "text-gray-500 hover:text-white"
+                  ? "bg-surface-secondary text-foreground"
+                  : "text-foreground-muted hover:text-foreground"
               )}
             >
               <LayoutList className="h-4 w-4" />
@@ -104,8 +104,8 @@ export function ClientsView() {
               className={cn(
                 "rounded-r-lg p-2 transition-colors",
                 view === "grid"
-                  ? "bg-[#22222A] text-white"
-                  : "text-gray-500 hover:text-white"
+                  ? "bg-surface-secondary text-foreground"
+                  : "text-foreground-muted hover:text-foreground"
               )}
             >
               <LayoutGrid className="h-4 w-4" />
