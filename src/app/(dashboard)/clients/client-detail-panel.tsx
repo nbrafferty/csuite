@@ -32,6 +32,115 @@ const ROLE_BADGE: Record<string, { label: string; className: string }> = {
   CLIENT_USER: { label: "User", className: "bg-gray-500/20 text-gray-400" },
 };
 
+const QUOTE_REQUEST_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  new: { label: "New", className: "bg-coral/20 text-coral animate-pulse" },
+  reviewing: { label: "Reviewing", className: "bg-yellow-500/20 text-[#FFD60A]" },
+  quoted: { label: "Quoted", className: "bg-green-500/20 text-[#34C759]" },
+};
+
+const QUOTE_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  draft: { label: "Draft", className: "bg-gray-500/20 text-gray-400" },
+  sent: { label: "Sent", className: "bg-blue-500/20 text-blue-400" },
+  accepted: { label: "Accepted", className: "bg-green-500/20 text-[#34C759]" },
+  declined: { label: "Declined", className: "bg-coral/20 text-coral" },
+  expired: { label: "Expired", className: "bg-gray-500/20 text-gray-600" },
+};
+
+const ORDER_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  submitted: { label: "Submitted", className: "bg-blue-500/20 text-blue-400" },
+  in_review: { label: "In Review", className: "bg-purple-500/20 text-[#A78BFA]" },
+  proofing: { label: "Proofing", className: "bg-yellow-500/20 text-[#FFD60A]" },
+  in_production: { label: "In Production", className: "bg-green-500/20 text-[#34C759]" },
+  ready: { label: "Ready", className: "bg-coral/20 text-coral" },
+  shipped: { label: "Shipped", className: "bg-gray-500/20 text-gray-400" },
+};
+
+type QuoteRequest = { id: string; title: string; date: string; status: string };
+type Quote = { id: string; quoteId: string; title: string; amount: string; status: string; subtext: string };
+type Order = { id: string; title: string; status: string; date: string; total: string };
+
+const QUOTE_REQUESTS: Record<string, QuoteRequest[]> = {
+  "acme-corp": [
+    { id: "qr-1", title: "Custom Embroidered Jackets", date: "1 day ago", status: "new" },
+    { id: "qr-2", title: "Warehouse Team Vests", date: "5 days ago", status: "reviewing" },
+  ],
+  "globex-corp": [
+    { id: "qr-3", title: "Executive Gift Set", date: "2 days ago", status: "new" },
+  ],
+  "bloom-studio": [
+    { id: "qr-4", title: "Seasonal Window Decals", date: "3 days ago", status: "reviewing" },
+    { id: "qr-5", title: "Branded Aprons", date: "1 week ago", status: "quoted" },
+  ],
+  "redline-events": [
+    { id: "qr-6", title: "VIP Lanyards & Badges", date: "12 hours ago", status: "new" },
+    { id: "qr-7", title: "Stage Backdrop Reprint", date: "4 days ago", status: "quoted" },
+  ],
+  "greenfield-co": [
+    { id: "qr-8", title: "Compostable Mailer Bags", date: "6 days ago", status: "reviewing" },
+  ],
+};
+
+const QUOTES: Record<string, Quote[]> = {
+  "acme-corp": [
+    { id: "q-1", quoteId: "QT-2026-041", title: "Q4 Apparel Collection", amount: "$4,250.00", status: "accepted", subtext: "Accepted Jan 15, 2026" },
+    { id: "q-2", quoteId: "QT-2026-048", title: "Holiday Gift Boxes", amount: "$2,800.00", status: "sent", subtext: "Expires Mar 1, 2026" },
+  ],
+  "globex-corp": [
+    { id: "q-3", quoteId: "QT-2026-039", title: "Tech Summit Signage", amount: "$6,100.00", status: "accepted", subtext: "Accepted Jan 8, 2026" },
+    { id: "q-4", quoteId: "QT-2026-052", title: "Onboarding Kit Bundle", amount: "$3,200.00", status: "draft", subtext: "Draft" },
+  ],
+  "bloom-studio": [
+    { id: "q-5", quoteId: "QT-2026-044", title: "Spring Collection Print Run", amount: "$3,400.00", status: "accepted", subtext: "Accepted Jan 22, 2026" },
+    { id: "q-6", quoteId: "QT-2026-050", title: "Custom Packaging Redesign", amount: "$1,900.00", status: "sent", subtext: "Expires Mar 10, 2026" },
+    { id: "q-7", quoteId: "QT-2026-053", title: "Sticker Subscription Q2", amount: "$600.00", status: "expired", subtext: "Expired Feb 1, 2026" },
+  ],
+  "novatech-industries": [
+    { id: "q-8", quoteId: "QT-2026-035", title: "Annual Report Printing", amount: "$5,500.00", status: "declined", subtext: "Declined Dec 20, 2025" },
+  ],
+  "redline-events": [
+    { id: "q-9", quoteId: "QT-2026-046", title: "Festival Full Package", amount: "$12,400.00", status: "sent", subtext: "Expires Mar 15, 2026" },
+  ],
+  "greenfield-co": [
+    { id: "q-10", quoteId: "QT-2026-049", title: "Eco Product Launch Kit", amount: "$2,100.00", status: "accepted", subtext: "Accepted Feb 5, 2026" },
+    { id: "q-11", quoteId: "QT-2026-054", title: "Trade Show Bundle", amount: "$1,800.00", status: "draft", subtext: "Draft" },
+  ],
+};
+
+const RECENT_ORDERS: Record<string, Order[]> = {
+  "acme-corp": [
+    { id: "CS-9012", title: "Summer Tee Collection", status: "in_production", date: "3 days ago", total: "$4,200.00" },
+    { id: "CS-9008", title: "Event Banners Q2", status: "ready", date: "1 week ago", total: "$1,800.00" },
+    { id: "CS-8994", title: "Staff Polos Reorder", status: "shipped", date: "2 weeks ago", total: "$3,100.00" },
+  ],
+  "globex-corp": [
+    { id: "CS-9010", title: "Conference Merch Kit", status: "proofing", date: "2 days ago", total: "$6,500.00" },
+    { id: "CS-9003", title: "Onboarding Swag Bags", status: "submitted", date: "5 days ago", total: "$2,200.00" },
+  ],
+  "bloom-studio": [
+    { id: "CS-9015", title: "Spring Lookbook Prints", status: "in_production", date: "1 day ago", total: "$3,400.00" },
+    { id: "CS-9011", title: "Logo Hoodie Run", status: "proofing", date: "4 days ago", total: "$2,800.00" },
+    { id: "CS-9006", title: "Sticker Pack v3", status: "in_review", date: "6 days ago", total: "$450.00" },
+  ],
+  "redline-events": [
+    { id: "CS-9014", title: "Festival Booth Setup", status: "in_production", date: "2 days ago", total: "$8,900.00" },
+  ],
+  "greenfield-co": [
+    { id: "CS-9009", title: "Eco Tee Launch", status: "in_review", date: "4 days ago", total: "$2,100.00" },
+    { id: "CS-9004", title: "Recycled Caps Order", status: "submitted", date: "1 week ago", total: "$1,350.00" },
+  ],
+};
+
+function SectionHeader({ title, viewAllHref }: { title: string; viewAllHref: string }) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <h3 className="text-[13px] font-semibold text-white">{title}</h3>
+      <Link href={viewAllHref} className="text-xs text-coral hover:text-coral-light">
+        View All →
+      </Link>
+    </div>
+  );
+}
+
 interface ClientDetailPanelProps {
   clientId: string | null;
   onClose: () => void;
@@ -172,9 +281,121 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
               </div>
             </div>
 
+            {/* Quote Requests */}
+            <div className="border-b border-[#333338] p-6">
+              <SectionHeader title="Quote Requests" viewAllHref={`/quotes/requests?client=${client.id}`} />
+              {(() => {
+                const items = QUOTE_REQUESTS[client.slug] ?? [];
+                if (items.length === 0) {
+                  return <p className="text-sm text-gray-500">No open quote requests</p>;
+                }
+                return (
+                  <div className="space-y-2">
+                    {items.map((qr) => {
+                      const badge = QUOTE_REQUEST_STATUS_BADGE[qr.status] ?? QUOTE_REQUEST_STATUS_BADGE.new;
+                      return (
+                        <Link
+                          key={qr.id}
+                          href={`/quotes/requests/${qr.id}`}
+                          className="flex items-center justify-between rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm text-white">{qr.title}</p>
+                            <p className="text-xs text-gray-500">{qr.date}</p>
+                          </div>
+                          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+                            {badge.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Quotes */}
+            <div className="border-b border-[#333338] p-6">
+              <SectionHeader title="Quotes" viewAllHref={`/quotes?client=${client.id}`} />
+              {(() => {
+                const items = QUOTES[client.slug] ?? [];
+                if (items.length === 0) {
+                  return <p className="text-sm text-gray-500">No quotes</p>;
+                }
+                return (
+                  <div className="space-y-2">
+                    {items.map((q) => {
+                      const badge = QUOTE_STATUS_BADGE[q.status] ?? QUOTE_STATUS_BADGE.draft;
+                      return (
+                        <Link
+                          key={q.id}
+                          href={`/quotes/${q.id}`}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-gray-500">{q.quoteId}</p>
+                            <p className="truncate text-sm text-white">{q.title}</p>
+                            <p className="text-xs text-gray-500">{q.subtext}</p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+                              {badge.label}
+                            </span>
+                            <span className="text-sm font-medium text-white">{q.amount}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Recent Orders */}
+            <div className="border-b border-[#333338] p-6">
+              <SectionHeader title="Recent Orders" viewAllHref={`/orders?client=${client.id}`} />
+              {(() => {
+                const items = RECENT_ORDERS[client.slug] ?? [];
+                if (items.length === 0) {
+                  return <p className="text-sm text-gray-500">No recent orders</p>;
+                }
+                return (
+                  <div className="space-y-2">
+                    {items.map((order) => {
+                      const badge = ORDER_STATUS_BADGE[order.status] ?? ORDER_STATUS_BADGE.submitted;
+                      return (
+                        <Link
+                          key={order.id}
+                          href={`/orders/${order.id}`}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2.5 transition-colors hover:bg-[rgba(255,255,255,0.03)]"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-gray-500">{order.id}</p>
+                            <p className="truncate text-sm text-white">{order.title}</p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+                              {badge.label}
+                            </span>
+                            <span className="text-sm font-medium text-white">{order.total}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              <Link
+                href={`/orders?client=${client.id}`}
+                className="mt-3 flex w-full items-center justify-center rounded-lg bg-coral px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-coral-dark"
+              >
+                View All Orders →
+              </Link>
+            </div>
+
             {/* Team Members */}
             <div className="border-b border-[#333338] p-6">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Team Members</h3>
+              <SectionHeader title="Team Members" viewAllHref={`/team?client=${client.id}`} />
               <div className="space-y-2">
                 {client.users.map((user) => {
                   const roleBadge = ROLE_BADGE[user.role] ?? ROLE_BADGE.CLIENT_USER;
