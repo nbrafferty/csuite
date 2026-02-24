@@ -37,18 +37,23 @@ async function main() {
     },
   });
 
-  // Create demo client company
+  // ─── Client Companies ──────────────────────────────────────────────
+
+  // 1. Acme Corp — active, 3 active orders
   const demo = await prisma.company.upsert({
     where: { slug: "acme-corp" },
     update: {},
     create: {
-      name: "Acme Corporation",
+      name: "Acme Corp",
       slug: "acme-corp",
       inviteCode: "ACME-INVITE-2026",
+      status: "active",
+      phone: "(512) 555-0100",
+      address: "123 Main St, Austin, TX 78701",
+      notes: "Long-standing client. Prefers rush delivery. Net-30 terms approved.",
     },
   });
 
-  // Create demo client admin
   const janeSmith = await prisma.user.upsert({
     where: { email: "admin@acme.com" },
     update: {},
@@ -62,7 +67,6 @@ async function main() {
     },
   });
 
-  // Create demo client user
   const johnDoe = await prisma.user.upsert({
     where: { email: "user@acme.com" },
     update: {},
@@ -76,7 +80,19 @@ async function main() {
     },
   });
 
-  // Create demo location
+  await prisma.user.upsert({
+    where: { email: "mike@acme.com" },
+    update: {},
+    create: {
+      companyId: demo.id,
+      email: "mike@acme.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Mike Rivera",
+      role: "CLIENT_USER",
+      status: "ACTIVE",
+    },
+  });
+
   await prisma.location.create({
     data: {
       companyId: demo.id,
@@ -90,11 +106,9 @@ async function main() {
       contactPhone: "512-555-0100",
       isDefault: true,
     },
-  }).catch(() => {
-    // Ignore if already exists on re-seed
-  });
+  }).catch(() => {});
 
-  // Create second client company
+  // 2. Globex Corporation — active, 2 active orders
   const globex = await prisma.company.upsert({
     where: { slug: "globex-corp" },
     update: {},
@@ -102,6 +116,10 @@ async function main() {
       name: "Globex Corporation",
       slug: "globex-corp",
       inviteCode: "GLOBEX-INVITE-2026",
+      status: "active",
+      phone: "(541) 555-0199",
+      address: "456 Globex Blvd, Cypress Creek, OR 97401",
+      notes: "Large corporate account. Quarterly swag orders for new hires.",
     },
   });
 
@@ -113,6 +131,170 @@ async function main() {
       email: "hank@globex.com",
       passwordHash: hashSync("password123", 12),
       name: "Hank Scorpio",
+      role: "CLIENT_ADMIN",
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "frank@globex.com" },
+    update: {},
+    create: {
+      companyId: globex.id,
+      email: "frank@globex.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Frank Grimes",
+      role: "CLIENT_USER",
+      status: "ACTIVE",
+    },
+  });
+
+  // 3. Bloom Studio — active, 4 active orders
+  const bloom = await prisma.company.upsert({
+    where: { slug: "bloom-studio" },
+    update: {},
+    create: {
+      name: "Bloom Studio",
+      slug: "bloom-studio",
+      inviteCode: "BLOOM-INVITE-2026",
+      status: "active",
+      phone: "(415) 555-0234",
+      address: "789 Flower Ave, San Francisco, CA 94102",
+      notes: "Design-forward brand. Very particular about Pantone matching.",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "lily@bloomstudio.com" },
+    update: {},
+    create: {
+      companyId: bloom.id,
+      email: "lily@bloomstudio.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Lily Chen",
+      role: "CLIENT_ADMIN",
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "omar@bloomstudio.com" },
+    update: {},
+    create: {
+      companyId: bloom.id,
+      email: "omar@bloomstudio.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Omar Patel",
+      role: "CLIENT_USER",
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "nina@bloomstudio.com" },
+    update: {},
+    create: {
+      companyId: bloom.id,
+      email: "nina@bloomstudio.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Nina Brooks",
+      role: "CLIENT_USER",
+      status: "ACTIVE",
+    },
+  });
+
+  // 4. NovaTech Industries — paused, 0 active orders
+  const novatech = await prisma.company.upsert({
+    where: { slug: "novatech-industries" },
+    update: {},
+    create: {
+      name: "NovaTech Industries",
+      slug: "novatech-industries",
+      inviteCode: "NOVA-INVITE-2026",
+      status: "paused",
+      phone: "(312) 555-0777",
+      address: "200 Innovation Dr, Chicago, IL 60601",
+      notes: "Account paused — pending budget approval for Q2. Follow up in March.",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "marcus@novatech.io" },
+    update: {},
+    create: {
+      companyId: novatech.id,
+      email: "marcus@novatech.io",
+      passwordHash: hashSync("password123", 12),
+      name: "Marcus Webb",
+      role: "CLIENT_ADMIN",
+      status: "ACTIVE",
+    },
+  });
+
+  // 5. Redline Events — overdue, 1 active order
+  const redline = await prisma.company.upsert({
+    where: { slug: "redline-events" },
+    update: {},
+    create: {
+      name: "Redline Events",
+      slug: "redline-events",
+      inviteCode: "REDLINE-INVITE-2026",
+      status: "overdue",
+      phone: "(305) 555-0412",
+      address: "55 Ocean Dr, Miami, FL 33139",
+      notes: "Outstanding invoice INV-2025-089. Contacted 3 times. Escalate if no payment by March 1.",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "dana@redlineevents.com" },
+    update: {},
+    create: {
+      companyId: redline.id,
+      email: "dana@redlineevents.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Dana Torres",
+      role: "CLIENT_ADMIN",
+      status: "ACTIVE",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "casey@redlineevents.com" },
+    update: {},
+    create: {
+      companyId: redline.id,
+      email: "casey@redlineevents.com",
+      passwordHash: hashSync("password123", 12),
+      name: "Casey Nguyen",
+      role: "CLIENT_USER",
+      status: "ACTIVE",
+    },
+  });
+
+  // 6. Greenfield Co — active, 2 active orders
+  const greenfield = await prisma.company.upsert({
+    where: { slug: "greenfield-co" },
+    update: {},
+    create: {
+      name: "Greenfield Co",
+      slug: "greenfield-co",
+      inviteCode: "GREEN-INVITE-2026",
+      status: "active",
+      phone: "(206) 555-0388",
+      address: "1010 Evergreen Way, Seattle, WA 98101",
+      notes: "Eco-focused brand. Only uses organic cotton and recycled polyester.",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "sam@greenfield.co" },
+    update: {},
+    create: {
+      companyId: greenfield.id,
+      email: "sam@greenfield.co",
+      passwordHash: hashSync("password123", 12),
+      name: "Sam Okafor",
       role: "CLIENT_ADMIN",
       status: "ACTIVE",
     },
@@ -211,6 +393,10 @@ async function main() {
   console.log("Client Admin:     admin@acme.com / password123");
   console.log("Client User:      user@acme.com / password123");
   console.log("Globex Admin:     hank@globex.com / password123");
+  console.log("Bloom Admin:      lily@bloomstudio.com / password123");
+  console.log("NovaTech Admin:   marcus@novatech.io / password123");
+  console.log("Redline Admin:    dana@redlineevents.com / password123");
+  console.log("Greenfield Admin: sam@greenfield.co / password123");
 }
 
 main()

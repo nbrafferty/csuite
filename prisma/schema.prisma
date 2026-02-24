@@ -92,7 +92,11 @@ model Company {
   name              String
   slug              String   @unique
   inviteCode        String   @unique @map("invite_code")
+  status            String   @default("active")
   logoUrl           String?  @map("logo_url")
+  phone             String?
+  address           String?
+  notes             String?
   stripeCustomerId  String?  @unique @map("stripe_customer_id")
   createdAt         DateTime @default(now()) @map("created_at")
 

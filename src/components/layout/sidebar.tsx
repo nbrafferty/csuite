@@ -14,12 +14,20 @@ import {
   CreditCard,
   Package,
   Settings,
+  Building2,
   LogOut,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 
-const navItems = [
+type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  staffOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Quotes", href: "/quotes", icon: FileText },
@@ -27,6 +35,7 @@ const navItems = [
   { label: "Artwork", href: "/artwork", icon: Image },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Messages", href: "/messages", icon: MessageSquare },
+  { label: "Clients", href: "/clients", icon: Building2, staffOnly: true },
   { label: "Inventory", href: "/inventory", icon: Package },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
@@ -34,6 +43,8 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
+  const { data: me } = trpc.auth.me.useQuery();
+  const isStaff = me?.role === "CCC_STAFF";
   const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
@@ -73,7 +84,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !item.staffOnly || isStaff).map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
