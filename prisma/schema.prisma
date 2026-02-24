@@ -131,7 +131,9 @@ model User {
   proofsApproved   Proof[]          @relation("ProofApprover")
   proofAnnotations ProofAnnotation[]
   threadsCreated   MessageThread[]  @relation("ThreadCreator")
+  threadsAssigned  MessageThread[]  @relation("ThreadAssignee")
   messagesSent     Message[]
+  threadReadStates ThreadReadState[]
   ledgerEntries    InventoryLedgerEntry[]
   auditLogEvents   AuditLogEvent[]
   artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
@@ -364,19 +366,26 @@ model Shipment {
 }
 
 model MessageThread {
-  id        String    @id @default(uuid())
-  companyId String    @map("company_id")
-  orderId   String?   @map("order_id")
-  subject   String
-  createdBy String    @map("created_by")
-  createdAt DateTime  @default(now()) @map("created_at")
+  id         String    @id @default(uuid())
+  companyId  String    @map("company_id")
+  orderId    String?   @map("order_id")
+  orderTitle String?   @map("order_title")
+  subject    String
+  status     String    @default("open")
+  createdBy  String    @map("created_by")
+  assigneeId String?   @map("assignee_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  company   Company   @relation(fields: [companyId], references: [id])
-  order     Order?    @relation(fields: [orderId], references: [id])
-  creator   User      @relation("ThreadCreator", fields: [createdBy], references: [id])
-  messages  Message[]
+  company    Company   @relation(fields: [companyId], references: [id])
+  order      Order?    @relation(fields: [orderId], references: [id])
+  creator    User      @relation("ThreadCreator", fields: [createdBy], references: [id])
+  assignee   User?     @relation("ThreadAssignee", fields: [assigneeId], references: [id])
+  messages   Message[]
+  readStates ThreadReadState[]
 
   @@index([companyId])
+  @@index([status])
   @@map("message_threads")
 }
 
@@ -385,6 +394,7 @@ model Message {
   threadId       String        @map("thread_id")
   authorId       String        @map("author_id")
   body           String
+  senderType     String        @default("client")  @map("sender_type")
   attachmentUrls Json?         @map("attachment_urls")
   createdAt      DateTime      @default(now()) @map("created_at")
 
@@ -393,6 +403,19 @@ model Message {
 
   @@index([threadId])
   @@map("messages")
+}
+
+model ThreadReadState {
+  id        String        @id @default(uuid())
+  threadId  String        @map("thread_id")
+  userId    String        @map("user_id")
+  lastReadAt DateTime     @default(now()) @map("last_read_at")
+
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+  user      User          @relation(fields: [userId], references: [id])
+
+  @@unique([threadId, userId])
+  @@map("thread_read_states")
 }
 
 model InventoryItem {
