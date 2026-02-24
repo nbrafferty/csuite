@@ -5,6 +5,29 @@ import { cn } from "@/lib/utils";
 import { Search, MoreHorizontal, Eye, EyeOff, CheckCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+const AVATAR_GRADIENTS = [
+  "from-blue-500 to-teal-400",
+  "from-violet-500 to-fuchsia-400",
+  "from-amber-500 to-orange-400",
+  "from-emerald-500 to-cyan-400",
+  "from-rose-500 to-pink-400",
+];
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function hashStr(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 const STATUS_FILTERS = [
   { label: "All", value: "all" },
   { label: "Unread", value: "unread" },
@@ -145,47 +168,80 @@ export function ThreadList({
                     : "hover:bg-surface-card/50"
                 )}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-3">
+                  {/* Company avatar */}
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-bold text-white",
+                      AVATAR_GRADIENTS[hashStr(thread.company.name) % AVATAR_GRADIENTS.length]
+                    )}
+                  >
+                    {getInitials(thread.company.name)}
+                  </div>
+
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      {thread.isUnread && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />
-                      )}
-                      <span className="truncate text-sm font-medium text-white">
-                        {thread.subject}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {thread.isUnread && (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-coral" />
+                          )}
+                          <span
+                            className={cn(
+                              "truncate text-sm",
+                              thread.isUnread
+                                ? "font-semibold text-white"
+                                : "font-normal text-gray-400"
+                            )}
+                          >
+                            {thread.subject}
+                          </span>
+                        </div>
+                        <p
+                          className={cn(
+                            "mt-0.5 text-xs",
+                            thread.isUnread ? "text-white" : "text-gray-400"
+                          )}
+                        >
+                          {thread.company.name}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="text-xs text-gray-500">
+                          {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuThreadId(isMenuOpen ? null : thread.id);
+                          }}
+                          className="rounded p-0.5 text-gray-600 transition-colors hover:bg-surface-border hover:text-gray-300"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {lastMessage && (
+                      <p
+                        className={cn(
+                          "mt-1.5 truncate text-xs",
+                          thread.isUnread ? "text-gray-300" : "text-gray-500"
+                        )}
+                      >
+                        {lastMessage.body}
+                      </p>
+                    )}
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
+                        {badge.label}
+                      </span>
+                      <span className="text-[10px] text-gray-500">
+                        {thread._count.messages} message{thread._count.messages !== 1 ? "s" : ""}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-500">{thread.company.name}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true })}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuThreadId(isMenuOpen ? null : thread.id);
-                      }}
-                      className="rounded p-0.5 text-gray-600 transition-colors hover:bg-surface-border hover:text-gray-300"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {lastMessage && (
-                  <p className="mt-1.5 truncate text-xs text-gray-400">
-                    {lastMessage.body}
-                  </p>
-                )}
-
-                <div className="mt-2 flex items-center gap-2">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
-                    {badge.label}
-                  </span>
-                  <span className="text-[10px] text-gray-500">
-                    {thread._count.messages} message{thread._count.messages !== 1 ? "s" : ""}
-                  </span>
                 </div>
               </button>
 

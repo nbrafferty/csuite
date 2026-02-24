@@ -5,6 +5,12 @@ import { cn } from "@/lib/utils";
 import { Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 type Message = {
   id: string;
   body: string;
@@ -68,39 +74,65 @@ export function ChatPanel({
         {messages.map((msg) => {
           const isInternal = msg.senderType === "internal";
           const isStaffMsg = msg.senderType === "staff" || isInternal;
+          const initials = getInitials(msg.author.name);
+
+          const avatarGradient = isInternal
+            ? "from-yellow-500 to-amber-400"
+            : isStaffMsg
+              ? "from-coral to-purple-500"
+              : "from-blue-500 to-teal-400";
+
+          const avatar = (
+            <div
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-bold text-white",
+                avatarGradient
+              )}
+            >
+              {initials}
+            </div>
+          );
 
           return (
             <div
               key={msg.id}
               className={cn(
-                "flex flex-col",
-                isStaffMsg ? "items-end" : "items-start"
+                "flex gap-2.5",
+                isStaffMsg ? "flex-row-reverse" : "flex-row"
               )}
             >
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-400">
-                  {msg.author.name}
-                </span>
-                <span className="text-xs text-gray-600">
-                  {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
-                </span>
-              </div>
+              {avatar}
               <div
                 className={cn(
-                  "max-w-[75%] rounded-xl px-4 py-2.5 text-sm",
-                  isInternal
-                    ? "border border-yellow-600/30 bg-yellow-500/10 text-yellow-200"
-                    : isStaffMsg
-                      ? "bg-coral/20 text-white"
-                      : "bg-surface-card text-gray-200"
+                  "flex max-w-[75%] flex-col",
+                  isStaffMsg ? "items-end" : "items-start"
                 )}
               >
-                {isInternal && (
-                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
-                    Internal Note
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-400">
+                    {msg.author.name}
                   </span>
-                )}
-                <p className="whitespace-pre-wrap">{msg.body}</p>
+                  <span className="text-xs text-gray-600">
+                    {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    "rounded-xl px-4 py-2.5 text-sm",
+                    isInternal
+                      ? "border border-yellow-600/30 bg-yellow-500/10 text-yellow-200"
+                      : isStaffMsg
+                        ? "bg-coral/20 text-white"
+                        : "bg-surface-card text-gray-200"
+                  )}
+                >
+                  {isInternal && (
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-yellow-500">
+                      Internal Note
+                    </span>
+                  )}
+                  <p className="whitespace-pre-wrap">{msg.body}</p>
+                </div>
               </div>
             </div>
           );
