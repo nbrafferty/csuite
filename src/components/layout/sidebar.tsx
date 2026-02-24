@@ -48,7 +48,7 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center border-b border-surface-border px-3">
+      <div className="flex h-20 shrink-0 items-center justify-center border-b border-surface-border px-4">
         <img
           src="/ccc-logo.svg"
           alt="C-Suite"
