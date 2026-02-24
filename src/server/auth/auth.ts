@@ -5,6 +5,7 @@ import { prisma } from "@/server/db/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
+  secret: process.env.AUTH_SECRET,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
@@ -17,30 +18,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.error("[auth] Missing email or password");
+            return null;
+          }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-          include: { company: true },
-        });
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+            include: { company: true },
+          });
 
-        if (!user || user.status === "DISABLED") return null;
+          if (!user) {
+            console.error("[auth] No user found for email:", credentials.email);
+            return null;
+          }
 
-        const isValid = await compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-        if (!isValid) return null;
+          if (user.status === "DISABLED") {
+            console.error("[auth] User is disabled:", credentials.email);
+            return null;
+          }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          companyId: user.companyId,
-          companyName: user.company.name,
-          companySlug: user.company.slug,
-        };
+          const isValid = await compare(
+            credentials.password as string,
+            user.passwordHash
+          );
+          if (!isValid) {
+            console.error("[auth] Invalid password for:", credentials.email);
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            companyId: user.companyId,
+            companyName: user.company.name,
+            companySlug: user.company.slug,
+          };
+        } catch (error) {
+          console.error("[auth] Authorize error:", error);
+          return null;
+        }
       },
     }),
   ],
