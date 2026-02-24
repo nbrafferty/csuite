@@ -23,7 +23,7 @@ export function ClientsView() {
   const [view, setView] = useState<"table" | "grid">("table");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  const { data: clients } = trpc.client.list.useQuery(undefined, {
+  const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
     refetchInterval: 30_000,
   });
 

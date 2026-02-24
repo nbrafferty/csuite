@@ -38,7 +38,7 @@ interface ClientDetailPanelProps {
 }
 
 export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps) {
-  const { data: client } = trpc.client.get.useQuery(
+  const { data: client } = trpc.clientOrg.get.useQuery(
     { id: clientId! },
     { enabled: !!clientId }
   );
@@ -60,14 +60,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
 
   const utils = trpc.useUtils();
 
-  const updateNotes = trpc.client.updateNotes.useMutation({
-    onSuccess: () => utils.client.get.invalidate({ id: clientId! }),
+  const updateNotes = trpc.clientOrg.updateNotes.useMutation({
+    onSuccess: () => utils.clientOrg.get.invalidate({ id: clientId! }),
   });
 
-  const updateStatus = trpc.client.updateStatus.useMutation({
+  const updateStatus = trpc.clientOrg.updateStatus.useMutation({
     onSuccess: () => {
-      utils.client.get.invalidate({ id: clientId! });
-      utils.client.list.invalidate();
+      utils.clientOrg.get.invalidate({ id: clientId! });
+      utils.clientOrg.list.invalidate();
     },
   });
 

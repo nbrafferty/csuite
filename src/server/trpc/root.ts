@@ -9,7 +9,7 @@ import { messageRouter } from "./routers/message";
 export const appRouter = router({
   auth: authRouter,
   company: companyRouter,
-  client: clientRouter,
+  clientOrg: clientRouter,
   order: orderRouter,
   thread: threadRouter,
   message: messageRouter,
