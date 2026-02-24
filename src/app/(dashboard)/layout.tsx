@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Icon } from "@/components/icons";
 
 const COLORS = {
@@ -19,7 +21,7 @@ const navItems = [
   { label: "Production", icon: "production", href: "/production" },
   { label: "Quotes", icon: "quotes", href: "/quotes" },
   { label: "Proofs", icon: "proofs", href: "/proofs" },
-  { label: "Messages", icon: "messages", href: "/messages", active: true },
+  { label: "Messages", icon: "messages", href: "/messages" },
   { label: "Invoices", icon: "invoices", href: "/invoices" },
   { label: "Expenses", icon: "expenses", href: "/expenses" },
   { label: "Inventory", icon: "inventory", href: "/inventory" },
@@ -35,6 +37,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(true);
+  const pathname = usePathname();
 
   return (
     <div
@@ -105,33 +108,40 @@ export default function DashboardLayout({
 
         {/* Nav Items */}
         <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
-          {navItems.map((item) => (
-            <div
-              key={item.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: collapsed ? "10px 16px" : "10px 14px",
-                marginBottom: 2,
-                borderRadius: 8,
-                cursor: "pointer",
-                background: item.active
-                  ? "rgba(232,93,93,0.1)"
-                  : "transparent",
-                color: item.active ? COLORS.coral : COLORS.textSecondary,
-                fontSize: 13,
-                fontWeight: item.active ? 600 : 400,
-                transition: "background 0.15s",
-              }}
-            >
-              <Icon
-                name={item.icon}
-                color={item.active ? COLORS.coral : COLORS.textSecondary}
-              />
-              {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
-            </div>
-          ))}
+          {navItems.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: collapsed ? "10px 16px" : "10px 14px",
+                  marginBottom: 2,
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  background: active
+                    ? "rgba(232,93,93,0.1)"
+                    : "transparent",
+                  color: active ? COLORS.coral : COLORS.textSecondary,
+                  fontSize: 13,
+                  fontWeight: active ? 600 : 400,
+                  transition: "background 0.15s",
+                }}
+              >
+                <Icon
+                  name={item.icon}
+                  color={active ? COLORS.coral : COLORS.textSecondary}
+                />
+                {!collapsed && <span style={{ flex: 1 }}>{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Collapse Toggle */}
