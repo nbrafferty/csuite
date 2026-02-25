@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   FileText,
+  FolderKanban,
   Image,
   BookOpen,
   MessageSquare,
@@ -29,6 +30,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Quotes", href: "/quotes", icon: FileText },
   { label: "Catalog", href: "/catalog", icon: BookOpen },

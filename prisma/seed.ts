@@ -300,8 +300,311 @@ async function main() {
     },
   });
 
-  // ─── Seed Message Threads ────────────────────────────────────────────
+  // ─── Seed Orders, Quotes, and Projects ──────────────────────────────
   const now = new Date();
+  const daysFromNow = (d: number) => new Date(now.getTime() + d * 86400_000);
+
+  // ── Acme orders ──
+  const acmeOrder1 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2026-001",
+      title: "Summer Festival Tees — Venue 1",
+      status: "IN_PRODUCTION",
+      dueDate: daysFromNow(30),
+      eventName: "Summer Music Festival",
+    },
+  });
+
+  const acmeOrder2 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2026-002",
+      title: "Summer Festival Tees — Venue 2",
+      status: "IN_PRODUCTION",
+      dueDate: daysFromNow(30),
+      eventName: "Summer Music Festival",
+    },
+  });
+
+  const acmeOrder3 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: johnDoe.id,
+      displayId: "ORD-2026-003",
+      title: "Summer Festival Tanks",
+      status: "APPROVED",
+      dueDate: daysFromNow(30),
+      eventName: "Summer Music Festival",
+    },
+  });
+
+  const acmeOrder4 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2026-004",
+      title: "Trade Show Banners",
+      status: "IN_REVIEW",
+      dueDate: daysFromNow(16),
+      eventName: "SXSW 2026",
+    },
+  });
+
+  // Completed orders for Acme (Holiday project)
+  const acmeOrder5 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2025-031",
+      title: "Holiday Gift Box — Design A",
+      status: "COMPLETED",
+    },
+  });
+  const acmeOrder6 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2025-032",
+      title: "Holiday Gift Box — Design B",
+      status: "COMPLETED",
+    },
+  });
+  const acmeOrder7 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2025-033",
+      title: "Holiday Gift Box — VIP Edition",
+      status: "SHIPPED",
+    },
+  });
+  const acmeOrder8 = await prisma.order.create({
+    data: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "ORD-2025-034",
+      title: "Holiday Tissue Paper & Ribbon",
+      status: "COMPLETED",
+    },
+  });
+
+  // ── Acme quotes ──
+  const acmeQuote1 = await prisma.quote.create({
+    data: {
+      companyId: demo.id,
+      displayId: "QTE-2026-001",
+      title: "Festival Lanyards & Wristbands",
+      status: "SENT",
+      amount: 2400,
+    },
+  });
+
+  const acmeQuote2 = await prisma.quote.create({
+    data: {
+      companyId: demo.id,
+      displayId: "QTE-2026-002",
+      title: "Trade Show Table Throws",
+      status: "REVIEWING",
+      amount: 1800,
+    },
+  });
+
+  const acmeQuote3 = await prisma.quote.create({
+    data: {
+      companyId: demo.id,
+      displayId: "QTE-2026-003",
+      title: "Badge Lanyards — SXSW",
+      status: "SENT",
+      amount: 950,
+    },
+  });
+
+  // ── Bloom orders ──
+  const bloomOrder1 = await prisma.order.create({
+    data: {
+      companyId: bloom.id,
+      createdBy: (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id,
+      displayId: "ORD-2026-010",
+      title: "Rebrand Tumblers — 16oz",
+      status: "AWAITING_PROOF",
+      dueDate: daysFromNow(21),
+    },
+  });
+
+  const bloomOrder2 = await prisma.order.create({
+    data: {
+      companyId: bloom.id,
+      createdBy: (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id,
+      displayId: "ORD-2026-011",
+      title: "Rebrand Mugs — New Logo",
+      status: "IN_REVIEW",
+      dueDate: daysFromNow(21),
+    },
+  });
+
+  // Bloom quote
+  const bloomQuote1 = await prisma.quote.create({
+    data: {
+      companyId: bloom.id,
+      displayId: "QTE-2026-010",
+      title: "New Hire Welcome Kit — Hoodies",
+      status: "SENT",
+      amount: 4500,
+    },
+  });
+
+  // ── Create proof pending approval for Bloom order (to trigger NEEDS_ATTENTION) ──
+  await prisma.proof.create({
+    data: {
+      orderId: bloomOrder1.id,
+      version: 1,
+      status: "SENT",
+      publishedBy: cccAdmin.id,
+    },
+  });
+
+  // Create overdue invoice for Bloom order (to trigger NEEDS_ATTENTION)
+  await prisma.invoice.create({
+    data: {
+      orderId: bloomOrder1.id,
+      companyId: bloom.id,
+      displayId: "INV-2026-010",
+      amountTotal: 3200,
+      balanceRemaining: 3200,
+      status: "UNPAID",
+      dueDate: new Date(now.getTime() - 7 * 86400_000), // 7 days overdue
+    },
+  });
+
+  // ── Create Projects ──────────────────────────────────────────────────
+
+  const lilyId = (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id;
+
+  // 1. Summer Festival Tees 2026 (Acme, IN_PRODUCTION)
+  const project1 = await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      name: "Summer Festival Tees 2026",
+      description: "Custom tees and tanks for the Summer Music Festival series. 3 venues, 5 designs.",
+      category: "APPAREL",
+      eventDate: new Date("2026-06-15"),
+      createdById: janeSmith.id,
+    },
+  });
+  await prisma.order.updateMany({
+    where: { id: { in: [acmeOrder1.id, acmeOrder2.id, acmeOrder3.id] } },
+    data: { projectId: project1.id },
+  });
+  await prisma.quote.update({
+    where: { id: acmeQuote1.id },
+    data: { projectId: project1.id },
+  });
+
+  // 2. Trade Show Booth — SXSW (Acme, ACTIVE)
+  const project2 = await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      name: "Trade Show Booth — SXSW",
+      description: "Retractable banners, table throws, and badge lanyards for SXSW 2026.",
+      category: "SIGNAGE",
+      eventDate: new Date("2026-03-13"),
+      createdById: janeSmith.id,
+    },
+  });
+  await prisma.order.update({
+    where: { id: acmeOrder4.id },
+    data: { projectId: project2.id },
+  });
+  await prisma.quote.updateMany({
+    where: { id: { in: [acmeQuote2.id, acmeQuote3.id] } },
+    data: { projectId: project2.id },
+  });
+
+  // 3. New Hire Welcome Kits Q2 (Bloom, IN_REVIEW)
+  const project3 = await prisma.project.create({
+    data: {
+      companyId: bloom.id,
+      name: "New Hire Welcome Kits Q2",
+      description: "Branded hoodies, notebooks, and water bottles for Q2 onboarding.",
+      category: "APPAREL",
+      createdById: lilyId,
+    },
+  });
+  await prisma.quote.update({
+    where: { id: bloomQuote1.id },
+    data: { projectId: project3.id },
+  });
+
+  // 4. Rebrand Launch — Drinkware (Bloom, NEEDS_ATTENTION)
+  const project4 = await prisma.project.create({
+    data: {
+      companyId: bloom.id,
+      name: "Rebrand Launch — Drinkware",
+      description: "New logo rollout on tumblers and mugs. Proof revision pending.",
+      category: "DRINKWARE",
+      createdById: lilyId,
+    },
+  });
+  await prisma.order.updateMany({
+    where: { id: { in: [bloomOrder1.id, bloomOrder2.id] } },
+    data: { projectId: project4.id },
+  });
+
+  // 5. Holiday Gift Boxes 2025 (Acme, COMPLETED)
+  const project5 = await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      name: "Holiday Gift Boxes 2025",
+      description: "Custom packaging for client holiday gift program. All shipped.",
+      category: "PACKAGING",
+      createdById: janeSmith.id,
+    },
+  });
+  await prisma.order.updateMany({
+    where: { id: { in: [acmeOrder5.id, acmeOrder6.id, acmeOrder7.id, acmeOrder8.id] } },
+    data: { projectId: project5.id },
+  });
+
+  // 6. Empty Project Placeholder (Bloom)
+  await prisma.project.create({
+    data: {
+      companyId: bloom.id,
+      name: "Empty Project Placeholder",
+      category: "OTHER",
+      createdById: lilyId,
+    },
+  });
+
+  // Recompute derived status for all projects
+  // Import and use inline since seed runs standalone
+  const { deriveProjectStatus } = await import("../src/lib/projects");
+  for (const proj of [project1, project2, project3, project4, project5]) {
+    const full = await prisma.project.findUniqueOrThrow({
+      where: { id: proj.id },
+      include: {
+        orders: {
+          select: {
+            status: true,
+            proofs: { select: { status: true } },
+            invoices: { select: { status: true, dueDate: true } },
+          },
+        },
+        quotes: { select: { status: true } },
+      },
+    });
+    const derived = deriveProjectStatus(full as any);
+    await prisma.project.update({
+      where: { id: proj.id },
+      data: { derivedStatus: derived },
+    });
+  }
+
+  console.log("Projects seeded!");
+
+  // ─── Seed Message Threads ────────────────────────────────────────────
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000);
 
   // Thread 1 — Acme, open, assigned to CCC admin
