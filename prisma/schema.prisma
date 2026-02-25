@@ -20,17 +20,60 @@ enum UserStatus {
   DISABLED
 }
 
-enum OrderStatus {
+enum QuoteRequestStatus {
   DRAFT
   SUBMITTED
   IN_REVIEW
-  AWAITING_PROOF
+  QUOTED
+  CLOSED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  REVISION_REQUESTED
+  REVISED
   APPROVED
+  CONVERTED
+  DECLINED
+}
+
+enum OrderStatus {
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  READY_FOR_PRODUCTION
   IN_PRODUCTION
-  READY
   SHIPPED
+  DELIVERED
   COMPLETED
   CANCELLED
+}
+
+enum OrderSourceType {
+  CATALOG
+  QUOTE
+}
+
+enum ContentType {
+  APPAREL
+  COMMERCIAL_PRINTING
+  SIGNAGE
+  PROMO_ITEM
+  OTHER
+}
+
+enum OrderItemStatus {
+  PENDING
+  IN_PRODUCTION
+  COMPLETED
+  CANCELLED
+}
+
+enum PricingType {
+  FLAT
+  TIERED
+  RULE_BASED
 }
 
 enum ProofStatus {
@@ -42,8 +85,9 @@ enum ProofStatus {
 }
 
 enum InvoiceStatus {
-  UNPAID
-  DEPOSIT_PAID
+  DRAFT
+  SENT
+  PARTIALLY_PAID
   PAID
   REFUNDED
 }
@@ -61,8 +105,16 @@ enum PaymentStatus {
 
 enum ShipmentStatus {
   PENDING
-  SHIPPED
+  LABEL_CREATED
+  IN_TRANSIT
   DELIVERED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  ACKNOWLEDGED
+  FULFILLED
 }
 
 enum SupplierSource {
@@ -109,6 +161,9 @@ model Company {
   messageThreads    MessageThread[]
   inventoryItems    InventoryItem[]
   auditLogEvents    AuditLogEvent[]
+  quoteRequests     QuoteRequest[]
+  quotes            Quote[]
+  catalogProducts   CatalogProduct[]
 
   @@map("companies")
 }
@@ -129,19 +184,23 @@ model User {
   inviter       User?      @relation("UserInvites", fields: [invitedBy], references: [id])
   invitees      User[]     @relation("UserInvites")
 
-  ordersCreated    Order[]          @relation("OrderCreator")
-  artworkUploads   ArtworkVersion[] @relation("ArtworkUploader")
-  proofsPublished  Proof[]          @relation("ProofPublisher")
-  proofsApproved   Proof[]          @relation("ProofApprover")
-  proofAnnotations ProofAnnotation[]
-  threadsCreated   MessageThread[]  @relation("ThreadCreator")
-  threadsAssigned  MessageThread[]  @relation("ThreadAssignee")
-  messagesSent     Message[]
-  threadReadStates ThreadReadState[]
-  ledgerEntries    InventoryLedgerEntry[]
-  auditLogEvents   AuditLogEvent[]
-  artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
-  savedProductsCreated SavedProduct[] @relation("SavedProductCreator")
+  ordersCreated       Order[]          @relation("OrderCreator")
+  artworkUploads      ArtworkVersion[] @relation("ArtworkUploader")
+  proofsPublished     Proof[]          @relation("ProofPublisher")
+  proofsApproved      Proof[]          @relation("ProofApprover")
+  proofAnnotations    ProofAnnotation[]
+  threadsCreated      MessageThread[]  @relation("ThreadCreator")
+  threadsAssigned     MessageThread[]  @relation("ThreadAssignee")
+  messagesSent        Message[]
+  threadReadStates    ThreadReadState[]
+  ledgerEntries       InventoryLedgerEntry[]
+  auditLogEvents      AuditLogEvent[]
+  artworkCreated      ArtworkAsset[]   @relation("ArtworkCreator")
+  savedProductsCreated SavedProduct[]  @relation("SavedProductCreator")
+  quoteRequestsCreated QuoteRequest[]  @relation("QuoteRequestCreator")
+  quotesCreated       Quote[]          @relation("QuoteCreator")
+  quoteComments       QuoteComment[]
+  internalTasksAssigned InternalTask[] @relation("TaskAssignee")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -171,27 +230,150 @@ model Location {
   @@map("locations")
 }
 
-model Order {
-  id          String      @id @default(uuid())
-  companyId   String      @map("company_id")
-  createdBy   String      @map("created_by")
-  displayId   String      @unique @map("display_id")
-  title       String
-  status      OrderStatus @default(DRAFT)
-  dueDate     DateTime?   @map("due_date")
-  poNumber    String?     @map("po_number")
-  eventName   String?     @map("event_name")
-  notes       String?
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+// ─── Quote Request ───────────────────────────────────────────────────
 
-  company     Company     @relation(fields: [companyId], references: [id])
-  creator     User        @relation("OrderCreator", fields: [createdBy], references: [id])
-  items       OrderItem[]
-  proofs      Proof[]
-  invoices    Invoice[]
-  shipments   Shipment[]
-  threads     MessageThread[]
+model QuoteRequest {
+  id              String             @id @default(uuid())
+  companyId       String             @map("company_id")
+  createdById     String             @map("created_by_id")
+  status          QuoteRequestStatus @default(DRAFT)
+  title           String
+  description     String?
+  inHandsDate     DateTime?          @map("in_hands_date")
+  attachments     Json?              // Array of {url, filename, size}
+  quoteId         String?            @unique @map("quote_id")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  company         Company            @relation(fields: [companyId], references: [id])
+  creator         User               @relation("QuoteRequestCreator", fields: [createdById], references: [id])
+  quote           Quote?             @relation(fields: [quoteId], references: [id])
+  catalogItems    QuoteRequestItem[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("quote_requests")
+}
+
+model QuoteRequestItem {
+  id               String       @id @default(uuid())
+  quoteRequestId   String       @map("quote_request_id")
+  catalogProductId String?      @map("catalog_product_id")
+  description      String?
+  quantity         Int?
+  notes            String?
+
+  quoteRequest     QuoteRequest   @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  catalogProduct   CatalogProduct? @relation(fields: [catalogProductId], references: [id])
+
+  @@index([quoteRequestId])
+  @@map("quote_request_items")
+}
+
+// ─── Quote ───────────────────────────────────────────────────────────
+
+model Quote {
+  id               String      @id @default(uuid())
+  displayId        String      @unique @map("display_id")
+  companyId        String      @map("company_id")
+  createdById      String      @map("created_by_id")
+  status           QuoteStatus @default(DRAFT)
+  version          Int         @default(1)
+  title            String
+  notes            String?
+  validUntil       DateTime?   @map("valid_until")
+  subtotal         Decimal     @default(0) @db.Decimal(10, 2)
+  taxAmount        Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  shippingAmount   Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
+  discountAmount   Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  feeAmount        Decimal     @default(0) @map("fee_amount") @db.Decimal(10, 2)
+  totalAmount      Decimal     @default(0) @map("total_amount") @db.Decimal(10, 2)
+  orderId          String?     @unique @map("order_id")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  company          Company     @relation(fields: [companyId], references: [id])
+  creator          User        @relation("QuoteCreator", fields: [createdById], references: [id])
+  order            Order?      @relation(fields: [orderId], references: [id])
+  quoteRequest     QuoteRequest?
+  lineItems        QuoteLineItem[]
+  revisionComments QuoteComment[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("quotes")
+}
+
+model QuoteLineItem {
+  id               String          @id @default(uuid())
+  quoteId          String          @map("quote_id")
+  position         Int
+  contentType      ContentType     @default(OTHER) @map("content_type")
+  title            String
+  description      String?
+  catalogProductId String?         @map("catalog_product_id")
+  sku              String?
+  quantity         Int             @default(1)
+  unitPrice        Decimal         @default(0) @map("unit_price") @db.Decimal(10, 2)
+  lineTotal        Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  quote            Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  catalogProduct   CatalogProduct? @relation(fields: [catalogProductId], references: [id])
+
+  @@index([quoteId])
+  @@map("quote_line_items")
+}
+
+model QuoteComment {
+  id        String   @id @default(uuid())
+  quoteId   String   @map("quote_id")
+  authorId  String   @map("author_id")
+  body      String
+  version   Int      // which quote version this comment pertains to
+  createdAt DateTime @default(now()) @map("created_at")
+
+  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([quoteId])
+  @@map("quote_comments")
+}
+
+// ─── Order ───────────────────────────────────────────────────────────
+
+model Order {
+  id              String          @id @default(uuid())
+  companyId       String          @map("company_id")
+  createdBy       String          @map("created_by")
+  displayId       String          @unique @map("display_id")
+  sourceType      OrderSourceType @default(CATALOG) @map("source_type")
+  title           String
+  status          OrderStatus     @default(SUBMITTED)
+  dueDate         DateTime?       @map("due_date")
+  poNumber        String?         @map("po_number")
+  eventName       String?         @map("event_name")
+  notes           String?
+  subtotal        Decimal         @default(0) @db.Decimal(10, 2)
+  taxRate         Decimal         @default(0) @map("tax_rate") @db.Decimal(5, 4)
+  taxAmount       Decimal         @default(0) @map("tax_amount") @db.Decimal(10, 2)
+  shippingAmount  Decimal         @default(0) @map("shipping_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal         @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  feeAmount       Decimal         @default(0) @map("fee_amount") @db.Decimal(10, 2)
+  totalAmount     Decimal         @default(0) @map("total_amount") @db.Decimal(10, 2)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  company         Company         @relation(fields: [companyId], references: [id])
+  creator         User            @relation("OrderCreator", fields: [createdBy], references: [id])
+  items           OrderItem[]
+  proofs          Proof[]
+  invoices        Invoice[]
+  shipments       Shipment[]
+  threads         MessageThread[]
+  quote           Quote?
+  internalTasks   InternalTask[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([companyId, status])
   @@index([companyId, createdAt])
@@ -199,23 +381,93 @@ model Order {
 }
 
 model OrderItem {
-  id              String        @id @default(uuid())
-  orderId         String        @map("order_id")
-  savedProductId  String?       @map("saved_product_id")
-  productName     String        @map("product_name")
-  sku             String?
-  color           String?
-  decorationNotes String?       @map("decoration_notes")
-  sizeBreakdown   Json?         @map("size_breakdown")
-  unitPrice       Decimal       @map("unit_price") @db.Decimal(10, 2)
-  quantity        Int
-  subtotal        Decimal       @db.Decimal(10, 2)
+  id                String          @id @default(uuid())
+  orderId           String          @map("order_id")
+  position          Int             @default(0)
+  contentType       ContentType     @default(OTHER) @map("content_type")
+  title             String
+  description       String?
+  catalogProductId  String?         @map("catalog_product_id")
+  savedProductId    String?         @map("saved_product_id")
+  sku               String?
+  vendorId          String?         @map("vendor_id")
+  vendorTags        String[]        @default([]) @map("vendor_tags")
+  unitPrice         Decimal         @default(0) @map("unit_price") @db.Decimal(10, 2)
+  quantity          Int             @default(1)
+  sizeBreakdown     Json?           @map("size_breakdown")
+  decorationDetails Json?           @map("decoration_details")
+  artworkAssetId    String?         @map("artwork_asset_id")
+  lineTotal         Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
+  costPerUnit       Decimal?        @map("cost_per_unit") @db.Decimal(10, 2)
+  totalCost         Decimal?        @map("total_cost") @db.Decimal(10, 2)
+  profitMargin      Decimal?        @map("profit_margin") @db.Decimal(10, 2)
+  status            OrderItemStatus @default(PENDING)
+  notes             String?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
 
-  order           Order         @relation(fields: [orderId], references: [id])
-  savedProduct    SavedProduct? @relation(fields: [savedProductId], references: [id])
+  order             Order           @relation(fields: [orderId], references: [id])
+  catalogProduct    CatalogProduct? @relation(fields: [catalogProductId], references: [id])
+  savedProduct      SavedProduct?   @relation(fields: [savedProductId], references: [id])
+  vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+  artworkAsset      ArtworkAsset?   @relation(fields: [artworkAssetId], references: [id])
+  shipmentItems     ShipmentLineItem[]
 
   @@index([orderId])
   @@map("order_items")
+}
+
+// ─── Vendor ──────────────────────────────────────────────────────────
+
+model Vendor {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?  @map("contact_name")
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+  categories    String[] @default([])
+  tags          String[] @default([])
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  orderItems      OrderItem[]
+  catalogProducts CatalogProduct[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@map("vendors")
+}
+
+// ─── Catalog Product ─────────────────────────────────────────────────
+
+model CatalogProduct {
+  id            String      @id @default(uuid())
+  companyId     String?     @map("company_id")
+  name          String
+  sku           String?
+  contentType   ContentType @default(OTHER) @map("content_type")
+  basePrice     Decimal     @default(0) @map("base_price") @db.Decimal(10, 2)
+  pricingType   PricingType @default(FLAT) @map("pricing_type")
+  pricingRules  Json?       @map("pricing_rules")
+  description   String?
+  images        String[]    @default([])
+  options       Json?       // {sizes, colors, materials, etc.}
+  vendorId      String?     @map("vendor_id")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  company           Company?          @relation(fields: [companyId], references: [id])
+  vendor            Vendor?           @relation(fields: [vendorId], references: [id])
+  orderItems        OrderItem[]
+  quoteLineItems    QuoteLineItem[]
+  quoteRequestItems QuoteRequestItem[]
+
+  @@index([contentType])
+  @@map("catalog_products")
 }
 
 model SavedProduct {
@@ -238,6 +490,87 @@ model SavedProduct {
   @@map("saved_products")
 }
 
+// ─── Shipment ────────────────────────────────────────────────────────
+
+model Shipment {
+  id                  String         @id @default(uuid())
+  orderId             String         @map("order_id")
+  locationId          String?        @map("location_id")
+  destinationAddress  Json?          @map("destination_address")
+  carrier             String?
+  trackingNumber      String?        @map("tracking_number")
+  trackingUrl         String?        @map("tracking_url")
+  packingSlipUrl      String?        @map("packing_slip_url")
+  status              ShipmentStatus @default(PENDING)
+  shippedAt           DateTime?      @map("shipped_at")
+  deliveredAt         DateTime?      @map("delivered_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  order               Order          @relation(fields: [orderId], references: [id])
+  location            Location?      @relation(fields: [locationId], references: [id])
+  lineItems           ShipmentLineItem[]
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+model ShipmentLineItem {
+  id          String    @id @default(uuid())
+  shipmentId  String    @map("shipment_id")
+  orderItemId String    @map("order_item_id")
+  quantity    Int
+
+  shipment    Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+
+  @@index([shipmentId])
+  @@map("shipment_line_items")
+}
+
+// ─── Purchase Order ──────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  displayId   String              @unique @map("display_id")
+  orderId     String              @map("order_id")
+  vendorId    String              @map("vendor_id")
+  status      PurchaseOrderStatus @default(DRAFT)
+  notes       String?
+  pdfUrl      String?             @map("pdf_url")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  order       Order               @relation(fields: [orderId], references: [id])
+  vendor      Vendor              @relation(fields: [vendorId], references: [id])
+
+  @@index([orderId])
+  @@index([vendorId])
+  @@map("purchase_orders")
+}
+
+// ─── Internal Task ───────────────────────────────────────────────────
+
+model InternalTask {
+  id          String    @id @default(uuid())
+  orderId     String    @map("order_id")
+  title       String
+  assigneeId  String?   @map("assignee_id")
+  dueDate     DateTime? @map("due_date")
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  order       Order     @relation(fields: [orderId], references: [id])
+  assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([orderId])
+  @@map("internal_tasks")
+}
+
+// ─── Artwork ─────────────────────────────────────────────────────────
+
 model ArtworkAsset {
   id             String           @id @default(uuid())
   companyId      String           @map("company_id")
@@ -249,6 +582,7 @@ model ArtworkAsset {
   company        Company          @relation(fields: [companyId], references: [id])
   creator        User             @relation("ArtworkCreator", fields: [createdBy], references: [id])
   versions       ArtworkVersion[]
+  orderItems     OrderItem[]
 
   @@index([companyId])
   @@map("artwork_assets")
@@ -270,6 +604,8 @@ model ArtworkVersion {
   @@index([artworkId])
   @@map("artwork_versions")
 }
+
+// ─── Proof ───────────────────────────────────────────────────────────
 
 model Proof {
   id           String        @id @default(uuid())
@@ -311,6 +647,8 @@ model ProofAnnotation {
   @@map("proof_annotations")
 }
 
+// ─── Invoice & Payment ───────────────────────────────────────────────
+
 model Invoice {
   id               String        @id @default(uuid())
   orderId          String        @map("order_id")
@@ -320,7 +658,7 @@ model Invoice {
   depositRequired  Decimal       @default(0) @map("deposit_required") @db.Decimal(10, 2)
   depositPaid      Decimal       @default(0) @map("deposit_paid") @db.Decimal(10, 2)
   balanceRemaining Decimal       @map("balance_remaining") @db.Decimal(10, 2)
-  status           InvoiceStatus @default(UNPAID)
+  status           InvoiceStatus @default(DRAFT)
   stripeInvoiceId  String?       @map("stripe_invoice_id")
   dueDate          DateTime?     @map("due_date")
   issuedAt         DateTime      @default(now()) @map("issued_at")
@@ -351,23 +689,7 @@ model Payment {
   @@map("payments")
 }
 
-model Shipment {
-  id             String         @id @default(uuid())
-  orderId        String         @map("order_id")
-  locationId     String         @map("location_id")
-  carrier        String?
-  trackingNumber String?        @map("tracking_number")
-  packingSlipUrl String?        @map("packing_slip_url")
-  status         ShipmentStatus @default(PENDING)
-  shippedAt      DateTime?      @map("shipped_at")
-  deliveredAt    DateTime?      @map("delivered_at")
-
-  order          Order          @relation(fields: [orderId], references: [id])
-  location       Location       @relation(fields: [locationId], references: [id])
-
-  @@index([orderId])
-  @@map("shipments")
-}
+// ─── Messaging ───────────────────────────────────────────────────────
 
 model MessageThread {
   id         String    @id @default(uuid())
@@ -422,6 +744,8 @@ model ThreadReadState {
   @@map("thread_read_states")
 }
 
+// ─── Inventory ───────────────────────────────────────────────────────
+
 model InventoryItem {
   id            String         @id @default(uuid())
   companyId     String         @map("company_id")
@@ -457,6 +781,8 @@ model InventoryLedgerEntry {
   @@index([inventoryItemId])
   @@map("inventory_ledger_entries")
 }
+
+// ─── Audit Log ───────────────────────────────────────────────────────
 
 model AuditLogEvent {
   id         String      @id @default(uuid())
