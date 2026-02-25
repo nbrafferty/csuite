@@ -48,7 +48,7 @@ function buildProjectSummary(
 
   // Total quoted
   const totalQuoted = quotes.reduce(
-    (sum: number, q: any) => sum + Number(q.amount ?? 0),
+    (sum: number, q: any) => sum + Number(q.totalAmount ?? 0),
     0
   );
 
@@ -110,7 +110,7 @@ const projectInclude = {
       id: true,
       title: true,
       status: true,
-      amount: true,
+      totalAmount: true,
       updatedAt: true,
     },
   },
@@ -206,7 +206,7 @@ export const projectsRouter = router({
           id: q.id,
           title: q.title,
           status: q.status,
-          amount: Number(q.amount),
+          amount: Number(q.totalAmount),
           updatedAt: new Date(q.updatedAt).toISOString(),
         })),
         createdAt: new Date(project.createdAt).toISOString(),

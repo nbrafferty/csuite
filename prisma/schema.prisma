@@ -296,6 +296,7 @@ model Quote {
   id               String      @id @default(uuid())
   displayId        String      @unique @map("display_id")
   companyId        String      @map("company_id")
+  projectId        String?     @map("project_id")
   createdById      String      @map("created_by_id")
   status           QuoteStatus @default(DRAFT)
   version          Int         @default(1)
@@ -313,6 +314,7 @@ model Quote {
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
   company          Company     @relation(fields: [companyId], references: [id])
+  project          Project?    @relation(fields: [projectId], references: [id])
   creator          User        @relation("QuoteCreator", fields: [createdById], references: [id])
   order            Order?      @relation(fields: [orderId], references: [id])
   quoteRequest     QuoteRequest?
@@ -321,6 +323,7 @@ model Quote {
 
   @@index([companyId])
   @@index([companyId, status])
+  @@index([projectId])
   @@map("quotes")
 }
 
@@ -845,6 +848,7 @@ model Project {
   company   Company @relation(fields: [companyId], references: [id])
   createdBy User    @relation("ProjectCreator", fields: [createdById], references: [id])
   orders    Order[]
+  quotes    Quote[]
 
   @@index([companyId])
   @@index([updatedAt])
