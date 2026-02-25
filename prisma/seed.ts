@@ -39,7 +39,7 @@ async function main() {
 
   // ─── Client Companies ──────────────────────────────────────────────
 
-  // 1. Acme Corp — active, 3 active orders
+  // 1. Acme Corp
   const demo = await prisma.company.upsert({
     where: { slug: "acme-corp" },
     update: {},
@@ -108,7 +108,7 @@ async function main() {
     },
   }).catch(() => {});
 
-  // 2. Globex Corporation — active, 2 active orders
+  // 2. Globex Corporation
   const globex = await prisma.company.upsert({
     where: { slug: "globex-corp" },
     update: {},
@@ -149,7 +149,7 @@ async function main() {
     },
   });
 
-  // 3. Bloom Studio — active, 4 active orders
+  // 3. Bloom Studio
   const bloom = await prisma.company.upsert({
     where: { slug: "bloom-studio" },
     update: {},
@@ -164,7 +164,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const bloomAdmin = await prisma.user.upsert({
     where: { email: "lily@bloomstudio.com" },
     update: {},
     create: {
@@ -203,8 +203,8 @@ async function main() {
     },
   });
 
-  // 4. NovaTech Industries — paused, 0 active orders
-  const novatech = await prisma.company.upsert({
+  // 4. NovaTech Industries
+  await prisma.company.upsert({
     where: { slug: "novatech-industries" },
     update: {},
     create: {
@@ -214,7 +214,7 @@ async function main() {
       status: "paused",
       phone: "(312) 555-0777",
       address: "200 Innovation Dr, Chicago, IL 60601",
-      notes: "Account paused — pending budget approval for Q2. Follow up in March.",
+      notes: "Account paused — pending budget approval for Q2.",
     },
   });
 
@@ -222,7 +222,7 @@ async function main() {
     where: { email: "marcus@novatech.io" },
     update: {},
     create: {
-      companyId: novatech.id,
+      companyId: (await prisma.company.findUnique({ where: { slug: "novatech-industries" } }))!.id,
       email: "marcus@novatech.io",
       passwordHash: hashSync("password123", 12),
       name: "Marcus Webb",
@@ -231,7 +231,7 @@ async function main() {
     },
   });
 
-  // 5. Redline Events — overdue, 1 active order
+  // 5. Redline Events
   const redline = await prisma.company.upsert({
     where: { slug: "redline-events" },
     update: {},
@@ -242,11 +242,11 @@ async function main() {
       status: "overdue",
       phone: "(305) 555-0412",
       address: "55 Ocean Dr, Miami, FL 33139",
-      notes: "Outstanding invoice INV-2025-089. Contacted 3 times. Escalate if no payment by March 1.",
+      notes: "Outstanding invoice INV-2025-089. Contacted 3 times.",
     },
   });
 
-  await prisma.user.upsert({
+  const redlineAdmin = await prisma.user.upsert({
     where: { email: "dana@redlineevents.com" },
     update: {},
     create: {
@@ -272,7 +272,7 @@ async function main() {
     },
   });
 
-  // 6. Greenfield Co — active, 2 active orders
+  // 6. Greenfield Co
   const greenfield = await prisma.company.upsert({
     where: { slug: "greenfield-co" },
     update: {},
@@ -287,7 +287,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const greenfieldAdmin = await prisma.user.upsert({
     where: { email: "sam@greenfield.co" },
     update: {},
     create: {
@@ -300,319 +300,585 @@ async function main() {
     },
   });
 
-  // ─── Seed Orders, Quotes, and Projects ──────────────────────────────
-  const now = new Date();
-  const daysFromNow = (d: number) => new Date(now.getTime() + d * 86400_000);
+  // ─── Vendors ─────────────────────────────────────────────────────
 
-  // ── Acme orders ──
-  const acmeOrder1 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2026-001",
-      title: "Summer Festival Tees — Venue 1",
-      status: "IN_PRODUCTION",
-      dueDate: daysFromNow(30),
-      eventName: "Summer Music Festival",
+  const vendorSanMar = await prisma.vendor.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000001" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "SanMar",
+      contactName: "Sales Team",
+      email: "orders@sanmar.com",
+      phone: "(800) 426-6399",
+      categories: ["screen_printing", "embroidery", "apparel"],
+      tags: ["blanks", "wholesale"],
+      notes: "Primary blank apparel supplier. 2-day shipping on most items.",
     },
   });
 
-  const acmeOrder2 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2026-002",
-      title: "Summer Festival Tees — Venue 2",
-      status: "IN_PRODUCTION",
-      dueDate: daysFromNow(30),
-      eventName: "Summer Music Festival",
+  const vendorSSActive = await prisma.vendor.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000002" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "S&S Activewear",
+      contactName: "Account Manager",
+      email: "support@ssactivewear.com",
+      phone: "(800) 523-2155",
+      categories: ["apparel", "activewear"],
+      tags: ["blanks", "athletic"],
+      notes: "Good for athletic wear and performance fabrics.",
     },
   });
 
-  const acmeOrder3 = await prisma.order.create({
-    data: {
+  const vendorPrintShop = await prisma.vendor.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000003" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Metro Print Co.",
+      contactName: "Alex Martinez",
+      email: "alex@metroprint.com",
+      phone: "(512) 555-0444",
+      categories: ["screen_printing", "dtg", "embroidery"],
+      tags: ["local", "austin"],
+      notes: "Local decorator. Great quality, fast turnaround on small runs.",
+    },
+  });
+
+  await prisma.vendor.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000004" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "SignWorks USA",
+      contactName: "Pat Johnson",
+      email: "pat@signworksusa.com",
+      phone: "(800) 555-7446",
+      categories: ["signage", "banners", "vinyl"],
+      tags: ["large_format"],
+      notes: "Large format printing and signage vendor.",
+    },
+  });
+
+  // ─── Catalog Products ────────────────────────────────────────────
+
+  const productPolo = await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000010" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000010",
+      name: "Classic Polo Shirt",
+      sku: "POL-001",
+      contentType: "APPAREL",
+      basePrice: 24.99,
+      pricingType: "TIERED",
+      pricingRules: {
+        tiers: [
+          { minQuantity: 1, maxQuantity: 49, pricePerUnit: 24.99 },
+          { minQuantity: 50, maxQuantity: 99, pricePerUnit: 21.99 },
+          { minQuantity: 100, maxQuantity: 499, pricePerUnit: 18.99 },
+          { minQuantity: 500, pricePerUnit: 15.99 },
+        ],
+      },
+      description: "Premium cotton pique polo with embroidered logo placement. Available in 12 colors.",
+      options: {
+        sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+        colors: ["White", "Navy", "Black", "Red", "Royal Blue", "Heather Gray"],
+      },
+      vendorId: vendorSanMar.id,
+    },
+  });
+
+  const productTee = await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000011" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000011",
+      name: "Essential Crew T-Shirt",
+      sku: "TEE-001",
+      contentType: "APPAREL",
+      basePrice: 12.99,
+      pricingType: "TIERED",
+      pricingRules: {
+        tiers: [
+          { minQuantity: 1, maxQuantity: 49, pricePerUnit: 12.99 },
+          { minQuantity: 50, maxQuantity: 199, pricePerUnit: 9.99 },
+          { minQuantity: 200, pricePerUnit: 7.49 },
+        ],
+      },
+      description: "Soft ringspun cotton tee. Screen print or DTG available.",
+      options: {
+        sizes: ["S", "M", "L", "XL", "2XL"],
+        colors: ["White", "Black", "Navy", "Charcoal", "Red", "Forest Green"],
+      },
+      vendorId: vendorSanMar.id,
+    },
+  });
+
+  const productHoodie = await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000012" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000012",
+      name: "Performance Hoodie",
+      sku: "HOD-001",
+      contentType: "APPAREL",
+      basePrice: 38.99,
+      pricingType: "FLAT",
+      description: "Midweight fleece hoodie with kangaroo pocket.",
+      options: {
+        sizes: ["S", "M", "L", "XL", "2XL"],
+        colors: ["Black", "Navy", "Heather Gray", "Charcoal"],
+      },
+      vendorId: vendorSSActive.id,
+    },
+  });
+
+  await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000013" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000013",
+      name: "Retractable Banner Stand",
+      sku: "BNR-001",
+      contentType: "SIGNAGE",
+      basePrice: 149.99,
+      pricingType: "FLAT",
+      description: "33\" x 80\" retractable banner with aluminum stand. Full color dye-sub print.",
+    },
+  });
+
+  await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000014" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000014",
+      name: "Embroidered Cap",
+      sku: "CAP-001",
+      contentType: "APPAREL",
+      basePrice: 16.99,
+      pricingType: "TIERED",
+      pricingRules: {
+        tiers: [
+          { minQuantity: 1, maxQuantity: 23, pricePerUnit: 16.99 },
+          { minQuantity: 24, maxQuantity: 99, pricePerUnit: 14.49 },
+          { minQuantity: 100, pricePerUnit: 11.99 },
+        ],
+      },
+      description: "Structured 6-panel cap with flat embroidery. Up to 8,000 stitches included.",
+      options: { colors: ["Black", "Navy", "White", "Khaki", "Red"] },
+      vendorId: vendorSanMar.id,
+    },
+  });
+
+  await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000015" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000015",
+      name: "Custom Sticker Pack",
+      sku: "STK-001",
+      contentType: "PROMO_ITEM",
+      basePrice: 0.89,
+      pricingType: "TIERED",
+      pricingRules: {
+        tiers: [
+          { minQuantity: 50, maxQuantity: 249, pricePerUnit: 0.89 },
+          { minQuantity: 250, maxQuantity: 999, pricePerUnit: 0.59 },
+          { minQuantity: 1000, pricePerUnit: 0.35 },
+        ],
+      },
+      description: "Die-cut vinyl stickers. UV-resistant, waterproof. Full color print.",
+    },
+  });
+
+  await prisma.catalogProduct.upsert({
+    where: { id: "00000000-0000-0000-0000-000000000016" },
+    update: {},
+    create: {
+      id: "00000000-0000-0000-0000-000000000016",
+      name: "Business Cards - Premium",
+      sku: "PRT-001",
+      contentType: "COMMERCIAL_PRINTING",
+      basePrice: 0.12,
+      pricingType: "TIERED",
+      pricingRules: {
+        tiers: [
+          { minQuantity: 250, maxQuantity: 499, pricePerUnit: 0.12 },
+          { minQuantity: 500, maxQuantity: 999, pricePerUnit: 0.08 },
+          { minQuantity: 1000, pricePerUnit: 0.05 },
+        ],
+      },
+      description: "16pt card stock, full color both sides, matte or gloss finish.",
+    },
+  });
+
+  // ─── Sample Orders ───────────────────────────────────────────────
+
+  const daysAgo = (d: number) => new Date(Date.now() - d * 86400000);
+
+  // Order 1: Acme — In Production
+  await prisma.order.upsert({
+    where: { displayId: "CS-1001" },
+    update: {},
+    create: {
+      companyId: demo.id,
+      createdBy: janeSmith.id,
+      displayId: "CS-1001",
+      sourceType: "CATALOG",
+      title: "Acme Polo Shirts — Q1 Onboarding",
+      status: "IN_PRODUCTION",
+      dueDate: daysAgo(-10),
+      poNumber: "ACME-PO-2026-001",
+      eventName: "Q1 New Hire Onboarding",
+      subtotal: 4247.50,
+      taxRate: 0.0825,
+      taxAmount: 350.42,
+      shippingAmount: 89.00,
+      totalAmount: 4686.92,
+      createdAt: daysAgo(14),
+      items: {
+        create: [
+          {
+            position: 1,
+            contentType: "APPAREL",
+            title: "Classic Polo Shirt — Navy",
+            description: "Left chest embroidery with Acme logo",
+            catalogProductId: productPolo.id,
+            sku: "POL-001-NVY",
+            vendorId: vendorSanMar.id,
+            unitPrice: 18.99,
+            quantity: 150,
+            sizeBreakdown: { S: 15, M: 40, L: 50, XL: 30, "2XL": 15 },
+            lineTotal: 2848.50,
+            costPerUnit: 11.50,
+            totalCost: 1725.00,
+            profitMargin: 1123.50,
+            status: "IN_PRODUCTION",
+          },
+          {
+            position: 2,
+            contentType: "APPAREL",
+            title: "Classic Polo Shirt — White",
+            description: "Left chest embroidery with Acme logo",
+            catalogProductId: productPolo.id,
+            sku: "POL-001-WHT",
+            vendorId: vendorSanMar.id,
+            unitPrice: 18.99,
+            quantity: 50,
+            sizeBreakdown: { S: 5, M: 15, L: 15, XL: 10, "2XL": 5 },
+            lineTotal: 949.50,
+            costPerUnit: 11.50,
+            totalCost: 575.00,
+            profitMargin: 374.50,
+            status: "IN_PRODUCTION",
+          },
+          {
+            position: 3,
+            contentType: "APPAREL",
+            title: "Essential Crew T-Shirt — Black",
+            description: "Full back screen print",
+            catalogProductId: productTee.id,
+            sku: "TEE-001-BLK",
+            vendorId: vendorPrintShop.id,
+            unitPrice: 9.99,
+            quantity: 45,
+            sizeBreakdown: { M: 15, L: 15, XL: 10, "2XL": 5 },
+            lineTotal: 449.55,
+            costPerUnit: 5.25,
+            totalCost: 236.25,
+            profitMargin: 213.30,
+            status: "PENDING",
+          },
+        ],
+      },
+    },
+  });
+
+  // Order 2: Acme — Submitted
+  await prisma.order.upsert({
+    where: { displayId: "CS-1002" },
+    update: {},
+    create: {
       companyId: demo.id,
       createdBy: johnDoe.id,
-      displayId: "ORD-2026-003",
-      title: "Summer Festival Tanks",
-      status: "APPROVED",
-      dueDate: daysFromNow(30),
-      eventName: "Summer Music Festival",
-    },
-  });
-
-  const acmeOrder4 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2026-004",
-      title: "Trade Show Banners",
-      status: "IN_REVIEW",
-      dueDate: daysFromNow(16),
-      eventName: "SXSW 2026",
-    },
-  });
-
-  // Completed orders for Acme (Holiday project)
-  const acmeOrder5 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2025-031",
-      title: "Holiday Gift Box — Design A",
-      status: "COMPLETED",
-    },
-  });
-  const acmeOrder6 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2025-032",
-      title: "Holiday Gift Box — Design B",
-      status: "COMPLETED",
-    },
-  });
-  const acmeOrder7 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2025-033",
-      title: "Holiday Gift Box — VIP Edition",
-      status: "SHIPPED",
-    },
-  });
-  const acmeOrder8 = await prisma.order.create({
-    data: {
-      companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "ORD-2025-034",
-      title: "Holiday Tissue Paper & Ribbon",
-      status: "COMPLETED",
-    },
-  });
-
-  // ── Acme quotes ──
-  const acmeQuote1 = await prisma.quote.create({
-    data: {
-      companyId: demo.id,
-      displayId: "QTE-2026-001",
-      title: "Festival Lanyards & Wristbands",
-      status: "SENT",
-      amount: 2400,
-    },
-  });
-
-  const acmeQuote2 = await prisma.quote.create({
-    data: {
-      companyId: demo.id,
-      displayId: "QTE-2026-002",
-      title: "Trade Show Table Throws",
-      status: "REVIEWING",
-      amount: 1800,
-    },
-  });
-
-  const acmeQuote3 = await prisma.quote.create({
-    data: {
-      companyId: demo.id,
-      displayId: "QTE-2026-003",
-      title: "Badge Lanyards — SXSW",
-      status: "SENT",
-      amount: 950,
-    },
-  });
-
-  // ── Bloom orders ──
-  const bloomOrder1 = await prisma.order.create({
-    data: {
-      companyId: bloom.id,
-      createdBy: (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id,
-      displayId: "ORD-2026-010",
-      title: "Rebrand Tumblers — 16oz",
-      status: "AWAITING_PROOF",
-      dueDate: daysFromNow(21),
-    },
-  });
-
-  const bloomOrder2 = await prisma.order.create({
-    data: {
-      companyId: bloom.id,
-      createdBy: (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id,
-      displayId: "ORD-2026-011",
-      title: "Rebrand Mugs — New Logo",
-      status: "IN_REVIEW",
-      dueDate: daysFromNow(21),
-    },
-  });
-
-  // Bloom quote
-  const bloomQuote1 = await prisma.quote.create({
-    data: {
-      companyId: bloom.id,
-      displayId: "QTE-2026-010",
-      title: "New Hire Welcome Kit — Hoodies",
-      status: "SENT",
-      amount: 4500,
-    },
-  });
-
-  // ── Create proof pending approval for Bloom order (to trigger NEEDS_ATTENTION) ──
-  await prisma.proof.create({
-    data: {
-      orderId: bloomOrder1.id,
-      version: 1,
-      status: "SENT",
-      publishedBy: cccAdmin.id,
-    },
-  });
-
-  // Create overdue invoice for Bloom order (to trigger NEEDS_ATTENTION)
-  await prisma.invoice.create({
-    data: {
-      orderId: bloomOrder1.id,
-      companyId: bloom.id,
-      displayId: "INV-2026-010",
-      amountTotal: 3200,
-      balanceRemaining: 3200,
-      status: "UNPAID",
-      dueDate: new Date(now.getTime() - 7 * 86400_000), // 7 days overdue
-    },
-  });
-
-  // ── Create Projects ──────────────────────────────────────────────────
-
-  const lilyId = (await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } }))!.id;
-
-  // 1. Summer Festival Tees 2026 (Acme, IN_PRODUCTION)
-  const project1 = await prisma.project.create({
-    data: {
-      companyId: demo.id,
-      name: "Summer Festival Tees 2026",
-      description: "Custom tees and tanks for the Summer Music Festival series. 3 venues, 5 designs.",
-      category: "APPAREL",
-      eventDate: new Date("2026-06-15"),
-      createdById: janeSmith.id,
-    },
-  });
-  await prisma.order.updateMany({
-    where: { id: { in: [acmeOrder1.id, acmeOrder2.id, acmeOrder3.id] } },
-    data: { projectId: project1.id },
-  });
-  await prisma.quote.update({
-    where: { id: acmeQuote1.id },
-    data: { projectId: project1.id },
-  });
-
-  // 2. Trade Show Booth — SXSW (Acme, ACTIVE)
-  const project2 = await prisma.project.create({
-    data: {
-      companyId: demo.id,
-      name: "Trade Show Booth — SXSW",
-      description: "Retractable banners, table throws, and badge lanyards for SXSW 2026.",
-      category: "SIGNAGE",
-      eventDate: new Date("2026-03-13"),
-      createdById: janeSmith.id,
-    },
-  });
-  await prisma.order.update({
-    where: { id: acmeOrder4.id },
-    data: { projectId: project2.id },
-  });
-  await prisma.quote.updateMany({
-    where: { id: { in: [acmeQuote2.id, acmeQuote3.id] } },
-    data: { projectId: project2.id },
-  });
-
-  // 3. New Hire Welcome Kits Q2 (Bloom, IN_REVIEW)
-  const project3 = await prisma.project.create({
-    data: {
-      companyId: bloom.id,
-      name: "New Hire Welcome Kits Q2",
-      description: "Branded hoodies, notebooks, and water bottles for Q2 onboarding.",
-      category: "APPAREL",
-      createdById: lilyId,
-    },
-  });
-  await prisma.quote.update({
-    where: { id: bloomQuote1.id },
-    data: { projectId: project3.id },
-  });
-
-  // 4. Rebrand Launch — Drinkware (Bloom, NEEDS_ATTENTION)
-  const project4 = await prisma.project.create({
-    data: {
-      companyId: bloom.id,
-      name: "Rebrand Launch — Drinkware",
-      description: "New logo rollout on tumblers and mugs. Proof revision pending.",
-      category: "DRINKWARE",
-      createdById: lilyId,
-    },
-  });
-  await prisma.order.updateMany({
-    where: { id: { in: [bloomOrder1.id, bloomOrder2.id] } },
-    data: { projectId: project4.id },
-  });
-
-  // 5. Holiday Gift Boxes 2025 (Acme, COMPLETED)
-  const project5 = await prisma.project.create({
-    data: {
-      companyId: demo.id,
-      name: "Holiday Gift Boxes 2025",
-      description: "Custom packaging for client holiday gift program. All shipped.",
-      category: "PACKAGING",
-      createdById: janeSmith.id,
-    },
-  });
-  await prisma.order.updateMany({
-    where: { id: { in: [acmeOrder5.id, acmeOrder6.id, acmeOrder7.id, acmeOrder8.id] } },
-    data: { projectId: project5.id },
-  });
-
-  // 6. Empty Project Placeholder (Bloom)
-  await prisma.project.create({
-    data: {
-      companyId: bloom.id,
-      name: "Empty Project Placeholder",
-      category: "OTHER",
-      createdById: lilyId,
-    },
-  });
-
-  // Recompute derived status for all projects
-  // Import and use inline since seed runs standalone
-  const { deriveProjectStatus } = await import("../src/lib/projects");
-  for (const proj of [project1, project2, project3, project4, project5]) {
-    const full = await prisma.project.findUniqueOrThrow({
-      where: { id: proj.id },
-      include: {
-        orders: {
-          select: {
-            status: true,
-            proofs: { select: { status: true } },
-            invoices: { select: { status: true, dueDate: true } },
-          },
-        },
-        quotes: { select: { status: true } },
+      displayId: "CS-1002",
+      sourceType: "CATALOG",
+      title: "Trade Show Booth Package",
+      status: "SUBMITTED",
+      dueDate: daysAgo(-21),
+      eventName: "SxSW 2026",
+      subtotal: 1633.98,
+      totalAmount: 1633.98,
+      createdAt: daysAgo(2),
+      items: {
+        create: [
+          { position: 1, contentType: "SIGNAGE", title: "Retractable Banner Stand — Main Booth", sku: "BNR-001", unitPrice: 149.99, quantity: 2, lineTotal: 299.98, status: "PENDING" },
+          { position: 2, contentType: "APPAREL", title: "Event Staff T-Shirts — Coral", sku: "TEE-001-CRL", unitPrice: 9.99, quantity: 100, sizeBreakdown: { S: 10, M: 30, L: 30, XL: 20, "2XL": 10 }, lineTotal: 999.00, status: "PENDING" },
+          { position: 3, contentType: "PROMO_ITEM", title: "Custom Die-Cut Stickers", sku: "STK-001", unitPrice: 0.59, quantity: 500, lineTotal: 295.00, status: "PENDING" },
+          { position: 4, contentType: "COMMERCIAL_PRINTING", title: "Business Cards — Matte", sku: "PRT-001", unitPrice: 0.08, quantity: 500, lineTotal: 40.00, status: "PENDING" },
+        ],
       },
-    });
-    const derived = deriveProjectStatus(full as any);
-    await prisma.project.update({
-      where: { id: proj.id },
-      data: { derivedStatus: derived },
-    });
-  }
+    },
+  });
 
-  console.log("Projects seeded!");
+  // Order 3: Globex — Approved
+  await prisma.order.upsert({
+    where: { displayId: "CS-1003" },
+    update: {},
+    create: {
+      companyId: globex.id,
+      createdBy: globexAdmin.id,
+      displayId: "CS-1003",
+      sourceType: "CATALOG",
+      title: "Globex Winter Hoodies 2026",
+      status: "APPROVED",
+      dueDate: daysAgo(-30),
+      poNumber: "GLX-PO-2026-012",
+      subtotal: 19495.00,
+      shippingAmount: 250.00,
+      taxAmount: 1608.38,
+      taxRate: 0.0825,
+      totalAmount: 21353.38,
+      createdAt: daysAgo(7),
+      items: {
+        create: [
+          {
+            position: 1,
+            contentType: "APPAREL",
+            title: "Performance Hoodie — Black",
+            catalogProductId: productHoodie.id,
+            sku: "HOD-001-BLK",
+            vendorId: vendorSSActive.id,
+            unitPrice: 38.99,
+            quantity: 500,
+            sizeBreakdown: { S: 50, M: 125, L: 150, XL: 100, "2XL": 75 },
+            lineTotal: 19495.00,
+            costPerUnit: 22.00,
+            totalCost: 11000.00,
+            profitMargin: 8495.00,
+            status: "PENDING",
+          },
+        ],
+      },
+    },
+  });
 
-  // ─── Seed Message Threads ────────────────────────────────────────────
+  // Order 4: Bloom — Shipped
+  await prisma.order.upsert({
+    where: { displayId: "CS-1004" },
+    update: {},
+    create: {
+      companyId: bloom.id,
+      createdBy: bloomAdmin.id,
+      displayId: "CS-1004",
+      sourceType: "QUOTE",
+      title: "Bloom Studio Grand Opening Kit",
+      status: "SHIPPED",
+      dueDate: daysAgo(-5),
+      subtotal: 3250.00,
+      shippingAmount: 45.00,
+      taxAmount: 268.13,
+      taxRate: 0.0825,
+      totalAmount: 3563.13,
+      createdAt: daysAgo(21),
+      items: {
+        create: [
+          { position: 1, contentType: "APPAREL", title: "Bloom-branded Tees — Sage Green", unitPrice: 12.50, quantity: 200, lineTotal: 2500.00, status: "COMPLETED" },
+          { position: 2, contentType: "SIGNAGE", title: "Window Vinyl Decals (Set of 4)", unitPrice: 75.00, quantity: 4, lineTotal: 300.00, status: "COMPLETED" },
+          { position: 3, contentType: "PROMO_ITEM", title: "Canvas Tote Bags — Natural", unitPrice: 4.50, quantity: 100, lineTotal: 450.00, status: "COMPLETED" },
+        ],
+      },
+      shipments: {
+        create: [{
+          destinationAddress: { name: "Bloom Studio", street: "789 Flower Ave", city: "San Francisco", state: "CA", zip: "94102", country: "US" },
+          carrier: "FedEx",
+          trackingNumber: "7948291847561",
+          status: "IN_TRANSIT",
+          shippedAt: daysAgo(1),
+        }],
+      },
+    },
+  });
+
+  // Order 5: Redline — Completed
+  await prisma.order.upsert({
+    where: { displayId: "CS-1005" },
+    update: {},
+    create: {
+      companyId: redline.id,
+      createdBy: redlineAdmin.id,
+      displayId: "CS-1005",
+      sourceType: "CATALOG",
+      title: "Redline Events — Corporate Gala Shirts",
+      status: "COMPLETED",
+      dueDate: daysAgo(5),
+      poNumber: "RDL-2026-003",
+      subtotal: 2997.00,
+      shippingAmount: 65.00,
+      totalAmount: 3062.00,
+      createdAt: daysAgo(45),
+      items: {
+        create: [{
+          position: 1,
+          contentType: "APPAREL",
+          title: "Dress Shirts — White w/ Red Embroidery",
+          unitPrice: 29.97,
+          quantity: 100,
+          lineTotal: 2997.00,
+          status: "COMPLETED",
+        }],
+      },
+    },
+  });
+
+  // Order 6: Greenfield — In Review
+  await prisma.order.upsert({
+    where: { displayId: "CS-1006" },
+    update: {},
+    create: {
+      companyId: greenfield.id,
+      createdBy: greenfieldAdmin.id,
+      displayId: "CS-1006",
+      sourceType: "CATALOG",
+      title: "Greenfield Earth Day Merch",
+      status: "IN_REVIEW",
+      dueDate: daysAgo(-15),
+      eventName: "Earth Day 2026",
+      subtotal: 1674.50,
+      totalAmount: 1674.50,
+      createdAt: daysAgo(3),
+      items: {
+        create: [
+          { position: 1, contentType: "APPAREL", title: "Organic Cotton Tees — Forest Green", unitPrice: 14.50, quantity: 75, sizeBreakdown: { S: 10, M: 25, L: 25, XL: 10, "2XL": 5 }, lineTotal: 1087.50, status: "PENDING" },
+          { position: 2, contentType: "PROMO_ITEM", title: "Recycled Polyester Drawstring Bags", unitPrice: 5.87, quantity: 100, lineTotal: 587.00, status: "PENDING" },
+        ],
+      },
+    },
+  });
+
+  // ─── Sample Quotes ───────────────────────────────────────────────
+
+  await prisma.quote.upsert({
+    where: { displayId: "Q-1001" },
+    update: {},
+    create: {
+      displayId: "Q-1001",
+      companyId: demo.id,
+      createdById: cccAdmin.id,
+      status: "SENT",
+      version: 1,
+      title: "Acme Annual Conference Package",
+      notes: "Pricing includes setup fees. Volume discounts applied at 200+ units.",
+      validUntil: daysAgo(-30),
+      subtotal: 8750.00,
+      shippingAmount: 195.00,
+      taxAmount: 721.88,
+      totalAmount: 9666.88,
+      lineItems: {
+        create: [
+          { position: 1, contentType: "APPAREL", title: "Conference T-Shirts — Custom Design", quantity: 500, unitPrice: 9.50, lineTotal: 4750.00 },
+          { position: 2, contentType: "APPAREL", title: "Speaker Polo Shirts — Premium", quantity: 25, unitPrice: 28.00, lineTotal: 700.00 },
+          { position: 3, contentType: "SIGNAGE", title: "Stage Backdrop Banner (10ft × 8ft)", quantity: 1, unitPrice: 850.00, lineTotal: 850.00 },
+          { position: 4, contentType: "SIGNAGE", title: "Directional Signs (Coroplast, 24x36)", quantity: 15, unitPrice: 25.00, lineTotal: 375.00 },
+          { position: 5, contentType: "PROMO_ITEM", title: "Branded Lanyards", quantity: 500, unitPrice: 2.15, lineTotal: 1075.00 },
+          { position: 6, contentType: "PROMO_ITEM", title: "Conference Tote Bags", quantity: 500, unitPrice: 2.00, lineTotal: 1000.00 },
+        ],
+      },
+    },
+  });
+
+  await prisma.quote.upsert({
+    where: { displayId: "Q-1002" },
+    update: {},
+    create: {
+      displayId: "Q-1002",
+      companyId: globex.id,
+      createdById: cccAdmin.id,
+      status: "DRAFT",
+      version: 1,
+      title: "Globex Q2 New Hire Welcome Kits",
+      subtotal: 6240.00,
+      totalAmount: 6240.00,
+      lineItems: {
+        create: [
+          { position: 1, contentType: "APPAREL", title: "Welcome Hoodie — Charcoal", quantity: 80, unitPrice: 38.00, lineTotal: 3040.00 },
+          { position: 2, contentType: "APPAREL", title: "Welcome T-Shirt — White", quantity: 80, unitPrice: 12.00, lineTotal: 960.00 },
+          { position: 3, contentType: "PROMO_ITEM", title: "Branded Water Bottle", quantity: 80, unitPrice: 15.00, lineTotal: 1200.00 },
+          { position: 4, contentType: "PROMO_ITEM", title: "Custom Notebook + Pen Set", quantity: 80, unitPrice: 13.00, lineTotal: 1040.00 },
+        ],
+      },
+    },
+  });
+
+  await prisma.quote.upsert({
+    where: { displayId: "Q-1003" },
+    update: {},
+    create: {
+      displayId: "Q-1003",
+      companyId: bloom.id,
+      createdById: cccAdmin.id,
+      status: "CONVERTED",
+      version: 2,
+      title: "Bloom Studio Grand Opening Kit",
+      notes: "Revised from v1 — added tote bags per client request.",
+      subtotal: 3250.00,
+      shippingAmount: 45.00,
+      taxAmount: 268.13,
+      totalAmount: 3563.13,
+      lineItems: {
+        create: [
+          { position: 1, contentType: "APPAREL", title: "Bloom-branded Tees — Sage Green", quantity: 200, unitPrice: 12.50, lineTotal: 2500.00 },
+          { position: 2, contentType: "SIGNAGE", title: "Window Vinyl Decals (Set of 4)", quantity: 4, unitPrice: 75.00, lineTotal: 300.00 },
+          { position: 3, contentType: "PROMO_ITEM", title: "Canvas Tote Bags — Natural", quantity: 100, unitPrice: 4.50, lineTotal: 450.00 },
+        ],
+      },
+      revisionComments: {
+        create: [{
+          authorId: bloomAdmin.id,
+          body: "Can you add canvas tote bags to the order? About 100 units. Natural color.",
+          version: 1,
+          createdAt: daysAgo(25),
+        }],
+      },
+    },
+  });
+
+  // ─── Sample Quote Requests ───────────────────────────────────────
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: greenfield.id,
+      createdById: greenfieldAdmin.id,
+      status: "SUBMITTED",
+      title: "Greenfield Summer Festival Merch",
+      description: "We need merchandise for our annual Summer Festival. Looking for eco-friendly options — organic cotton tees, recycled polyester bags, and possibly bamboo sunglasses. Around 300 attendees expected. Budget is flexible but hoping to stay under $5,000.",
+      inHandsDate: daysAgo(-45),
+    },
+  }).catch(() => {});
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: demo.id,
+      createdById: janeSmith.id,
+      status: "IN_REVIEW",
+      title: "Acme Client Appreciation Gift Boxes",
+      description: "We want to send gift boxes to our top 50 clients. Each box should include a branded item (pen, notebook, or similar), a t-shirt in their size, and a thank-you card. Need this shipped directly to each client address.",
+      inHandsDate: daysAgo(-20),
+    },
+  }).catch(() => {});
+
+  // ─── Message Threads ─────────────────────────────────────────────
+  const now = new Date();
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000);
 
-  // Thread 1 — Acme, open, assigned to CCC admin
-  const thread1 = await prisma.messageThread.create({
+  await prisma.messageThread.create({
     data: {
       companyId: demo.id,
       subject: "Logo placement on polo shirts",
-      orderTitle: "ORD-2025-042 — Acme Polo Shirts",
+      orderTitle: "CS-1001 — Acme Polo Shirts",
       status: "open",
       createdBy: janeSmith.id,
       assigneeId: cccAdmin.id,
@@ -627,14 +893,13 @@ async function main() {
         ],
       },
     },
-  });
+  }).catch(() => {});
 
-  // Thread 2 — Acme, waiting on client
-  const thread2 = await prisma.messageThread.create({
+  await prisma.messageThread.create({
     data: {
       companyId: demo.id,
       subject: "Delivery timeline for conference booth banners",
-      orderTitle: "ORD-2025-051 — Acme Trade Show Kit",
+      orderTitle: "CS-1002 — Trade Show Booth Package",
       status: "waiting_on_client",
       createdBy: johnDoe.id,
       assigneeId: cccAdmin.id,
@@ -648,30 +913,28 @@ async function main() {
         ],
       },
     },
-  });
+  }).catch(() => {});
 
-  // Thread 3 — Globex, waiting on CCC
-  const thread3 = await prisma.messageThread.create({
+  await prisma.messageThread.create({
     data: {
       companyId: globex.id,
       subject: "Bulk hoodie order — sizing samples",
-      orderTitle: "ORD-2025-063 — Globex Winter Hoodies",
+      orderTitle: "CS-1003 — Globex Winter Hoodies",
       status: "waiting_on_ccc",
       createdBy: globexAdmin.id,
       assigneeId: cccAdmin.id,
       createdAt: hoursAgo(36),
       messages: {
         create: [
-          { authorId: globexAdmin.id, body: "Can we get sizing samples before committing to the full 500-unit order? We want to make sure the fit is right for our team.", senderType: "client", createdAt: hoursAgo(36) },
+          { authorId: globexAdmin.id, body: "Can we get sizing samples before committing to the full 500-unit order?", senderType: "client", createdAt: hoursAgo(36) },
           { authorId: cccAdmin.id, body: "Of course. I'll ship S, M, L, XL samples to your office. Should arrive in 3 business days.", senderType: "staff", createdAt: hoursAgo(30) },
           { authorId: globexAdmin.id, body: "Great, please send to our main office at 123 Globex Blvd, Cypress Creek.", senderType: "client", createdAt: hoursAgo(28) },
-          { authorId: cccAdmin.id, body: "Internal: samples shipped via FedEx, tracking #789456123. Mark as waiting_on_ccc until delivery confirmed.", senderType: "internal", createdAt: hoursAgo(26) },
+          { authorId: cccAdmin.id, body: "Internal: samples shipped via FedEx, tracking #789456123.", senderType: "internal", createdAt: hoursAgo(26) },
         ],
       },
     },
-  });
+  }).catch(() => {});
 
-  // Thread 4 — Acme, resolved
   await prisma.messageThread.create({
     data: {
       companyId: demo.id,
@@ -688,230 +951,7 @@ async function main() {
         ],
       },
     },
-  });
-
-  // ─── Seed Quotes ─────────────────────────────────────────────────────
-  const daysFromNow = (d: number) => new Date(now.getTime() + d * 86400_000);
-  const daysAgo = (d: number) => new Date(now.getTime() - d * 86400_000);
-
-  // Delete existing quotes and quote requests (idempotent re-seed)
-  await prisma.quoteRequest.deleteMany({});
-  await prisma.quote.deleteMany({});
-
-  const qt041 = await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-041",
-      companyId: demo.id,
-      createdById: cccAdmin.id,
-      assignedToId: cccAdmin.id,
-      projectName: "Q4 Apparel Collection",
-      description: "Custom Screen Printing",
-      status: "pending_approval",
-      totalAmount: 4250,
-      expiresAt: daysFromNow(5),
-      createdAt: daysAgo(10),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-039",
-      companyId: globex.id,
-      createdById: cccAdmin.id,
-      assignedToId: cccAdmin.id,
-      projectName: "Tech Summit Signage",
-      description: "Vinyl Banners & Flags",
-      status: "approved",
-      totalAmount: 12400,
-      approvedAt: daysAgo(5),
-      createdAt: daysAgo(15),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-044",
-      companyId: bloom.id,
-      createdById: cccAdmin.id,
-      projectName: "Spring Collection Print Run",
-      description: "DTG on Premium Cotton",
-      status: "approved",
-      totalAmount: 3400,
-      approvedAt: daysAgo(3),
-      createdAt: daysAgo(12),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-048",
-      companyId: demo.id,
-      createdById: cccAdmin.id,
-      projectName: "Holiday Gift Boxes",
-      description: "Premium Packaging",
-      status: "sent",
-      totalAmount: 2800,
-      expiresAt: daysFromNow(12),
-      createdAt: daysAgo(7),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-050",
-      companyId: bloom.id,
-      createdById: cccAdmin.id,
-      projectName: "Custom Packaging Redesign",
-      description: "Eco-Friendly Materials",
-      status: "sent",
-      totalAmount: 1900,
-      expiresAt: daysFromNow(8),
-      createdAt: daysAgo(5),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-052",
-      companyId: globex.id,
-      createdById: cccAdmin.id,
-      projectName: "Onboarding Kit Bundle",
-      description: "Mixed Media Kit",
-      status: "draft",
-      totalAmount: 3200,
-      createdAt: daysAgo(2),
-    },
-  });
-
-  const qt053 = await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-053",
-      companyId: bloom.id,
-      createdById: cccAdmin.id,
-      projectName: "Sticker Subscription Q2",
-      description: "Die-Cut Vinyl",
-      status: "expired",
-      totalAmount: 600,
-      expiresAt: daysAgo(3),
-      createdAt: daysAgo(30),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-035",
-      companyId: novatech.id,
-      createdById: cccAdmin.id,
-      projectName: "Annual Report Printing",
-      description: "Matte Finish, Gold Foil",
-      status: "declined",
-      totalAmount: 5500,
-      declinedAt: daysAgo(10),
-      createdAt: daysAgo(40),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-046",
-      companyId: redline.id,
-      createdById: cccAdmin.id,
-      assignedToId: cccAdmin.id,
-      projectName: "Festival Full Package",
-      description: "Event Backdrop & Stands",
-      status: "pending_approval",
-      totalAmount: 15980,
-      expiresAt: daysFromNow(2),
-      createdAt: daysAgo(8),
-    },
-  });
-
-  await prisma.quote.create({
-    data: {
-      quoteNumber: "QT-2026-049",
-      companyId: greenfield.id,
-      createdById: cccAdmin.id,
-      projectName: "Eco Product Launch Kit",
-      description: "Recycled Materials",
-      status: "approved",
-      totalAmount: 2100,
-      approvedAt: daysAgo(2),
-      createdAt: daysAgo(14),
-    },
-  });
-
-  // ─── Seed Quote Requests ────────────────────────────────────────────
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: demo.id,
-      requestedById: janeSmith.id,
-      title: "Custom Embroidered Jackets",
-      description: "Looking for embroidered jackets for our sales team, approx 50 units.",
-      status: "new",
-      createdAt: daysAgo(1),
-    },
-  });
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: demo.id,
-      requestedById: janeSmith.id,
-      title: "Warehouse Team Vests",
-      description: "High-visibility vests with company logo for warehouse staff.",
-      status: "reviewing",
-      createdAt: daysAgo(5),
-    },
-  });
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: globex.id,
-      requestedById: globexAdmin.id,
-      title: "Executive Gift Set",
-      description: "Premium gift sets for C-level executives, leather-bound notebooks and pens.",
-      status: "new",
-      createdAt: daysAgo(2),
-    },
-  });
-
-  const bloomAdmin = await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } });
-  const redlineAdmin = await prisma.user.findUnique({ where: { email: "dana@redlineevents.com" } });
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: bloom.id,
-      requestedById: bloomAdmin!.id,
-      title: "Seasonal Window Decals",
-      description: "Full-color window decals for spring storefront display.",
-      status: "reviewing",
-      createdAt: daysAgo(3),
-    },
-  });
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: bloom.id,
-      requestedById: bloomAdmin!.id,
-      title: "Branded Aprons",
-      description: "Custom embroidered aprons for studio staff.",
-      status: "quoted",
-      quotedAmount: 600,
-      linkedQuoteId: qt053.id,
-      createdAt: daysAgo(10),
-    },
-  });
-
-  await prisma.quoteRequest.create({
-    data: {
-      companyId: redline.id,
-      requestedById: redlineAdmin!.id,
-      title: "VIP Lanyards & Badges",
-      description: "Custom lanyards and badge holders for upcoming festival VIP area.",
-      status: "new",
-      createdAt: hoursAgo(12),
-    },
-  });
+  }).catch(() => {});
 
   console.log("Seed complete!");
   console.log("---");
