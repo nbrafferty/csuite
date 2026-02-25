@@ -115,7 +115,7 @@ export function MessagesView() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-lg border border-surface-border bg-surface-bg">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-lg border border-surface-border bg-surface-card">
       {/* Left — Thread List */}
       <ThreadList
         threads={threads}
