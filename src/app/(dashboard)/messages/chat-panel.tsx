@@ -66,7 +66,7 @@ export function ChatPanel({
     <div className="flex flex-1 flex-col">
       {/* Header */}
       <div className="border-b border-surface-border px-6 py-4">
-        <h2 className="text-lg font-semibold text-white">{threadSubject}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{threadSubject}</h2>
       </div>
 
       {/* Messages */}
@@ -109,10 +109,10 @@ export function ChatPanel({
                 )}
               >
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-400">
+                  <span className="text-xs font-medium text-foreground-secondary">
                     {msg.author.name}
                   </span>
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-foreground-muted">
                     {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                   </span>
                 </div>
@@ -120,10 +120,10 @@ export function ChatPanel({
                   className={cn(
                     "rounded-xl px-4 py-2.5 text-sm",
                     isInternal
-                      ? "border border-yellow-600/30 bg-yellow-500/10 text-yellow-200"
+                      ? "border border-yellow-600/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-200"
                       : isStaffMsg
-                        ? "bg-coral/20 text-white"
-                        : "bg-surface-card text-gray-200"
+                        ? "bg-coral/20 text-foreground"
+                        : "bg-surface-card text-foreground-secondary"
                   )}
                 >
                   {isInternal && (
@@ -149,7 +149,7 @@ export function ChatPanel({
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                 mode === "reply"
                   ? "bg-coral text-white"
-                  : "bg-surface-card text-gray-400 hover:text-white"
+                  : "bg-surface-card text-foreground-secondary hover:text-foreground"
               )}
             >
               Reply
@@ -160,7 +160,7 @@ export function ChatPanel({
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                 mode === "internal"
                   ? "bg-yellow-600 text-white"
-                  : "bg-surface-card text-gray-400 hover:text-white"
+                  : "bg-surface-card text-foreground-secondary hover:text-foreground"
               )}
             >
               Internal Note
@@ -174,7 +174,7 @@ export function ChatPanel({
             onChange={(e) => setBody(e.target.value)}
             placeholder={mode === "internal" ? "Write an internal note..." : "Type a message..."}
             className={cn(
-              "flex-1 rounded-lg border bg-surface-bg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none",
+              "flex-1 rounded-lg border bg-surface-bg px-4 py-2.5 text-sm text-foreground placeholder-foreground-muted focus:outline-none",
               mode === "internal"
                 ? "border-yellow-600/40 focus:border-yellow-500"
                 : "border-surface-border focus:border-coral"

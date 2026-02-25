@@ -3,8 +3,42 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --surface-bg: 249 250 251;
+    --surface-card: 255 255 255;
+    --surface-secondary: 243 244 246;
+    --surface-border: 229 231 235;
+
+    --sidebar-bg: 255 255 255;
+    --sidebar-hover: 243 244 246;
+    --sidebar-active: 238 242 255;
+    --sidebar-text: 107 114 128;
+    --sidebar-text-active: 17 24 39;
+
+    --foreground: 17 24 39;
+    --foreground-secondary: 107 114 128;
+    --foreground-muted: 156 163 175;
+  }
+
+  .dark {
+    --surface-bg: 13 13 15;
+    --surface-card: 26 26 30;
+    --surface-secondary: 34 34 42;
+    --surface-border: 51 51 56;
+
+    --sidebar-bg: 13 13 15;
+    --sidebar-hover: 26 26 30;
+    --sidebar-active: 26 26 30;
+    --sidebar-text: 153 153 161;
+    --sidebar-text-active: 255 255 255;
+
+    --foreground: 255 255 255;
+    --foreground-secondary: 156 163 175;
+    --foreground-muted: 107 114 128;
+  }
+
   body {
-    @apply bg-surface-bg text-white antialiased;
+    @apply bg-surface-bg text-foreground antialiased;
   }
 }
 

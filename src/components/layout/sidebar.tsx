@@ -101,7 +101,7 @@ export function Sidebar() {
                 "relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-sidebar-active text-sidebar-text-active"
-                  : "text-sidebar-text hover:bg-sidebar-hover hover:text-white"
+                  : "text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active"
               )}
             >
               <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-coral")} />
@@ -136,7 +136,7 @@ export function Sidebar() {
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           title={expanded ? undefined : "Sign Out"}
-          className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-white"
+          className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-text-active"
         >
           <LogOut className="h-5 w-5 shrink-0" />
           <span

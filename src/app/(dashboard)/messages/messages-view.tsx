@@ -142,8 +142,8 @@ export function MessagesView() {
       ) : (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <MessageSquare className="mx-auto h-12 w-12 text-gray-600" />
-            <p className="mt-3 text-sm text-gray-500">Select a thread to view messages</p>
+            <MessageSquare className="mx-auto h-12 w-12 text-foreground-muted" />
+            <p className="mt-3 text-sm text-foreground-muted">Select a thread to view messages</p>
           </div>
         </div>
       )}

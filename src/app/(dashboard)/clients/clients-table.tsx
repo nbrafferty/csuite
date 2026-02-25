@@ -80,36 +80,36 @@ export function ClientsTable({ clients, selectedClientId, onSelectClient }: Clie
 
   if (clients.length === 0) {
     return (
-      <div className="rounded-xl border border-[#333338] bg-[#22222A] px-6 py-12 text-center">
-        <p className="text-sm text-gray-500">No clients match your filters.</p>
+      <div className="rounded-xl border border-surface-border bg-surface-secondary px-6 py-12 text-center">
+        <p className="text-sm text-foreground-muted">No clients match your filters.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#333338]">
+    <div className="overflow-hidden rounded-xl border border-surface-border">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-[#333338] bg-[#1A1A1E]">
+          <tr className="border-b border-surface-border bg-surface-card">
             <th className="px-4 py-3 text-left">
-              <button onClick={() => toggleSort("name")} className="group flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <button onClick={() => toggleSort("name")} className="group flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-foreground-muted">
                 Organization <SortIcon col="name" />
               </button>
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground-muted">
               Primary Contact
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground-muted">
               Active Orders
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground-muted">
               Revenue
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-foreground-muted">
               Last Activity
             </th>
             <th className="px-4 py-3 text-left">
-              <button onClick={() => toggleSort("status")} className="group flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <button onClick={() => toggleSort("status")} className="group flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-foreground-muted">
                 Status <SortIcon col="status" />
               </button>
             </th>
@@ -126,10 +126,10 @@ export function ClientsTable({ clients, selectedClientId, onSelectClient }: Clie
                 key={client.id}
                 onClick={() => onSelectClient(client.id)}
                 className={cn(
-                  "cursor-pointer border-b border-[#333338] transition-colors",
+                  "cursor-pointer border-b border-surface-border transition-colors",
                   isSelected
-                    ? "bg-[rgba(255,255,255,0.03)]"
-                    : "bg-[#22222A] hover:bg-[rgba(255,255,255,0.03)]"
+                    ? "bg-foreground/[0.03]"
+                    : "bg-surface-secondary hover:bg-foreground/[0.03]"
                 )}
               >
                 <td className="px-4 py-3">
@@ -148,20 +148,20 @@ export function ClientsTable({ clients, selectedClientId, onSelectClient }: Clie
                           client.status === "paused" && "bg-[#FFD60A]",
                           client.status === "overdue" && "bg-[#E85D5D]"
                         )} />
-                        <span className="text-sm font-medium text-white">{client.name}</span>
+                        <span className="text-sm font-medium text-foreground">{client.name}</span>
                       </div>
-                      <p className="mt-0.5 text-xs text-gray-500">{client.userCount} member{client.userCount !== 1 ? "s" : ""}</p>
+                      <p className="mt-0.5 text-xs text-foreground-muted">{client.userCount} member{client.userCount !== 1 ? "s" : ""}</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   {client.primaryContact ? (
                     <div>
-                      <p className="text-sm text-white">{client.primaryContact.name}</p>
-                      <p className="text-xs text-gray-500">{client.primaryContact.email}</p>
+                      <p className="text-sm text-foreground">{client.primaryContact.name}</p>
+                      <p className="text-xs text-foreground-muted">{client.primaryContact.email}</p>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-500">No contact</span>
+                    <span className="text-xs text-foreground-muted">No contact</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -169,15 +169,15 @@ export function ClientsTable({ clients, selectedClientId, onSelectClient }: Clie
                     "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium",
                     client.activeOrders > 0
                       ? "bg-blue-500/20 text-[#5B8DEF]"
-                      : "bg-gray-500/20 text-gray-400"
+                      : "bg-gray-500/20 text-foreground-secondary"
                   )}>
                     {client.activeOrders}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-white">
+                <td className="px-4 py-3 text-sm text-foreground">
                   ${client.revenue.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-500">
+                <td className="px-4 py-3 text-xs text-foreground-muted">
                   {formatDistanceToNow(new Date(client.lastActivity), { addSuffix: true })}
                 </td>
                 <td className="px-4 py-3">
