@@ -6,7 +6,7 @@
     "dev": "[ -f .env ] || cp .env.example .env && docker compose up -d --wait && npx prisma generate && npx prisma db push && npm run db:seed && next dev",
     "dev:next": "next dev",
     "build": "prisma generate && next build",
-    "start": "npx prisma db push --accept-data-loss && npm run db:seed && next start",
+    "start": "npx prisma db push --force-reset && npm run db:seed && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
