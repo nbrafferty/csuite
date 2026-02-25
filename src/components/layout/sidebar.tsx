@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   ShoppingCart,
-  FileText,
   FolderKanban,
+  ClipboardList,
   Image,
   BookOpen,
   MessageSquare,
@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
-  { label: "Quotes", href: "/quotes", icon: FileText },
+  { label: "Quotes", href: "/quotes", icon: ClipboardList, staffOnly: true },
   { label: "Catalog", href: "/catalog", icon: BookOpen },
   { label: "Artwork", href: "/artwork", icon: Image },
   { label: "Billing", href: "/billing", icon: CreditCard },

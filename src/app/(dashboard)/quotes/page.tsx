@@ -1,10 +1,14 @@
-export default function QuotesPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-foreground">Quotes</h1>
-      <p className="mt-1 text-sm text-foreground-secondary">
-        View and manage your quote requests.
-      </p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { auth } from "@/server/auth/auth";
+import { QuotesView } from "./quotes-view";
+
+export default async function QuotesPage() {
+  const session = await auth();
+  const role = (session?.user as any)?.role;
+
+  if (role !== "CCC_STAFF") {
+    redirect("/");
+  }
+
+  return <QuotesView />;
 }
