@@ -85,6 +85,32 @@ enum AuditAction {
   STATUS_CHANGED
 }
 
+enum ProjectCategory {
+  APPAREL
+  SIGNAGE
+  PACKAGING
+  HEADWEAR
+  DRINKWARE
+  OTHER
+}
+
+enum ProjectStatus {
+  EMPTY
+  IN_REVIEW
+  ACTIVE
+  IN_PRODUCTION
+  NEEDS_ATTENTION
+  COMPLETED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  REVIEWING
+  ACCEPTED
+  DECLINED
+}
+
 // ─── Models ──────────────────────────────────────────────────────────
 
 model Company {
@@ -103,6 +129,8 @@ model Company {
   users             User[]
   locations         Location[]
   orders            Order[]
+  quotes            Quote[]
+  projects          Project[]
   savedProducts     SavedProduct[]
   artworkAssets     ArtworkAsset[]
   invoices          Invoice[]
@@ -142,6 +170,7 @@ model User {
   auditLogEvents   AuditLogEvent[]
   artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
   savedProductsCreated SavedProduct[] @relation("SavedProductCreator")
+  projectsCreated  Project[]        @relation("ProjectCreator")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -175,6 +204,7 @@ model Order {
   id          String      @id @default(uuid())
   companyId   String      @map("company_id")
   createdBy   String      @map("created_by")
+  projectId   String?     @map("project_id")
   displayId   String      @unique @map("display_id")
   title       String
   status      OrderStatus @default(DRAFT)
@@ -187,6 +217,7 @@ model Order {
 
   company     Company     @relation(fields: [companyId], references: [id])
   creator     User        @relation("OrderCreator", fields: [createdBy], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
   items       OrderItem[]
   proofs      Proof[]
   invoices    Invoice[]
@@ -195,6 +226,7 @@ model Order {
 
   @@index([companyId, status])
   @@index([companyId, createdAt])
+  @@index([projectId])
   @@map("orders")
 }
 
@@ -475,4 +507,50 @@ model AuditLogEvent {
   @@index([companyId])
   @@index([companyId, entityType])
   @@map("audit_log_events")
+}
+
+model Project {
+  id              String          @id @default(cuid())
+  companyId       String          @map("company_id")
+  name            String
+  description     String?
+  category        ProjectCategory @default(OTHER)
+  eventDate       DateTime?       @map("event_date")
+  statusOverride  ProjectStatus?  @map("status_override")
+  derivedStatus   ProjectStatus   @default(EMPTY) @map("derived_status")
+  createdById     String          @map("created_by_id")
+  archivedAt      DateTime?       @map("archived_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  company   Company @relation(fields: [companyId], references: [id])
+  createdBy User    @relation("ProjectCreator", fields: [createdById], references: [id])
+  orders    Order[]
+  quotes    Quote[]
+
+  @@index([companyId])
+  @@index([updatedAt])
+  @@index([archivedAt])
+  @@index([derivedStatus])
+  @@map("projects")
+}
+
+model Quote {
+  id          String      @id @default(uuid())
+  companyId   String      @map("company_id")
+  projectId   String?     @map("project_id")
+  displayId   String      @unique @map("display_id")
+  title       String
+  status      QuoteStatus @default(DRAFT)
+  amount      Decimal     @default(0) @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  company     Company     @relation(fields: [companyId], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
+
+  @@index([companyId])
+  @@index([projectId])
+  @@map("quotes")
 }
