@@ -44,8 +44,8 @@ export function ProjectKanban({
   const moveStatus = trpc.projects.moveStatus.useMutation({
     onMutate: async ({ id, toStatus }) => {
       await utils.projects.list.cancel();
-      const prev = utils.projects.list.getData();
-      utils.projects.list.setData(undefined, (old) => {
+      const prev = utils.projects.list.getData({});
+      utils.projects.list.setData({}, (old) => {
         if (!old) return old;
         return old.map((p) =>
           p.id === id ? { ...p, status: toStatus, hasStatusOverride: true } : p
@@ -55,7 +55,7 @@ export function ProjectKanban({
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) {
-        utils.projects.list.setData(undefined, ctx.prev);
+        utils.projects.list.setData({}, ctx.prev);
       }
       setErrorToast(
         `Couldn't move project — ${_err.message || "unknown error"}`
