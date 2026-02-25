@@ -177,10 +177,10 @@ export function ProjectCard({
           {project.team.slice(0, 3).map((member) => (
             <div
               key={member.id}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white ring-2"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
               style={{
                 backgroundColor: member.color,
-                ringColor: COLORS.card,
+                boxShadow: `0 0 0 2px ${COLORS.card}`,
               }}
               title={member.initials}
             >
@@ -189,11 +189,11 @@ export function ProjectCard({
           ))}
           {project.team.length > 3 && (
             <div
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium ring-2"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium"
               style={{
                 backgroundColor: COLORS.cardBorder,
                 color: COLORS.textSecondary,
-                ringColor: COLORS.card,
+                boxShadow: `0 0 0 2px ${COLORS.card}`,
               }}
             >
               +{project.team.length - 3}
@@ -292,10 +292,10 @@ export function ProjectCard({
           {project.team.slice(0, 3).map((member) => (
             <div
               key={member.id}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white ring-2"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
               style={{
                 backgroundColor: member.color,
-                ringColor: COLORS.card,
+                boxShadow: `0 0 0 2px ${COLORS.card}`,
               }}
               title={member.initials}
             >
