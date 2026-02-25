@@ -387,6 +387,229 @@ async function main() {
     },
   });
 
+  // ─── Seed Quotes ─────────────────────────────────────────────────────
+  const daysFromNow = (d: number) => new Date(now.getTime() + d * 86400_000);
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 86400_000);
+
+  // Delete existing quotes and quote requests (idempotent re-seed)
+  await prisma.quoteRequest.deleteMany({});
+  await prisma.quote.deleteMany({});
+
+  const qt041 = await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-041",
+      companyId: demo.id,
+      createdById: cccAdmin.id,
+      assignedToId: cccAdmin.id,
+      projectName: "Q4 Apparel Collection",
+      description: "Custom Screen Printing",
+      status: "pending_approval",
+      totalAmount: 4250,
+      expiresAt: daysFromNow(5),
+      createdAt: daysAgo(10),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-039",
+      companyId: globex.id,
+      createdById: cccAdmin.id,
+      assignedToId: cccAdmin.id,
+      projectName: "Tech Summit Signage",
+      description: "Vinyl Banners & Flags",
+      status: "approved",
+      totalAmount: 12400,
+      approvedAt: daysAgo(5),
+      createdAt: daysAgo(15),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-044",
+      companyId: bloom.id,
+      createdById: cccAdmin.id,
+      projectName: "Spring Collection Print Run",
+      description: "DTG on Premium Cotton",
+      status: "approved",
+      totalAmount: 3400,
+      approvedAt: daysAgo(3),
+      createdAt: daysAgo(12),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-048",
+      companyId: demo.id,
+      createdById: cccAdmin.id,
+      projectName: "Holiday Gift Boxes",
+      description: "Premium Packaging",
+      status: "sent",
+      totalAmount: 2800,
+      expiresAt: daysFromNow(12),
+      createdAt: daysAgo(7),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-050",
+      companyId: bloom.id,
+      createdById: cccAdmin.id,
+      projectName: "Custom Packaging Redesign",
+      description: "Eco-Friendly Materials",
+      status: "sent",
+      totalAmount: 1900,
+      expiresAt: daysFromNow(8),
+      createdAt: daysAgo(5),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-052",
+      companyId: globex.id,
+      createdById: cccAdmin.id,
+      projectName: "Onboarding Kit Bundle",
+      description: "Mixed Media Kit",
+      status: "draft",
+      totalAmount: 3200,
+      createdAt: daysAgo(2),
+    },
+  });
+
+  const qt053 = await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-053",
+      companyId: bloom.id,
+      createdById: cccAdmin.id,
+      projectName: "Sticker Subscription Q2",
+      description: "Die-Cut Vinyl",
+      status: "expired",
+      totalAmount: 600,
+      expiresAt: daysAgo(3),
+      createdAt: daysAgo(30),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-035",
+      companyId: novatech.id,
+      createdById: cccAdmin.id,
+      projectName: "Annual Report Printing",
+      description: "Matte Finish, Gold Foil",
+      status: "declined",
+      totalAmount: 5500,
+      declinedAt: daysAgo(10),
+      createdAt: daysAgo(40),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-046",
+      companyId: redline.id,
+      createdById: cccAdmin.id,
+      assignedToId: cccAdmin.id,
+      projectName: "Festival Full Package",
+      description: "Event Backdrop & Stands",
+      status: "pending_approval",
+      totalAmount: 15980,
+      expiresAt: daysFromNow(2),
+      createdAt: daysAgo(8),
+    },
+  });
+
+  await prisma.quote.create({
+    data: {
+      quoteNumber: "QT-2026-049",
+      companyId: greenfield.id,
+      createdById: cccAdmin.id,
+      projectName: "Eco Product Launch Kit",
+      description: "Recycled Materials",
+      status: "approved",
+      totalAmount: 2100,
+      approvedAt: daysAgo(2),
+      createdAt: daysAgo(14),
+    },
+  });
+
+  // ─── Seed Quote Requests ────────────────────────────────────────────
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: demo.id,
+      requestedById: janeSmith.id,
+      title: "Custom Embroidered Jackets",
+      description: "Looking for embroidered jackets for our sales team, approx 50 units.",
+      status: "new",
+      createdAt: daysAgo(1),
+    },
+  });
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: demo.id,
+      requestedById: janeSmith.id,
+      title: "Warehouse Team Vests",
+      description: "High-visibility vests with company logo for warehouse staff.",
+      status: "reviewing",
+      createdAt: daysAgo(5),
+    },
+  });
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: globex.id,
+      requestedById: globexAdmin.id,
+      title: "Executive Gift Set",
+      description: "Premium gift sets for C-level executives, leather-bound notebooks and pens.",
+      status: "new",
+      createdAt: daysAgo(2),
+    },
+  });
+
+  const bloomAdmin = await prisma.user.findUnique({ where: { email: "lily@bloomstudio.com" } });
+  const redlineAdmin = await prisma.user.findUnique({ where: { email: "dana@redlineevents.com" } });
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: bloom.id,
+      requestedById: bloomAdmin!.id,
+      title: "Seasonal Window Decals",
+      description: "Full-color window decals for spring storefront display.",
+      status: "reviewing",
+      createdAt: daysAgo(3),
+    },
+  });
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: bloom.id,
+      requestedById: bloomAdmin!.id,
+      title: "Branded Aprons",
+      description: "Custom embroidered aprons for studio staff.",
+      status: "quoted",
+      quotedAmount: 600,
+      linkedQuoteId: qt053.id,
+      createdAt: daysAgo(10),
+    },
+  });
+
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: redline.id,
+      requestedById: redlineAdmin!.id,
+      title: "VIP Lanyards & Badges",
+      description: "Custom lanyards and badge holders for upcoming festival VIP area.",
+      status: "new",
+      createdAt: hoursAgo(12),
+    },
+  });
+
   console.log("Seed complete!");
   console.log("---");
   console.log("CCC Staff login:  admin@centralcreative.co / password123");

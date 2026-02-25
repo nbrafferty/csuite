@@ -109,6 +109,8 @@ model Company {
   messageThreads    MessageThread[]
   inventoryItems    InventoryItem[]
   auditLogEvents    AuditLogEvent[]
+  quotes            Quote[]
+  quoteRequests     QuoteRequest[]
 
   @@map("companies")
 }
@@ -142,6 +144,9 @@ model User {
   auditLogEvents   AuditLogEvent[]
   artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
   savedProductsCreated SavedProduct[] @relation("SavedProductCreator")
+  quotesCreated    Quote[]          @relation("QuoteCreator")
+  quotesAssigned   Quote[]          @relation("QuoteAssignee")
+  quoteRequests    QuoteRequest[]
 
   @@index([companyId])
   @@index([companyId, role])
@@ -475,4 +480,50 @@ model AuditLogEvent {
   @@index([companyId])
   @@index([companyId, entityType])
   @@map("audit_log_events")
+}
+
+model Quote {
+  id            String    @id @default(cuid())
+  quoteNumber   String    @unique @map("quote_number")
+  companyId     String    @map("company_id")
+  createdById   String    @map("created_by_id")
+  assignedToId  String?   @map("assigned_to_id")
+  projectName   String    @map("project_name")
+  description   String?
+  status        String    @default("draft")
+  totalAmount   Float     @default(0) @map("total_amount")
+  expiresAt     DateTime? @map("expires_at")
+  approvedAt    DateTime? @map("approved_at")
+  declinedAt    DateTime? @map("declined_at")
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company       Company   @relation(fields: [companyId], references: [id])
+  createdBy     User      @relation("QuoteCreator", fields: [createdById], references: [id])
+  assignedTo    User?     @relation("QuoteAssignee", fields: [assignedToId], references: [id])
+
+  @@index([companyId])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteRequest {
+  id            String    @id @default(cuid())
+  companyId     String    @map("company_id")
+  requestedById String    @map("requested_by_id")
+  title         String
+  description   String?
+  status        String    @default("new")
+  quotedAmount  Float?    @map("quoted_amount")
+  linkedQuoteId String?   @map("linked_quote_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company       Company   @relation(fields: [companyId], references: [id])
+  requestedBy   User      @relation(fields: [requestedById], references: [id])
+
+  @@index([companyId])
+  @@index([status])
+  @@map("quote_requests")
 }
