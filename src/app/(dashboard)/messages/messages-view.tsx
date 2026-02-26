@@ -82,6 +82,14 @@ export function MessagesView() {
   // Mutations
   const utils = trpc.useUtils();
 
+  // Helper: directly update the sidebar's unreadCount cache for instant badge feedback
+  const adjustUnreadCount = (delta: number) => {
+    if (delta === 0) return;
+    utils.thread.unreadCount.setData(undefined, (old) =>
+      old != null ? Math.max(0, old + delta) : old
+    );
+  };
+
   const markRead = trpc.thread.markRead.useMutation({
     onSettled: () => {
       utils.thread.list.invalidate();
@@ -126,7 +134,11 @@ export function MessagesView() {
 
   const handleSelectThread = (id: string) => {
     setSelectedThreadId(id);
+    // Check if this thread is currently shown as unread (respecting any existing override)
+    const thread = threadsData?.threads.find((t) => t.id === id);
+    const currentlyUnread = id in readOverrides ? readOverrides[id] : thread?.isUnread;
     setReadOverrides((prev) => ({ ...prev, [id]: false }));
+    if (currentlyUnread) adjustUnreadCount(-1);
     markRead.mutate({ threadId: id });
   };
 
@@ -157,19 +169,31 @@ export function MessagesView() {
         search={search}
         onSearchChange={setSearch}
         onMarkRead={(id) => {
+          const thread = threadsData?.threads.find((t) => t.id === id);
+          const currentlyUnread = id in readOverrides ? readOverrides[id] : thread?.isUnread;
           setReadOverrides((prev) => ({ ...prev, [id]: false }));
+          if (currentlyUnread) adjustUnreadCount(-1);
           markRead.mutate({ threadId: id });
         }}
         onMarkUnread={(id) => {
+          const thread = threadsData?.threads.find((t) => t.id === id);
+          const currentlyUnread = id in readOverrides ? readOverrides[id] : thread?.isUnread;
           setReadOverrides((prev) => ({ ...prev, [id]: true }));
+          if (!currentlyUnread) adjustUnreadCount(1);
           markUnread.mutate({ threadId: id });
         }}
         onMarkAllRead={() => {
           const overrides: Record<string, boolean> = {};
+          let unreadDelta = 0;
           (threadsData?.threads ?? []).forEach((t) => {
-            if (t.isUnread) overrides[t.id] = false;
+            const currentlyUnread = t.id in readOverrides ? readOverrides[t.id] : t.isUnread;
+            if (currentlyUnread) {
+              overrides[t.id] = false;
+              unreadDelta--;
+            }
           });
           setReadOverrides((prev) => ({ ...prev, ...overrides }));
+          adjustUnreadCount(unreadDelta);
           markAllRead.mutate();
         }}
       />
