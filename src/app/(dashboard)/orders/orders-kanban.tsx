@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { Clock, Package, DollarSign } from "lucide-react";
+import { COLORS } from "@/lib/tokens";
+import { Clock, Package } from "lucide-react";
 
 type Order = {
   id: string;
@@ -20,25 +21,25 @@ type Order = {
   _count: { items: number; shipments: number; invoices: number; proofs: number };
 };
 
-const KANBAN_COLUMNS = [
-  { status: "SUBMITTED", label: "Submitted", color: "border-blue-500" },
-  { status: "IN_REVIEW", label: "In Review", color: "border-amber-500" },
-  { status: "APPROVED", label: "Approved", color: "border-emerald-500" },
-  { status: "READY_FOR_PRODUCTION", label: "Ready for Production", color: "border-purple-500" },
-  { status: "IN_PRODUCTION", label: "In Production", color: "border-orange-500" },
-  { status: "SHIPPED", label: "Shipped", color: "border-cyan-500" },
-  { status: "COMPLETED", label: "Completed", color: "border-green-500" },
-] as const;
-
-const STATUS_HEADER_COLORS: Record<string, string> = {
-  SUBMITTED: "text-blue-400",
-  IN_REVIEW: "text-amber-400",
-  APPROVED: "text-emerald-400",
-  READY_FOR_PRODUCTION: "text-purple-400",
-  IN_PRODUCTION: "text-orange-400",
-  SHIPPED: "text-cyan-400",
-  COMPLETED: "text-green-400",
+const ORDER_STATUS_COLORS: Record<string, { color: string; bg: string; label: string }> = {
+  SUBMITTED: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Submitted" },
+  IN_REVIEW: { color: "#A78BFA", bg: "rgba(167,139,250,0.12)", label: "In Review" },
+  APPROVED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Approved" },
+  READY_FOR_PRODUCTION: { color: "#A78BFA", bg: "rgba(167,139,250,0.12)", label: "Ready for Production" },
+  IN_PRODUCTION: { color: "#E85D5D", bg: "rgba(232,93,93,0.12)", label: "In Production" },
+  SHIPPED: { color: "#5BDBEF", bg: "rgba(91,219,239,0.12)", label: "Shipped" },
+  COMPLETED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Completed" },
 };
+
+const KANBAN_COLUMNS = [
+  "SUBMITTED",
+  "IN_REVIEW",
+  "APPROVED",
+  "READY_FOR_PRODUCTION",
+  "IN_PRODUCTION",
+  "SHIPPED",
+  "COMPLETED",
+] as const;
 
 export function OrdersKanban({
   orders,
@@ -53,9 +54,10 @@ export function OrdersKanban({
     onSuccess: () => utils.order.list.invalidate(),
   });
 
-  const grouped = KANBAN_COLUMNS.map((col) => ({
-    ...col,
-    orders: orders.filter((o) => o.status === col.status),
+  const grouped = KANBAN_COLUMNS.map((status) => ({
+    status,
+    config: ORDER_STATUS_COLORS[status],
+    orders: orders.filter((o) => o.status === status),
   }));
 
   const handleDrop = (orderId: string, newStatus: string) => {
@@ -68,39 +70,67 @@ export function OrdersKanban({
       {grouped.map((col) => (
         <div
           key={col.status}
-          className="flex w-72 shrink-0 flex-col"
+          className="flex w-72 shrink-0 flex-col rounded-lg border transition-all"
+          style={{
+            backgroundColor: COLORS.surface,
+            borderColor: COLORS.cardBorder,
+          }}
           onDragOver={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.add("ring-1", "ring-coral/30");
+            e.currentTarget.style.borderColor = col.config.color;
+            e.currentTarget.style.boxShadow = `0 0 12px ${col.config.color}30`;
+            e.currentTarget.style.backgroundColor = `${col.config.color}08`;
           }}
           onDragLeave={(e) => {
-            e.currentTarget.classList.remove("ring-1", "ring-coral/30");
+            e.currentTarget.style.borderColor = COLORS.cardBorder;
+            e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.backgroundColor = COLORS.surface;
           }}
           onDrop={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.remove("ring-1", "ring-coral/30");
+            e.currentTarget.style.borderColor = COLORS.cardBorder;
+            e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.backgroundColor = COLORS.surface;
             const orderId = e.dataTransfer.getData("orderId");
             if (orderId) handleDrop(orderId, col.status);
           }}
         >
           {/* Column header */}
-          <div className={cn("mb-2 flex items-center justify-between rounded-lg border-t-2 bg-surface-card px-3 py-2", col.color)}>
-            <span className={cn("text-xs font-semibold uppercase tracking-wider", STATUS_HEADER_COLORS[col.status])}>
-              {col.label}
-            </span>
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/5 px-1.5 text-[10px] font-medium text-gray-400">
+          <div
+            className="flex items-center justify-between px-3 py-2.5 border-b"
+            style={{ borderColor: COLORS.cardBorder }}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: col.config.color }}
+              />
+              <span
+                className="text-xs font-medium"
+                style={{ color: col.config.color }}
+              >
+                {col.config.label}
+              </span>
+            </div>
+            <span
+              className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-medium"
+              style={{
+                backgroundColor: col.config.bg,
+                color: col.config.color,
+              }}
+            >
               {col.orders.length}
             </span>
           </div>
 
           {/* Cards */}
-          <div className="flex flex-1 flex-col gap-2">
+          <div
+            className="relative flex-1 space-y-2 overflow-y-auto p-2"
+            style={{ maxHeight: "calc(100vh - 280px)" }}
+          >
             {col.orders.map((order) => {
               const dueDate = order.dueDate ? new Date(order.dueDate) : null;
               const isOverdue = dueDate && dueDate < new Date() && !["COMPLETED", "CANCELLED", "DELIVERED"].includes(order.status);
-              const daysInState = Math.floor(
-                (Date.now() - new Date(order.createdAt).getTime()) / 86400000
-              );
 
               return (
                 <div
@@ -110,32 +140,67 @@ export function OrdersKanban({
                     e.dataTransfer.setData("orderId", order.id);
                   }}
                   onClick={() => router.push(`/orders/${order.id}`)}
-                  className={cn(
-                    "cursor-pointer rounded-lg border border-surface-border bg-surface-card p-3 transition-all hover:border-gray-500",
-                    isStaff && "cursor-grab active:cursor-grabbing",
-                    isOverdue && "border-red-500/30"
-                  )}
+                  className="rounded-lg border p-3 transition-all"
+                  style={{
+                    backgroundColor: COLORS.card,
+                    borderColor: isOverdue ? "rgba(232,93,93,0.3)" : COLORS.cardBorder,
+                    cursor: isStaff ? "grab" : "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = isOverdue ? "rgba(232,93,93,0.3)" : COLORS.cardBorder;
+                  }}
                 >
-                  <div className="flex items-start justify-between">
-                    <span className="font-mono text-xs font-medium text-coral">
+                  {/* Header: ID + overdue badge */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <span
+                      className="font-mono text-xs font-medium"
+                      style={{ color: COLORS.coral }}
+                    >
                       {order.displayId}
                     </span>
                     {isOverdue && (
-                      <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        style={{
+                          backgroundColor: "rgba(232,93,93,0.12)",
+                          color: "#E85D5D",
+                        }}
+                      >
                         Overdue
                       </span>
                     )}
                   </div>
-                  <h4 className="mt-1 text-sm font-medium text-white line-clamp-2">
+
+                  {/* Title */}
+                  <p
+                    className="mb-1 text-sm font-medium line-clamp-2"
+                    style={{ color: COLORS.textPrimary }}
+                  >
                     {order.title}
-                  </h4>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {order.company.name}
                   </p>
-                  <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center gap-3">
+
+                  {/* Company */}
+                  <div
+                    className="mb-3 text-xs"
+                    style={{ color: COLORS.textSecondary }}
+                  >
+                    {order.company.name}
+                  </div>
+
+                  {/* Footer: date, items, amount */}
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="flex items-center gap-3 text-xs"
+                      style={{ color: COLORS.textMuted }}
+                    >
                       {dueDate && (
-                        <span className={cn("flex items-center gap-1", isOverdue && "text-red-400")}>
+                        <span
+                          className="flex items-center gap-1"
+                          style={isOverdue ? { color: "#E85D5D" } : undefined}
+                        >
                           <Clock className="h-3 w-3" />
                           {dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                         </span>
@@ -145,7 +210,10 @@ export function OrdersKanban({
                         {order._count.items}
                       </span>
                     </div>
-                    <span className="font-medium text-gray-300">
+                    <span
+                      className="text-xs"
+                      style={{ color: COLORS.textMuted }}
+                    >
                       ${Number(order.totalAmount).toLocaleString("en-US", {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0,
@@ -155,10 +223,23 @@ export function OrdersKanban({
                 </div>
               );
             })}
+
             {col.orders.length === 0 && (
-              <div className="flex items-center justify-center rounded-lg border border-dashed border-surface-border py-8 text-xs text-gray-600">
-                No orders
+              <div className="flex items-center justify-center py-8">
+                <span className="text-xs" style={{ color: COLORS.textMuted }}>
+                  No orders
+                </span>
               </div>
+            )}
+
+            {/* Bottom fade gradient for overflow */}
+            {col.orders.length > 3 && (
+              <div
+                className="pointer-events-none sticky bottom-0 left-0 right-0 h-6"
+                style={{
+                  background: `linear-gradient(transparent, ${COLORS.surface})`,
+                }}
+              />
             )}
           </div>
         </div>
