@@ -61,7 +61,7 @@ export const threadRouter = router({
       // Compute unread flag per thread: no read state, or thread updated after last read
       const threadsWithUnread = threads.map((t) => {
         const readState = t.readStates[0];
-        const isUnread = !readState || t.updatedAt > readState.lastReadAt;
+        const isUnread = !readState || new Date(t.updatedAt).getTime() > new Date(readState.lastReadAt).getTime();
         const { readStates: _, ...rest } = t;
         return { ...rest, isUnread };
       });
@@ -98,7 +98,7 @@ export const threadRouter = router({
 
     return threads.filter((t) => {
       const readState = t.readStates[0];
-      return !readState || t.updatedAt > readState.lastReadAt;
+      return !readState || new Date(t.updatedAt).getTime() > new Date(readState.lastReadAt).getTime();
     }).length;
   }),
 

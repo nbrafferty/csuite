@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { ThreadList } from "./thread-list";
 import { ChatPanel } from "./chat-panel";
@@ -37,6 +37,24 @@ export function MessagesView() {
     isUnread: t.id in readOverrides ? readOverrides[t.id] : t.isUnread,
   }));
 
+  // Clean up overrides once server data confirms the change
+  // (only remove an override when the server agrees with it)
+  useEffect(() => {
+    if (!threadsData?.threads) return;
+    setReadOverrides((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of Object.keys(next)) {
+        const serverThread = threadsData.threads.find((t) => t.id === id);
+        if (serverThread && serverThread.isUnread === next[id]) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [threadsData]);
+
   // Selected thread detail
   const { data: threadDetail } = trpc.thread.get.useQuery(
     { id: selectedThreadId! },
@@ -65,41 +83,23 @@ export function MessagesView() {
   const utils = trpc.useUtils();
 
   const markRead = trpc.thread.markRead.useMutation({
-    onSettled: async (_, _err, { threadId }) => {
-      await Promise.all([
-        utils.thread.list.invalidate(),
-        utils.thread.unreadCount.invalidate(),
-      ]);
-      // Clear override once server data is refreshed
-      setReadOverrides((prev) => {
-        const next = { ...prev };
-        delete next[threadId];
-        return next;
-      });
+    onSettled: () => {
+      utils.thread.list.invalidate();
+      utils.thread.unreadCount.invalidate();
     },
   });
 
   const markUnread = trpc.thread.markUnread.useMutation({
-    onSettled: async (_, _err, { threadId }) => {
-      await Promise.all([
-        utils.thread.list.invalidate(),
-        utils.thread.unreadCount.invalidate(),
-      ]);
-      setReadOverrides((prev) => {
-        const next = { ...prev };
-        delete next[threadId];
-        return next;
-      });
+    onSettled: () => {
+      utils.thread.list.invalidate();
+      utils.thread.unreadCount.invalidate();
     },
   });
 
   const markAllRead = trpc.thread.markAllRead.useMutation({
-    onSettled: async () => {
-      await Promise.all([
-        utils.thread.list.invalidate(),
-        utils.thread.unreadCount.invalidate(),
-      ]);
-      setReadOverrides({});
+    onSettled: () => {
+      utils.thread.list.invalidate();
+      utils.thread.unreadCount.invalidate();
     },
   });
 
