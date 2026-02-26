@@ -85,6 +85,9 @@ export function MessagesView() {
   // Helper: directly update the sidebar's unreadCount cache for instant badge feedback
   const adjustUnreadCount = (delta: number) => {
     if (delta === 0) return;
+    // Cancel any in-flight unreadCount refetch so a stale response from a
+    // previous mutation doesn't overwrite this optimistic value
+    utils.thread.unreadCount.cancel();
     utils.thread.unreadCount.setData(undefined, (old) =>
       old != null ? Math.max(0, old + delta) : old
     );
