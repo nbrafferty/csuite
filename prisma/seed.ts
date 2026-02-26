@@ -870,6 +870,134 @@ async function main() {
     },
   }).catch(() => {});
 
+  // ─── Projects ────────────────────────────────────────────────────
+
+  // Project 1: Acme Q1 Onboarding — ACTIVE (has in-production order)
+  await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      createdById: janeSmith.id,
+      name: "Q1 New Hire Onboarding",
+      description: "Branded apparel and collateral for 150 new hires joining in Q1. Polo shirts, tees, and welcome kits.",
+      category: "APPAREL",
+      eventDate: daysAgo(-10),
+      derivedStatus: "IN_PRODUCTION",
+      createdAt: daysAgo(30),
+      orders: {
+        connect: [{ displayId: "CS-1001" }],
+      },
+      quotes: {
+        connect: [{ displayId: "Q-1001" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 2: Acme Trade Show — IN_REVIEW (submitted order)
+  await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      createdById: johnDoe.id,
+      name: "SxSW 2026 Booth Package",
+      description: "Complete trade show booth: banners, staff shirts, stickers, and business cards for our SxSW 2026 presence.",
+      category: "SIGNAGE",
+      eventDate: daysAgo(-21),
+      derivedStatus: "IN_REVIEW",
+      createdAt: daysAgo(14),
+      orders: {
+        connect: [{ displayId: "CS-1002" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 3: Globex Winter Hoodies — ACTIVE (approved order)
+  await prisma.project.create({
+    data: {
+      companyId: globex.id,
+      createdById: globexAdmin.id,
+      name: "Winter 2026 Employee Hoodies",
+      description: "500 black performance hoodies for the entire Globex team. Embroidered logo on left chest.",
+      category: "APPAREL",
+      eventDate: daysAgo(-30),
+      derivedStatus: "ACTIVE",
+      createdAt: daysAgo(21),
+      orders: {
+        connect: [{ displayId: "CS-1003" }],
+      },
+      quotes: {
+        connect: [{ displayId: "Q-1002" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 4: Bloom Grand Opening — COMPLETED (shipped order + converted quote)
+  await prisma.project.create({
+    data: {
+      companyId: bloom.id,
+      createdById: bloomAdmin.id,
+      name: "Bloom Studio Grand Opening",
+      description: "Tees, window decals, and tote bags for the grand opening event. Everything in Bloom's signature sage green.",
+      category: "APPAREL",
+      eventDate: daysAgo(-5),
+      derivedStatus: "COMPLETED",
+      createdAt: daysAgo(35),
+      orders: {
+        connect: [{ displayId: "CS-1004" }],
+      },
+      quotes: {
+        connect: [{ displayId: "Q-1003" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 5: Redline Corporate Gala — COMPLETED
+  await prisma.project.create({
+    data: {
+      companyId: redline.id,
+      createdById: redlineAdmin.id,
+      name: "Corporate Gala 2026",
+      description: "Custom dress shirts with red embroidery for the annual corporate gala dinner.",
+      category: "APPAREL",
+      eventDate: daysAgo(5),
+      derivedStatus: "COMPLETED",
+      createdAt: daysAgo(60),
+      orders: {
+        connect: [{ displayId: "CS-1005" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 6: Greenfield Earth Day — NEEDS_ATTENTION (in review, upcoming deadline)
+  await prisma.project.create({
+    data: {
+      companyId: greenfield.id,
+      createdById: greenfieldAdmin.id,
+      name: "Earth Day 2026 Merch",
+      description: "Eco-friendly organic cotton tees and recycled polyester drawstring bags for the Earth Day celebration.",
+      category: "APPAREL",
+      eventDate: daysAgo(-15),
+      derivedStatus: "NEEDS_ATTENTION",
+      statusOverride: "NEEDS_ATTENTION",
+      createdAt: daysAgo(10),
+      orders: {
+        connect: [{ displayId: "CS-1006" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 7: Acme Client Appreciation — EMPTY (no orders yet, just planning)
+  await prisma.project.create({
+    data: {
+      companyId: demo.id,
+      createdById: janeSmith.id,
+      name: "Client Appreciation Gift Boxes",
+      description: "Personalized gift boxes for top 50 clients — branded pen, notebook, t-shirt, and thank-you card.",
+      category: "OTHER",
+      eventDate: daysAgo(-60),
+      derivedStatus: "EMPTY",
+      createdAt: daysAgo(5),
+    },
+  }).catch(() => {});
+
   // ─── Message Threads ─────────────────────────────────────────────
   const now = new Date();
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3600_000);
