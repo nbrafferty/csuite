@@ -1,12 +1,8 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm install && npm run build"
-
-[build.nixpacks]
-aptPkgs = ["openssl"]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npm run railway:start"
 healthcheckPath = "/"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
