@@ -1,6 +1,13 @@
 [build]
 builder = "nixpacks"
 buildCommand = "npm install && npm run build"
+nixpacksVersion = "1.38.0"
+
+[build.nixpacks]
+aptPkgs = ["...", "openssl"]
+
+[build.nixpacks.env]
+NIXPACKS_NODE_VERSION = "20"
 
 [deploy]
 startCommand = "npm run railway:start"

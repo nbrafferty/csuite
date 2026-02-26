@@ -2,6 +2,9 @@
   "name": "csuite",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "[ -f .env ] || cp .env.example .env && docker compose up -d --wait && npx prisma generate && npx prisma db push && npm run db:seed && next dev",
     "dev:next": "next dev",
