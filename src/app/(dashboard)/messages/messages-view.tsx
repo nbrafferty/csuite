@@ -14,6 +14,9 @@ export function MessagesView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
+  // Local overrides for instant read/unread UI feedback (threadId → isUnread)
+  const [readOverrides, setReadOverrides] = useState<Record<string, boolean>>({});
+
   // Current user
   const { data: me } = trpc.auth.me.useQuery();
   const isStaff = me?.role === "CCC_STAFF";
@@ -27,7 +30,12 @@ export function MessagesView() {
     },
     { refetchInterval: 15_000 }
   );
-  const threads = threadsData?.threads ?? [];
+
+  // Apply local read/unread overrides for instant UI feedback
+  const threads = (threadsData?.threads ?? []).map((t) => ({
+    ...t,
+    isUnread: t.id in readOverrides ? readOverrides[t.id] : t.isUnread,
+  }));
 
   // Selected thread detail
   const { data: threadDetail } = trpc.thread.get.useQuery(
@@ -56,94 +64,43 @@ export function MessagesView() {
   // Mutations
   const utils = trpc.useUtils();
 
-  const invalidateReadState = () => {
-    utils.thread.list.invalidate();
-    utils.thread.unreadCount.invalidate();
-  };
-
-  // Query input matching the thread list query (for optimistic cache updates)
-  const listInput = {
-    status: statusFilter === "all" || statusFilter === "unread" ? undefined : statusFilter,
-    unread: statusFilter === "unread" ? true : undefined,
-    search: search || undefined,
-  };
-
   const markRead = trpc.thread.markRead.useMutation({
-    onMutate: async ({ threadId }) => {
-      await utils.thread.list.cancel();
-      await utils.thread.unreadCount.cancel();
-
-      const prevThreads = utils.thread.list.getData(listInput);
-      const prevCount = utils.thread.unreadCount.getData();
-      const wasUnread = prevThreads?.threads.find((t) => t.id === threadId)?.isUnread;
-
-      utils.thread.list.setData(listInput, (old) => {
-        if (!old) return undefined;
-        return { ...old, threads: old.threads.map((t) => t.id === threadId ? { ...t, isUnread: false } : t) };
+    onSettled: async (_, _err, { threadId }) => {
+      await Promise.all([
+        utils.thread.list.invalidate(),
+        utils.thread.unreadCount.invalidate(),
+      ]);
+      // Clear override once server data is refreshed
+      setReadOverrides((prev) => {
+        const next = { ...prev };
+        delete next[threadId];
+        return next;
       });
-
-      if (wasUnread) {
-        utils.thread.unreadCount.setData(undefined, (old) => old != null ? Math.max(0, old - 1) : old);
-      }
-
-      return { prevThreads, prevCount };
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
-      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
-    },
-    onSettled: invalidateReadState,
   });
 
   const markUnread = trpc.thread.markUnread.useMutation({
-    onMutate: async ({ threadId }) => {
-      await utils.thread.list.cancel();
-      await utils.thread.unreadCount.cancel();
-
-      const prevThreads = utils.thread.list.getData(listInput);
-      const prevCount = utils.thread.unreadCount.getData();
-      const wasRead = !prevThreads?.threads.find((t) => t.id === threadId)?.isUnread;
-
-      utils.thread.list.setData(listInput, (old) => {
-        if (!old) return undefined;
-        return { ...old, threads: old.threads.map((t) => t.id === threadId ? { ...t, isUnread: true } : t) };
+    onSettled: async (_, _err, { threadId }) => {
+      await Promise.all([
+        utils.thread.list.invalidate(),
+        utils.thread.unreadCount.invalidate(),
+      ]);
+      setReadOverrides((prev) => {
+        const next = { ...prev };
+        delete next[threadId];
+        return next;
       });
-
-      if (wasRead) {
-        utils.thread.unreadCount.setData(undefined, (old) => old != null ? old + 1 : old);
-      }
-
-      return { prevThreads, prevCount };
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
-      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
-    },
-    onSettled: invalidateReadState,
   });
 
   const markAllRead = trpc.thread.markAllRead.useMutation({
-    onMutate: async () => {
-      await utils.thread.list.cancel();
-      await utils.thread.unreadCount.cancel();
-
-      const prevThreads = utils.thread.list.getData(listInput);
-      const prevCount = utils.thread.unreadCount.getData();
-
-      utils.thread.list.setData(listInput, (old) => {
-        if (!old) return undefined;
-        return { ...old, threads: old.threads.map((t) => ({ ...t, isUnread: false })) };
-      });
-
-      utils.thread.unreadCount.setData(undefined, () => 0);
-
-      return { prevThreads, prevCount };
+    onSettled: async () => {
+      await Promise.all([
+        utils.thread.list.invalidate(),
+        utils.thread.unreadCount.invalidate(),
+      ]);
+      setReadOverrides({});
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
-      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
-    },
-    onSettled: invalidateReadState,
   });
 
   const sendMessage = trpc.message.send.useMutation({
@@ -169,6 +126,7 @@ export function MessagesView() {
 
   const handleSelectThread = (id: string) => {
     setSelectedThreadId(id);
+    setReadOverrides((prev) => ({ ...prev, [id]: false }));
     markRead.mutate({ threadId: id });
   };
 
@@ -198,9 +156,22 @@ export function MessagesView() {
         onStatusFilterChange={setStatusFilter}
         search={search}
         onSearchChange={setSearch}
-        onMarkRead={(id) => markRead.mutate({ threadId: id })}
-        onMarkUnread={(id) => markUnread.mutate({ threadId: id })}
-        onMarkAllRead={() => markAllRead.mutate()}
+        onMarkRead={(id) => {
+          setReadOverrides((prev) => ({ ...prev, [id]: false }));
+          markRead.mutate({ threadId: id });
+        }}
+        onMarkUnread={(id) => {
+          setReadOverrides((prev) => ({ ...prev, [id]: true }));
+          markUnread.mutate({ threadId: id });
+        }}
+        onMarkAllRead={() => {
+          const overrides: Record<string, boolean> = {};
+          (threadsData?.threads ?? []).forEach((t) => {
+            if (t.isUnread) overrides[t.id] = false;
+          });
+          setReadOverrides((prev) => ({ ...prev, ...overrides }));
+          markAllRead.mutate();
+        }}
       />
 
       {/* Center — Chat Panel */}
