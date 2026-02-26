@@ -162,10 +162,12 @@ export function ThreadList({
               <button
                 onClick={() => onSelectThread(thread.id)}
                 className={cn(
-                  "w-full border-b border-surface-border px-4 py-3 text-left transition-colors",
+                  "w-full border-b border-surface-border py-3 pr-4 text-left transition-colors",
                   isSelected
-                    ? "bg-surface-card"
-                    : "hover:bg-surface-card/50"
+                    ? "border-l-2 border-l-coral bg-foreground/[0.03] pl-[14px]"
+                    : thread.isUnread
+                      ? "border-l-2 border-l-transparent pl-[14px] hover:bg-foreground/[0.03]"
+                      : "border-l-2 border-l-foreground/70 pl-[14px] hover:bg-foreground/[0.03]"
                 )}
               >
                 <div className="flex items-start gap-3">
