@@ -117,7 +117,7 @@ export function deriveProjectStatus(
     (q) => q.status === "SENT" || q.status === "REVISION_REQUESTED"
   );
   const hasConfirmedOrders = orders.some(
-    (o) => o.status !== "DRAFT" && o.status !== "CANCELLED"
+    (o) => o.status !== "SUBMITTED" && o.status !== "CANCELLED"
   );
   if (hasReviewingQuotes && !hasConfirmedOrders) return "IN_REVIEW";
 
