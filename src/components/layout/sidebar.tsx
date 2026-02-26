@@ -57,11 +57,11 @@ export function Sidebar() {
       onMouseLeave={() => setExpanded(false)}
       className={cn(
         "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-surface-border bg-sidebar-bg transition-[width] duration-200 ease-in-out",
-        expanded ? "w-64" : "w-11"
+        expanded ? "w-[226px]" : "w-16"
       )}
     >
       {/* Logo */}
-      <div className={cn("flex h-[72px] shrink-0 items-center justify-center border-b border-surface-border", expanded ? "px-4" : "px-0")}>
+      <div className="flex h-[72px] shrink-0 items-center justify-center border-b border-surface-border px-4">
         <img
           src="/ccc-logo.svg"
           alt="C-Suite"
@@ -85,7 +85,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto overflow-x-hidden py-4", expanded ? "px-2" : "px-0")}>
+      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         {navItems.filter((item) => !item.staffOnly || isStaff).map((item) => {
           const isActive =
             pathname === item.href ||
