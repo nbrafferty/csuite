@@ -77,15 +77,29 @@ export const threadRouter = router({
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.user.id as string;
-    const where: any = {
-      readStates: { none: { userId } },
-    };
+    const where: any = {};
 
     if (ctx.role !== "CCC_STAFF") {
       where.companyId = ctx.companyId;
     }
 
-    return prisma.messageThread.count({ where });
+    const threads = await prisma.messageThread.findMany({
+      where,
+      select: {
+        id: true,
+        updatedAt: true,
+        readStates: {
+          where: { userId },
+          select: { lastReadAt: true },
+          take: 1,
+        },
+      },
+    });
+
+    return threads.filter((t) => {
+      const readState = t.readStates[0];
+      return !readState || t.updatedAt > readState.lastReadAt;
+    }).length;
   }),
 
   get: protectedProcedure

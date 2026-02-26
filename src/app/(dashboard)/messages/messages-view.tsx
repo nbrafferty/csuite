@@ -61,16 +61,89 @@ export function MessagesView() {
     utils.thread.unreadCount.invalidate();
   };
 
+  // Query input matching the thread list query (for optimistic cache updates)
+  const listInput = {
+    status: statusFilter === "all" || statusFilter === "unread" ? undefined : statusFilter,
+    unread: statusFilter === "unread" ? true : undefined,
+    search: search || undefined,
+  };
+
   const markRead = trpc.thread.markRead.useMutation({
-    onSuccess: invalidateReadState,
+    onMutate: async ({ threadId }) => {
+      await utils.thread.list.cancel();
+      await utils.thread.unreadCount.cancel();
+
+      const prevThreads = utils.thread.list.getData(listInput);
+      const prevCount = utils.thread.unreadCount.getData();
+      const wasUnread = prevThreads?.threads.find((t) => t.id === threadId)?.isUnread;
+
+      utils.thread.list.setData(listInput, (old) => {
+        if (!old) return undefined;
+        return { ...old, threads: old.threads.map((t) => t.id === threadId ? { ...t, isUnread: false } : t) };
+      });
+
+      if (wasUnread) {
+        utils.thread.unreadCount.setData(undefined, (old) => old != null ? Math.max(0, old - 1) : old);
+      }
+
+      return { prevThreads, prevCount };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
+      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
+    },
+    onSettled: invalidateReadState,
   });
 
   const markUnread = trpc.thread.markUnread.useMutation({
-    onSuccess: invalidateReadState,
+    onMutate: async ({ threadId }) => {
+      await utils.thread.list.cancel();
+      await utils.thread.unreadCount.cancel();
+
+      const prevThreads = utils.thread.list.getData(listInput);
+      const prevCount = utils.thread.unreadCount.getData();
+      const wasRead = !prevThreads?.threads.find((t) => t.id === threadId)?.isUnread;
+
+      utils.thread.list.setData(listInput, (old) => {
+        if (!old) return undefined;
+        return { ...old, threads: old.threads.map((t) => t.id === threadId ? { ...t, isUnread: true } : t) };
+      });
+
+      if (wasRead) {
+        utils.thread.unreadCount.setData(undefined, (old) => old != null ? old + 1 : old);
+      }
+
+      return { prevThreads, prevCount };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
+      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
+    },
+    onSettled: invalidateReadState,
   });
 
   const markAllRead = trpc.thread.markAllRead.useMutation({
-    onSuccess: invalidateReadState,
+    onMutate: async () => {
+      await utils.thread.list.cancel();
+      await utils.thread.unreadCount.cancel();
+
+      const prevThreads = utils.thread.list.getData(listInput);
+      const prevCount = utils.thread.unreadCount.getData();
+
+      utils.thread.list.setData(listInput, (old) => {
+        if (!old) return undefined;
+        return { ...old, threads: old.threads.map((t) => ({ ...t, isUnread: false })) };
+      });
+
+      utils.thread.unreadCount.setData(undefined, () => 0);
+
+      return { prevThreads, prevCount };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevThreads) utils.thread.list.setData(listInput, ctx.prevThreads);
+      if (ctx?.prevCount != null) utils.thread.unreadCount.setData(undefined, ctx.prevCount);
+    },
+    onSettled: invalidateReadState,
   });
 
   const sendMessage = trpc.message.send.useMutation({
