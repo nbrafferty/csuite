@@ -108,13 +108,13 @@ export function deriveProjectStatus(
         o.status === "CANCELLED"
     );
   const hasOpenQuotes = quotes.some(
-    (q) => q.status === "SENT" || q.status === "REVIEWING" || q.status === "DRAFT"
+    (q) => q.status === "SENT" || q.status === "REVISION_REQUESTED" || q.status === "DRAFT"
   );
   if (allOrdersDone && !hasOpenQuotes) return "COMPLETED";
 
-  // IN_REVIEW: has quotes in SENT/REVIEWING state, no confirmed orders
+  // IN_REVIEW: has quotes in SENT/REVISION_REQUESTED state, no confirmed orders
   const hasReviewingQuotes = quotes.some(
-    (q) => q.status === "SENT" || q.status === "REVIEWING"
+    (q) => q.status === "SENT" || q.status === "REVISION_REQUESTED"
   );
   const hasConfirmedOrders = orders.some(
     (o) => o.status !== "DRAFT" && o.status !== "CANCELLED"
