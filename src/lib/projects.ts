@@ -73,7 +73,7 @@ export function deriveProjectStatus(
     // Invoice overdue
     const hasOverdueInvoice = order.invoices?.some(
       (inv) =>
-        inv.status === "UNPAID" &&
+        inv.status === "SENT" &&
         inv.dueDate &&
         new Date(inv.dueDate) < new Date()
     );
