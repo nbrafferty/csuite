@@ -5,6 +5,8 @@ import { clientRouter } from "./routers/client";
 import { orderRouter } from "./routers/order";
 import { threadRouter } from "./routers/thread";
 import { messageRouter } from "./routers/message";
+import { catalogRouter } from "./routers/catalog";
+import { quoteRequestsRouter } from "./routers/quoteRequests";
 
 export const appRouter = router({
   auth: authRouter,
@@ -13,6 +15,8 @@ export const appRouter = router({
   order: orderRouter,
   thread: threadRouter,
   message: messageRouter,
+  catalog: catalogRouter,
+  quoteRequests: quoteRequestsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,10 +1,11 @@
+"use client";
+
+import { CatalogContent } from "./_components/catalog-content";
+
 export default function CatalogPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-white">Catalog</h1>
-      <p className="mt-1 text-sm text-gray-400">
-        Browse products and apparel options.
-      </p>
+    <div className="-m-6 flex h-[calc(100vh-4rem)]">
+      <CatalogContent />
     </div>
   );
 }

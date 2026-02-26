@@ -13,3 +13,12 @@
     @apply rounded-xl border border-surface-border bg-surface-card p-6;
   }
 }
+
+/* Number input spinner styling */
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+select option {
+  background: #22222a;
+}

@@ -109,6 +109,7 @@ model Company {
   messageThreads    MessageThread[]
   inventoryItems    InventoryItem[]
   auditLogEvents    AuditLogEvent[]
+  quoteRequests     QuoteRequest[]
 
   @@map("companies")
 }
@@ -142,6 +143,7 @@ model User {
   auditLogEvents   AuditLogEvent[]
   artworkCreated   ArtworkAsset[]   @relation("ArtworkCreator")
   savedProductsCreated SavedProduct[] @relation("SavedProductCreator")
+  quoteRequests    QuoteRequest[]
 
   @@index([companyId])
   @@index([companyId, role])
@@ -475,4 +477,64 @@ model AuditLogEvent {
   @@index([companyId])
   @@index([companyId, entityType])
   @@map("audit_log_events")
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────
+
+model CatalogProduct {
+  id           String   @id @default(uuid())
+  name         String
+  subtitle     String?
+  description  String?
+  category     String   // "apparel" | "promo" | "signage"
+  priceFrom    Decimal  @map("price_from") @db.Decimal(10, 2)
+  priceUnit    String   @default("unit") @map("price_unit")
+  tag          String?
+  tagColor     String?  @map("tag_color")
+  images       String[]
+  popular      Boolean  @default(false)
+  configSchema Json?    @map("config_schema")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  quoteRequestItems QuoteRequestItem[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("catalog_products")
+}
+
+model QuoteRequest {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  userId    String   @map("user_id")
+  status    String   @default("draft") // draft | submitted | reviewed | quoted
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company          @relation(fields: [companyId], references: [id])
+  user    User             @relation(fields: [userId], references: [id])
+  items   QuoteRequestItem[]
+
+  @@index([companyId])
+  @@index([userId, status])
+  @@map("quote_requests")
+}
+
+model QuoteRequestItem {
+  id               String   @id @default(uuid())
+  quoteRequestId   String   @map("quote_request_id")
+  catalogProductId String   @map("catalog_product_id")
+  config           Json?
+  totalQty         Int?     @map("total_qty")
+  sizeBreakdown    Json?    @map("size_breakdown")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  quoteRequest   QuoteRequest   @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  catalogProduct CatalogProduct @relation(fields: [catalogProductId], references: [id])
+
+  @@index([quoteRequestId])
+  @@map("quote_request_items")
 }

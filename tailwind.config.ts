@@ -14,11 +14,14 @@ const config: Config = {
           bg: "#0D0D0F",
           card: "#1A1A1E",
           border: "#333338",
+          hover: "#2A2A34",
         },
         coral: {
           DEFAULT: "#E85D5D",
           light: "#F28B8B",
           dark: "#C44444",
+          dim: "rgba(232,93,93,0.12)",
+          border: "rgba(232,93,93,0.25)",
         },
         brand: {
           50: "#eef2ff",
@@ -40,6 +43,25 @@ const config: Config = {
           text: "#9999A1",
           "text-active": "#FFFFFF",
         },
+      },
+      keyframes: {
+        "slide-in-right": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "toast-in": {
+          from: { transform: "translateY(20px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+      },
+      animation: {
+        "slide-in-right": "slide-in-right 0.25s ease",
+        "fade-in": "fade-in 0.2s ease",
+        "toast-in": "toast-in 0.25s ease",
       },
     },
   },
