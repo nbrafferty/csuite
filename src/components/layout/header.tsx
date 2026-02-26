@@ -9,7 +9,7 @@ export function Header() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-surface-border bg-surface-bg/80 px-6 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-surface-border bg-surface-bg/80 px-6 backdrop-blur-sm">
       {/* Search */}
       <div className="relative max-w-md flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
