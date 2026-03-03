@@ -1,406 +1,605 @@
 import { z } from "zod";
-import { router, protectedProcedure, staffProcedure, adminProcedure } from "../trpc";
+import { router, protectedProcedure, staffProcedure } from "../trpc";
+import { QuoteStatus, PaymentTermType } from "@prisma/client";
+import { generateQuoteNumber } from "../../lib/quote-number";
+import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db/prisma";
-import { QuoteStatus, QuoteRequestStatus, OrderStatus, OrderSourceType, ContentType, Prisma } from "@prisma/client";
+
+// ─── Input Schemas ───
+
+const QuoteItemInput = z.object({
+  savedProductId: z.string().optional(),
+  description: z.string().min(1),
+  sku: z.string().optional(),
+  color: z.string().optional(),
+  unitPrice: z.number().positive(),
+  quantity: z.number().int().positive(),
+  decorationNotes: z.string().optional(),
+  sizeBreakdown: z
+    .record(z.string(), z.number().int().nonnegative())
+    .optional(),
+  sortOrder: z.number().int().default(0),
+});
+
+const PaymentTermsInput = z.object({
+  paymentTermType: z.nativeEnum(PaymentTermType),
+  depositPercent: z.number().int().min(1).max(99).optional(),
+  netDays: z.number().int().min(1).max(120).optional(),
+});
+
+// ─── Router ───
 
 export const quoteRouter = router({
+  // LIST — Staff sees all, clients see own company (non-DRAFT only)
   list: protectedProcedure
     .input(
-      z.object({
-        status: z.nativeEnum(QuoteStatus).optional(),
-        cursor: z.string().optional(),
-        limit: z.number().min(1).max(100).default(20),
-      })
+      z
+        .object({
+          status: z.nativeEnum(QuoteStatus).optional(),
+          companyId: z.string().optional(),
+          search: z.string().optional(),
+          page: z.number().int().default(1),
+          perPage: z.number().int().default(20),
+        })
+        .optional()
     )
     .query(async ({ ctx, input }) => {
-      const isStaff = ctx.role === "CCC_STAFF";
-      const where: Prisma.QuoteWhereInput = {};
-      if (!isStaff) where.companyId = ctx.companyId;
-      if (input.status) where.status = input.status;
+      const { user } = ctx;
+      const { status, companyId, search, page = 1, perPage = 20 } =
+        input ?? {};
 
-      const quotes = await prisma.quote.findMany({
-        where,
-        take: input.limit + 1,
-        cursor: input.cursor ? { id: input.cursor } : undefined,
-        orderBy: { createdAt: "desc" },
-        include: {
-          company: { select: { id: true, name: true } },
-          creator: { select: { id: true, name: true } },
-          quoteRequest: { select: { id: true, title: true } },
-          _count: { select: { lineItems: true } },
-        },
-      });
+      const where: any = {};
 
-      let nextCursor: string | undefined;
-      if (quotes.length > input.limit) {
-        const nextItem = quotes.pop();
-        nextCursor = nextItem?.id;
+      // Tenant scoping
+      if ((user as any).role === "CCC_STAFF") {
+        if (companyId) where.companyId = companyId;
+      } else {
+        where.companyId = (user as any).companyId;
+        where.status = { not: "DRAFT" as QuoteStatus };
       }
 
-      return { quotes, nextCursor };
+      if (status) {
+        if (where.status && typeof where.status === "object") {
+          // Client filtering: exclude DRAFT and also apply specific filter
+          where.AND = [{ status: { not: "DRAFT" as QuoteStatus } }, { status }];
+          delete where.status;
+        } else {
+          where.status = status;
+        }
+      }
+
+      if (search) {
+        where.OR = [
+          { number: { contains: search, mode: "insensitive" } },
+          { title: { contains: search, mode: "insensitive" } },
+          { company: { name: { contains: search, mode: "insensitive" } } },
+        ];
+      }
+
+      const [quotes, total] = await Promise.all([
+        prisma.quote.findMany({
+          where,
+          include: {
+            company: { select: { id: true, name: true, slug: true } },
+            createdBy: {
+              select: { id: true, name: true },
+            },
+            items: { select: { lineTotal: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          skip: (page - 1) * perPage,
+          take: perPage,
+        }),
+        prisma.quote.count({ where }),
+      ]);
+
+      return {
+        quotes: quotes.map((q) => ({
+          ...q,
+          total: q.items.reduce((sum, i) => sum + Number(i.lineTotal), 0),
+          itemCount: q.items.length,
+        })),
+        total,
+        page,
+        perPage,
+        totalPages: Math.ceil(total / perPage),
+      };
     }),
 
-  get: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }))
+  // GET BY ID — Staff or own-company client (non-DRAFT)
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const isStaff = ctx.role === "CCC_STAFF";
-      const where: Prisma.QuoteWhereInput = { id: input.id };
-      if (!isStaff) where.companyId = ctx.companyId;
+      const { user } = ctx;
 
-      return prisma.quote.findFirst({
-        where,
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
         include: {
-          company: { select: { id: true, name: true } },
-          creator: { select: { id: true, name: true, email: true } },
-          quoteRequest: { select: { id: true, title: true, description: true } },
-          lineItems: {
-            orderBy: { position: "asc" },
+          company: true,
+          createdBy: {
+            select: { id: true, name: true, email: true },
+          },
+          items: {
+            orderBy: { sortOrder: "asc" },
             include: {
-              catalogProduct: { select: { id: true, name: true } },
+              savedProduct: {
+                select: { id: true, name: true, thumbnailUrl: true },
+              },
             },
           },
-          revisionComments: {
-            orderBy: { createdAt: "asc" },
-            include: { author: { select: { id: true, name: true } } },
+          changeRequests: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              user: { select: { id: true, name: true } },
+            },
           },
-          order: { select: { id: true, displayId: true } },
         },
       });
+
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Tenant check
+      if (
+        (user as any).role !== "CCC_STAFF" &&
+        quote.companyId !== (user as any).companyId
+      ) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Clients can't see drafts
+      if (
+        (user as any).role !== "CCC_STAFF" &&
+        quote.status === "DRAFT"
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      return {
+        ...quote,
+        total: quote.items.reduce((sum, i) => sum + Number(i.lineTotal), 0),
+      };
     }),
 
-  // Staff creates a quote (optionally from a quote request)
+  // CREATE — Staff only
   create: staffProcedure
     .input(
       z.object({
-        companyId: z.string().uuid(),
-        quoteRequestId: z.string().uuid().optional(),
+        companyId: z.string(),
         title: z.string().min(1),
+        paymentTerms: PaymentTermsInput.optional(),
+        expiresAt: z.string().datetime().optional(),
         notes: z.string().optional(),
-        validUntil: z.string().datetime().optional(),
-        lineItems: z.array(
-          z.object({
-            contentType: z.nativeEnum(ContentType).default("OTHER"),
-            title: z.string().min(1),
-            description: z.string().optional(),
-            catalogProductId: z.string().uuid().optional(),
-            sku: z.string().optional(),
-            quantity: z.number().int().min(1).default(1),
-            unitPrice: z.number().min(0),
-          })
-        ).optional(),
+        clientMessage: z.string().optional(),
+        items: z.array(QuoteItemInput).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const count = await prisma.quote.count();
-      const displayId = `Q-${String(count + 1001).padStart(4, "0")}`;
-
-      const lineItems = input.lineItems?.map((item, idx) => ({
-        position: idx + 1,
-        contentType: item.contentType,
-        title: item.title,
-        description: item.description,
-        catalogProductId: item.catalogProductId,
-        sku: item.sku,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.unitPrice * item.quantity,
-      })) ?? [];
-
-      const subtotal = lineItems.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+      const { user } = ctx;
+      const number = await generateQuoteNumber(prisma as any);
 
       const quote = await prisma.quote.create({
         data: {
-          displayId,
+          number,
           companyId: input.companyId,
-          createdById: ctx.user.id,
+          createdByUserId: (user as any).id,
           title: input.title,
+          paymentTermType:
+            input.paymentTerms?.paymentTermType ?? "FULL",
+          depositPercent: input.paymentTerms?.depositPercent,
+          netDays: input.paymentTerms?.netDays,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
           notes: input.notes,
-          validUntil: input.validUntil ? new Date(input.validUntil) : null,
-          subtotal,
-          totalAmount: subtotal,
-          lineItems: lineItems.length > 0 ? { create: lineItems } : undefined,
+          clientMessage: input.clientMessage,
+          items: input.items
+            ? {
+                create: input.items.map((item, i) => ({
+                  ...item,
+                  sortOrder: item.sortOrder ?? i,
+                  lineTotal: item.unitPrice * item.quantity,
+                  sizeBreakdown: item.sizeBreakdown ?? undefined,
+                })),
+              }
+            : undefined,
         },
+        include: { items: true },
       });
-
-      // If from a quote request, link them and update the request status
-      if (input.quoteRequestId) {
-        await prisma.quoteRequest.update({
-          where: { id: input.quoteRequestId },
-          data: {
-            quoteId: quote.id,
-            status: QuoteRequestStatus.QUOTED,
-          },
-        });
-      }
 
       return quote;
     }),
 
-  // Staff edits a quote (DRAFT, REVISION_REQUESTED, REVISED states)
+  // UPDATE — Staff only, only DRAFT or CHANGES_REQUESTED quotes
   update: staffProcedure
     .input(
       z.object({
-        id: z.string().uuid(),
+        id: z.string(),
         title: z.string().min(1).optional(),
+        paymentTerms: PaymentTermsInput.optional(),
+        expiresAt: z.string().datetime().nullable().optional(),
         notes: z.string().optional(),
-        validUntil: z.string().datetime().nullable().optional(),
-        shippingAmount: z.number().min(0).optional(),
-        discountAmount: z.number().min(0).optional(),
-        feeAmount: z.number().min(0).optional(),
-        taxAmount: z.number().min(0).optional(),
+        clientMessage: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      const quote = await prisma.quote.findFirst({ where: { id } });
-      if (!quote) throw new Error("Quote not found");
-
-      const editableStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.REVISION_REQUESTED, QuoteStatus.REVISED];
-      if (!editableStatuses.includes(quote.status)) {
-        throw new Error("Quote can only be edited in Draft, Revision Requested, or Revised state");
+    .mutation(async ({ ctx, input }) => {
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(quote.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Can only edit DRAFT or CHANGES_REQUESTED quotes",
+        });
       }
 
-      const updateData: any = {};
-      if (data.title !== undefined) updateData.title = data.title;
-      if (data.notes !== undefined) updateData.notes = data.notes;
-      if (data.validUntil !== undefined) updateData.validUntil = data.validUntil ? new Date(data.validUntil) : null;
-      if (data.shippingAmount !== undefined) updateData.shippingAmount = data.shippingAmount;
-      if (data.discountAmount !== undefined) updateData.discountAmount = data.discountAmount;
-      if (data.feeAmount !== undefined) updateData.feeAmount = data.feeAmount;
-      if (data.taxAmount !== undefined) updateData.taxAmount = data.taxAmount;
-
-      // Recalculate total
-      const items = await prisma.quoteLineItem.findMany({ where: { quoteId: id } });
-      const subtotal = items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
-      const shipping = data.shippingAmount ?? Number(quote.shippingAmount);
-      const discount = data.discountAmount ?? Number(quote.discountAmount);
-      const fee = data.feeAmount ?? Number(quote.feeAmount);
-      const tax = data.taxAmount ?? Number(quote.taxAmount);
-      updateData.subtotal = subtotal;
-      updateData.totalAmount = subtotal + shipping + fee + tax - discount;
-
-      return prisma.quote.update({ where: { id }, data: updateData });
-    }),
-
-  // Staff sends quote to client
-  send: staffProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ input }) => {
-      const quote = await prisma.quote.findFirst({ where: { id: input.id } });
-      if (!quote) throw new Error("Quote not found");
-      if (quote.status !== QuoteStatus.DRAFT && quote.status !== QuoteStatus.REVISED) {
-        throw new Error("Only draft or revised quotes can be sent");
-      }
       return prisma.quote.update({
         where: { id: input.id },
-        data: { status: QuoteStatus.SENT },
+        data: {
+          title: input.title,
+          paymentTermType: input.paymentTerms?.paymentTermType,
+          depositPercent: input.paymentTerms?.depositPercent,
+          netDays: input.paymentTerms?.netDays,
+          expiresAt:
+            input.expiresAt !== undefined
+              ? input.expiresAt
+                ? new Date(input.expiresAt)
+                : null
+              : undefined,
+          notes: input.notes,
+          clientMessage: input.clientMessage,
+        },
       });
     }),
 
-  // Client approves → creates order
-  approve: adminProcedure
-    .input(z.object({ id: z.string().uuid() }))
+  // ADD ITEM — Staff only
+  addItem: staffProcedure
+    .input(
+      z.object({
+        quoteId: z.string(),
+        item: QuoteItemInput,
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const quote = await prisma.quote.findFirst({
-        where: { id: input.id, companyId: ctx.companyId },
-        include: { lineItems: true },
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.quoteId },
       });
-
-      if (!quote) throw new Error("Quote not found");
-      if (quote.status !== QuoteStatus.SENT) {
-        throw new Error("Only sent quotes can be approved");
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(quote.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot add items to this quote",
+        });
       }
 
-      // Create order from quote
+      return prisma.quoteItem.create({
+        data: {
+          quoteId: input.quoteId,
+          ...input.item,
+          lineTotal: input.item.unitPrice * input.item.quantity,
+          sizeBreakdown: input.item.sizeBreakdown ?? undefined,
+        },
+      });
+    }),
+
+  // UPDATE ITEM — Staff only
+  updateItem: staffProcedure
+    .input(
+      z.object({
+        itemId: z.string(),
+        item: QuoteItemInput.partial(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await prisma.quoteItem.findUnique({
+        where: { id: input.itemId },
+        include: { quote: { select: { status: true } } },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(existing.quote.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+
+      const unitPrice = input.item.unitPrice ?? Number(existing.unitPrice);
+      const quantity = input.item.quantity ?? existing.quantity;
+
+      return prisma.quoteItem.update({
+        where: { id: input.itemId },
+        data: {
+          ...input.item,
+          lineTotal: unitPrice * quantity,
+          sizeBreakdown: input.item.sizeBreakdown ?? undefined,
+        },
+      });
+    }),
+
+  // REMOVE ITEM — Staff only
+  removeItem: staffProcedure
+    .input(z.object({ itemId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await prisma.quoteItem.findUnique({
+        where: { id: input.itemId },
+        include: { quote: { select: { status: true } } },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(existing.quote.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+
+      return prisma.quoteItem.delete({ where: { id: input.itemId } });
+    }),
+
+  // REORDER ITEMS — Staff only
+  reorderItems: staffProcedure
+    .input(
+      z.object({
+        quoteId: z.string(),
+        itemIds: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await prisma.$transaction(
+        input.itemIds.map((id, index) =>
+          prisma.quoteItem.update({
+            where: { id },
+            data: { sortOrder: index },
+          })
+        )
+      );
+      return { success: true };
+    }),
+
+  // SEND — Staff only, transitions DRAFT/CHANGES_REQUESTED → SENT
+  send: staffProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        clientMessage: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(quote.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Can only send DRAFT or CHANGES_REQUESTED quotes",
+        });
+      }
+
+      return prisma.quote.update({
+        where: { id: input.id },
+        data: {
+          status: "SENT",
+          sentAt: new Date(),
+          clientMessage: input.clientMessage ?? quote.clientMessage,
+        },
+      });
+    }),
+
+  // APPROVE — Client Admin only, transitions SENT → APPROVED
+  approve: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      if ((user as any).role === "CCC_STAFF") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Staff cannot approve quotes",
+        });
+      }
+      if ((user as any).role !== "CLIENT_ADMIN") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only client admins can approve quotes",
+        });
+      }
+
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quote.companyId !== (user as any).companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (quote.status !== "SENT") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Can only approve SENT quotes",
+        });
+      }
+
+      return prisma.quote.update({
+        where: { id: input.id },
+        data: {
+          status: "APPROVED",
+          approvedAt: new Date(),
+          approvedByUserId: (user as any).id,
+        },
+      });
+    }),
+
+  // REQUEST CHANGES — Client (Admin or User), transitions SENT → CHANGES_REQUESTED
+  requestChanges: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        message: z.string().min(1),
+        itemComments: z
+          .array(
+            z.object({
+              quoteItemId: z.string(),
+              comment: z.string().min(1),
+            })
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      if ((user as any).role === "CCC_STAFF") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quote.companyId !== (user as any).companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (quote.status !== "SENT") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Can only request changes on SENT quotes",
+        });
+      }
+
+      const [updatedQuote] = await prisma.$transaction([
+        prisma.quote.update({
+          where: { id: input.id },
+          data: { status: "CHANGES_REQUESTED" },
+        }),
+        prisma.quoteChangeRequest.create({
+          data: {
+            quoteId: input.id,
+            userId: (user as any).id,
+            message: input.message,
+            itemComments: input.itemComments ?? [],
+          },
+        }),
+      ]);
+
+      return updatedQuote;
+    }),
+
+  // DECLINE — Client Admin only, transitions SENT → DECLINED
+  decline: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+      if ((user as any).role !== "CLIENT_ADMIN") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quote.companyId !== (user as any).companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (quote.status !== "SENT") {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+
+      return prisma.quote.update({
+        where: { id: input.id },
+        data: { status: "DECLINED", declinedAt: new Date() },
+      });
+    }),
+
+  // CONVERT TO ORDER — Staff only, transitions APPROVED → CONVERTED
+  convertToOrder: staffProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { user } = ctx;
+
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+        include: { items: true },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quote.status !== "APPROVED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Can only convert APPROVED quotes",
+        });
+      }
+
+      // Generate order display ID
       const count = await prisma.order.count();
       const displayId = `CS-${String(count + 1001).padStart(4, "0")}`;
 
-      const order = await prisma.order.create({
-        data: {
-          companyId: quote.companyId,
-          createdBy: ctx.user.id,
-          displayId,
-          sourceType: OrderSourceType.QUOTE,
-          title: quote.title,
-          status: OrderStatus.SUBMITTED,
-          subtotal: quote.subtotal,
-          taxAmount: quote.taxAmount,
-          shippingAmount: quote.shippingAmount,
-          discountAmount: quote.discountAmount,
-          feeAmount: quote.feeAmount,
-          totalAmount: quote.totalAmount,
-          items: {
-            create: quote.lineItems.map((item) => ({
-              position: item.position,
-              contentType: item.contentType,
-              title: item.title,
-              description: item.description,
-              catalogProductId: item.catalogProductId,
-              sku: item.sku,
-              unitPrice: item.unitPrice,
-              quantity: item.quantity,
-              lineTotal: item.lineTotal,
-            })),
-          },
-        },
-      });
+      // Calculate totals from quote items
+      const subtotal = quote.items.reduce(
+        (sum, i) => sum + Number(i.lineTotal),
+        0
+      );
 
-      // Update quote status and link to order
-      await prisma.quote.update({
-        where: { id: input.id },
-        data: {
-          status: QuoteStatus.CONVERTED,
-          orderId: order.id,
-        },
+      // Create order + copy line items in a transaction
+      const [order] = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.create({
+          data: {
+            companyId: quote.companyId,
+            createdBy: (user as any).id,
+            displayId,
+            sourceType: "QUOTE",
+            title: quote.title,
+            status: "SUBMITTED",
+            subtotal,
+            totalAmount: subtotal,
+            items: {
+              create: quote.items.map((item, idx) => ({
+                position: idx + 1,
+                title: item.description,
+                description: item.decorationNotes,
+                savedProductId: item.savedProductId,
+                sku: item.sku,
+                unitPrice: item.unitPrice,
+                quantity: item.quantity,
+                sizeBreakdown: item.sizeBreakdown ?? undefined,
+                lineTotal: item.lineTotal,
+              })),
+            },
+          },
+        });
+
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: {
+            status: "CONVERTED",
+            convertedOrderId: order.id,
+            convertedAt: new Date(),
+          },
+        });
+
+        return [order];
       });
 
       return order;
     }),
 
-  // Client declines
-  decline: protectedProcedure
-    .input(z.object({ id: z.string().uuid(), reason: z.string().optional() }))
-    .mutation(async ({ ctx, input }) => {
-      const quote = await prisma.quote.findFirst({
-        where: { id: input.id, companyId: ctx.companyId },
-      });
-
-      if (!quote) throw new Error("Quote not found");
-      if (quote.status !== QuoteStatus.SENT) {
-        throw new Error("Only sent quotes can be declined");
-      }
-
-      const updated = await prisma.quote.update({
-        where: { id: input.id },
-        data: { status: QuoteStatus.DECLINED },
-      });
-
-      if (input.reason) {
-        await prisma.quoteComment.create({
-          data: {
-            quoteId: input.id,
-            authorId: ctx.user.id,
-            body: input.reason,
-            version: quote.version,
-          },
-        });
-      }
-
-      return updated;
-    }),
-
-  // Client requests changes
-  requestChanges: protectedProcedure
-    .input(z.object({ id: z.string().uuid(), comment: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const quote = await prisma.quote.findFirst({
-        where: { id: input.id, companyId: ctx.companyId },
-      });
-
-      if (!quote) throw new Error("Quote not found");
-      if (quote.status !== QuoteStatus.SENT) {
-        throw new Error("Can only request changes on sent quotes");
-      }
-
-      await prisma.quoteComment.create({
-        data: {
-          quoteId: input.id,
-          authorId: ctx.user.id,
-          body: input.comment,
-          version: quote.version,
-        },
-      });
-
-      return prisma.quote.update({
-        where: { id: input.id },
-        data: { status: QuoteStatus.REVISION_REQUESTED },
-      });
-    }),
-
-  // Staff submits revision
-  revise: staffProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ input }) => {
-      const quote = await prisma.quote.findFirst({ where: { id: input.id } });
-      if (!quote) throw new Error("Quote not found");
-      if (quote.status !== QuoteStatus.REVISION_REQUESTED) {
-        throw new Error("Only revision-requested quotes can be revised");
-      }
-      return prisma.quote.update({
-        where: { id: input.id },
-        data: {
-          status: QuoteStatus.REVISED,
-          version: quote.version + 1,
-        },
-      });
-    }),
-
-  // ─── Line Items ──────────────────────────────────────────────────
-
-  addLineItem: staffProcedure
+  // LIST SAVED PRODUCTS — For catalog picker in quote builder
+  listSavedProducts: staffProcedure
     .input(
       z.object({
-        quoteId: z.string().uuid(),
-        contentType: z.nativeEnum(ContentType).default("OTHER"),
-        title: z.string().min(1),
-        description: z.string().optional(),
-        catalogProductId: z.string().uuid().optional(),
-        sku: z.string().optional(),
-        quantity: z.number().int().min(1).default(1),
-        unitPrice: z.number().min(0),
+        companyId: z.string(),
+        search: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const maxPos = await prisma.quoteLineItem.aggregate({
-        where: { quoteId: input.quoteId },
-        _max: { position: true },
-      });
+    .query(async ({ ctx, input }) => {
+      const where: any = { companyId: input.companyId };
+      if (input.search) {
+        where.OR = [
+          { name: { contains: input.search, mode: "insensitive" } },
+          { sku: { contains: input.search, mode: "insensitive" } },
+        ];
+      }
 
-      const item = await prisma.quoteLineItem.create({
-        data: {
-          quoteId: input.quoteId,
-          position: (maxPos._max.position ?? 0) + 1,
-          contentType: input.contentType,
-          title: input.title,
-          description: input.description,
-          catalogProductId: input.catalogProductId,
-          sku: input.sku,
-          quantity: input.quantity,
-          unitPrice: input.unitPrice,
-          lineTotal: input.unitPrice * input.quantity,
-        },
+      return prisma.savedProduct.findMany({
+        where,
+        orderBy: { name: "asc" },
+        take: 50,
       });
-
-      await recalculateQuoteTotals(input.quoteId);
-      return item;
     }),
 
-  removeLineItem: staffProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ input }) => {
-      const item = await prisma.quoteLineItem.findFirst({ where: { id: input.id } });
-      if (!item) throw new Error("Line item not found");
-      await prisma.quoteLineItem.delete({ where: { id: input.id } });
-      await recalculateQuoteTotals(item.quoteId);
-      return { success: true };
-    }),
+  // LIST COMPANIES — For company selector in quote builder
+  listCompanies: staffProcedure.query(async () => {
+    return prisma.company.findMany({
+      where: { slug: { not: "central-creative" } },
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: "asc" },
+    });
+  }),
 });
-
-async function recalculateQuoteTotals(quoteId: string) {
-  const items = await prisma.quoteLineItem.findMany({ where: { quoteId } });
-  const subtotal = items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
-
-  const quote = await prisma.quote.findFirst({ where: { id: quoteId } });
-  if (!quote) return;
-
-  const shipping = Number(quote.shippingAmount);
-  const discount = Number(quote.discountAmount);
-  const fee = Number(quote.feeAmount);
-  const tax = Number(quote.taxAmount);
-  const total = subtotal + shipping + fee + tax - discount;
-
-  await prisma.quote.update({
-    where: { id: quoteId },
-    data: { subtotal, totalAmount: total },
-  });
-}

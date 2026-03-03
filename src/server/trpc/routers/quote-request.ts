@@ -26,7 +26,7 @@ export const quoteRequestRouter = router({
         include: {
           company: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true } },
-          quote: { select: { id: true, displayId: true, status: true } },
+          quote: { select: { id: true, number: true, status: true } },
           _count: { select: { catalogItems: true } },
         },
       });
@@ -52,7 +52,7 @@ export const quoteRequestRouter = router({
         include: {
           company: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true, email: true } },
-          quote: { select: { id: true, displayId: true, status: true } },
+          quote: { select: { id: true, number: true, status: true } },
           catalogItems: {
             include: {
               catalogProduct: { select: { id: true, name: true, sku: true, basePrice: true } },

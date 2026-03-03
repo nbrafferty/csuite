@@ -31,11 +31,11 @@ enum QuoteRequestStatus {
 enum QuoteStatus {
   DRAFT
   SENT
-  REVISION_REQUESTED
-  REVISED
+  CHANGES_REQUESTED
   APPROVED
-  CONVERTED
   DECLINED
+  EXPIRED
+  CONVERTED
 }
 
 enum OrderStatus {
@@ -155,6 +155,12 @@ enum ProjectStatus {
   COMPLETED
 }
 
+enum PaymentTermType {
+  FULL
+  DEPOSIT
+  NET
+}
+
 // ─── Models ──────────────────────────────────────────────────────────
 
 model Company {
@@ -173,6 +179,7 @@ model Company {
   users             User[]
   locations         Location[]
   orders            Order[]
+  quotes            Quote[]
   savedProducts     SavedProduct[]
   artworkAssets     ArtworkAsset[]
   invoices          Invoice[]
@@ -180,7 +187,6 @@ model Company {
   inventoryItems    InventoryItem[]
   auditLogEvents    AuditLogEvent[]
   quoteRequests     QuoteRequest[]
-  quotes            Quote[]
   projects          Project[]
   catalogProducts   CatalogProduct[]
 
@@ -218,7 +224,7 @@ model User {
   savedProductsCreated SavedProduct[]  @relation("SavedProductCreator")
   quoteRequestsCreated QuoteRequest[]  @relation("QuoteRequestCreator")
   quotesCreated       Quote[]          @relation("QuoteCreator")
-  quoteComments       QuoteComment[]
+  changeRequests      QuoteChangeRequest[]
   internalTasksAssigned InternalTask[] @relation("TaskAssignee")
   projectsCreated     Project[]        @relation("ProjectCreator")
 
@@ -293,74 +299,86 @@ model QuoteRequestItem {
 // ─── Quote ───────────────────────────────────────────────────────────
 
 model Quote {
-  id               String      @id @default(uuid())
-  displayId        String      @unique @map("display_id")
-  companyId        String      @map("company_id")
-  projectId        String?     @map("project_id")
-  createdById      String      @map("created_by_id")
-  status           QuoteStatus @default(DRAFT)
-  version          Int         @default(1)
-  title            String
-  notes            String?
-  validUntil       DateTime?   @map("valid_until")
-  subtotal         Decimal     @default(0) @db.Decimal(10, 2)
-  taxAmount        Decimal     @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  shippingAmount   Decimal     @default(0) @map("shipping_amount") @db.Decimal(10, 2)
-  discountAmount   Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  feeAmount        Decimal     @default(0) @map("fee_amount") @db.Decimal(10, 2)
-  totalAmount      Decimal     @default(0) @map("total_amount") @db.Decimal(10, 2)
-  orderId          String?     @unique @map("order_id")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
+  id                String          @id @default(cuid())
+  number            String          @unique
+  companyId         String          @map("company_id")
+  projectId         String?         @map("project_id")
+  createdByUserId   String          @map("created_by_user_id")
+  title             String
+  status            QuoteStatus     @default(DRAFT)
 
-  company          Company     @relation(fields: [companyId], references: [id])
-  project          Project?    @relation(fields: [projectId], references: [id])
-  creator          User        @relation("QuoteCreator", fields: [createdById], references: [id])
-  order            Order?      @relation(fields: [orderId], references: [id])
-  quoteRequest     QuoteRequest?
-  lineItems        QuoteLineItem[]
-  revisionComments QuoteComment[]
+  paymentTermType   PaymentTermType @default(FULL) @map("payment_term_type")
+  depositPercent    Int?            @map("deposit_percent")
+  netDays           Int?            @map("net_days")
 
-  @@index([companyId])
+  expiresAt         DateTime?       @map("expires_at")
+  notes             String?         @db.Text
+  clientMessage     String?         @db.Text @map("client_message")
+
+  convertedOrderId  String?         @unique @map("converted_order_id")
+  convertedAt       DateTime?       @map("converted_at")
+
+  items             QuoteItem[]
+  changeRequests    QuoteChangeRequest[]
+
+  sentAt            DateTime?       @map("sent_at")
+  approvedAt        DateTime?       @map("approved_at")
+  approvedByUserId  String?         @map("approved_by_user_id")
+  declinedAt        DateTime?       @map("declined_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  company           Company         @relation(fields: [companyId], references: [id])
+  project           Project?        @relation(fields: [projectId], references: [id])
+  createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
+  convertedOrder    Order?          @relation(fields: [convertedOrderId], references: [id])
+  quoteRequest      QuoteRequest?
+
   @@index([companyId, status])
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([number])
   @@index([projectId])
   @@map("quotes")
 }
 
-model QuoteLineItem {
-  id               String          @id @default(uuid())
-  quoteId          String          @map("quote_id")
-  position         Int
-  contentType      ContentType     @default(OTHER) @map("content_type")
-  title            String
-  description      String?
-  catalogProductId String?         @map("catalog_product_id")
-  sku              String?
-  quantity         Int             @default(1)
-  unitPrice        Decimal         @default(0) @map("unit_price") @db.Decimal(10, 2)
-  lineTotal        Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
-  createdAt        DateTime        @default(now()) @map("created_at")
+model QuoteItem {
+  id                String        @id @default(cuid())
+  quoteId           String        @map("quote_id")
+  quote             Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  sortOrder         Int           @default(0) @map("sort_order")
 
-  quote            Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  catalogProduct   CatalogProduct? @relation(fields: [catalogProductId], references: [id])
+  savedProductId    String?       @map("saved_product_id")
+  savedProduct      SavedProduct? @relation(fields: [savedProductId], references: [id])
+
+  description       String
+  sku               String?
+  color             String?
+  unitPrice         Decimal       @map("unit_price") @db.Decimal(10, 2)
+  quantity          Int
+  decorationNotes   String?       @db.Text @map("decoration_notes")
+  sizeBreakdown     Json?         @map("size_breakdown")
+  lineTotal         Decimal       @map("line_total") @db.Decimal(10, 2)
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   @@index([quoteId])
-  @@map("quote_line_items")
+  @@map("quote_items")
 }
 
-model QuoteComment {
-  id        String   @id @default(uuid())
-  quoteId   String   @map("quote_id")
-  authorId  String   @map("author_id")
-  body      String
-  version   Int      // which quote version this comment pertains to
-  createdAt DateTime @default(now()) @map("created_at")
-
-  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id])
+model QuoteChangeRequest {
+  id                String        @id @default(cuid())
+  quoteId           String        @map("quote_id")
+  quote             Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  userId            String        @map("user_id")
+  user              User          @relation(fields: [userId], references: [id])
+  message           String        @db.Text
+  itemComments      Json          @default("[]") @map("item_comments")
+  createdAt         DateTime      @default(now()) @map("created_at")
 
   @@index([quoteId])
-  @@map("quote_comments")
+  @@map("quote_change_requests")
 }
 
 // ─── Order ───────────────────────────────────────────────────────────
@@ -489,7 +507,6 @@ model CatalogProduct {
   company           Company?          @relation(fields: [companyId], references: [id])
   vendor            Vendor?           @relation(fields: [vendorId], references: [id])
   orderItems        OrderItem[]
-  quoteLineItems    QuoteLineItem[]
   quoteRequestItems QuoteRequestItem[]
 
   @@index([contentType])
@@ -511,6 +528,7 @@ model SavedProduct {
   company              Company     @relation(fields: [companyId], references: [id])
   creator              User        @relation("SavedProductCreator", fields: [createdBy], references: [id])
   orderItems           OrderItem[]
+  quoteItems           QuoteItem[]
 
   @@index([companyId])
   @@map("saved_products")

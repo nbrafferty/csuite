@@ -301,7 +301,7 @@ export function NewProjectModal({ open, onClose }: NewProjectModalProps) {
                     >
                       <span className="shrink-0">📄</span>
                       <span className="truncate">
-                        {quote.displayId} — {quote.title}
+                        {quote.number} — {quote.title}
                       </span>
                       {selectedQuoteIds.includes(quote.id) && (
                         <span className="ml-auto">✓</span>
@@ -362,7 +362,7 @@ export function NewProjectModal({ open, onClose }: NewProjectModalProps) {
                         color: COLORS.purple,
                       }}
                     >
-                      📄 {quote?.displayId ?? id.slice(0, 8)}
+                      📄 {quote?.number ?? id.slice(0, 8)}
                       <button
                         type="button"
                         onClick={() =>

@@ -108,7 +108,7 @@ export const orderRouter = router({
             },
           },
           invoices: { orderBy: { issuedAt: "desc" } },
-          quote: { select: { id: true, displayId: true } },
+          quote: { select: { id: true, number: true } },
           internalTasks: isStaff
             ? { orderBy: { createdAt: "asc" }, include: { assignee: { select: { id: true, name: true } } } }
             : false,

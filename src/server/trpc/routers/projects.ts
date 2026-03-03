@@ -498,7 +498,7 @@ export const projectsRouter = router({
           projectId: null,
           title: { contains: input.search, mode: "insensitive" },
         },
-        select: { id: true, title: true, displayId: true, status: true },
+        select: { id: true, title: true, number: true, status: true },
         take: 10,
       });
     }),

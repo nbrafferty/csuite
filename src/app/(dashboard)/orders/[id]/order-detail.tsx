@@ -159,7 +159,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 )}
               >
                 {order.sourceType === "QUOTE"
-                  ? `FROM QUOTE ${order.quote?.displayId ?? ""}`
+                  ? `FROM QUOTE ${order.quote?.number ?? ""}`
                   : "FROM CATALOG"}
               </span>
             </div>

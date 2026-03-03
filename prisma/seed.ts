@@ -762,84 +762,73 @@ async function main() {
   // ─── Sample Quotes ───────────────────────────────────────────────
 
   await prisma.quote.upsert({
-    where: { displayId: "Q-1001" },
+    where: { number: "QT-2026-001" },
     update: {},
     create: {
-      displayId: "Q-1001",
+      number: "QT-2026-001",
       companyId: demo.id,
-      createdById: cccAdmin.id,
+      createdByUserId: cccAdmin.id,
       status: "SENT",
-      version: 1,
       title: "Acme Annual Conference Package",
       notes: "Pricing includes setup fees. Volume discounts applied at 200+ units.",
-      validUntil: daysAgo(-30),
-      subtotal: 8750.00,
-      shippingAmount: 195.00,
-      taxAmount: 721.88,
-      totalAmount: 9666.88,
-      lineItems: {
+      expiresAt: daysAgo(-30),
+      sentAt: daysAgo(5),
+      items: {
         create: [
-          { position: 1, contentType: "APPAREL", title: "Conference T-Shirts — Custom Design", quantity: 500, unitPrice: 9.50, lineTotal: 4750.00 },
-          { position: 2, contentType: "APPAREL", title: "Speaker Polo Shirts — Premium", quantity: 25, unitPrice: 28.00, lineTotal: 700.00 },
-          { position: 3, contentType: "SIGNAGE", title: "Stage Backdrop Banner (10ft × 8ft)", quantity: 1, unitPrice: 850.00, lineTotal: 850.00 },
-          { position: 4, contentType: "SIGNAGE", title: "Directional Signs (Coroplast, 24x36)", quantity: 15, unitPrice: 25.00, lineTotal: 375.00 },
-          { position: 5, contentType: "PROMO_ITEM", title: "Branded Lanyards", quantity: 500, unitPrice: 2.15, lineTotal: 1075.00 },
-          { position: 6, contentType: "PROMO_ITEM", title: "Conference Tote Bags", quantity: 500, unitPrice: 2.00, lineTotal: 1000.00 },
+          { sortOrder: 0, description: "Conference T-Shirts — Custom Design", quantity: 500, unitPrice: 9.50, lineTotal: 4750.00 },
+          { sortOrder: 1, description: "Speaker Polo Shirts — Premium", quantity: 25, unitPrice: 28.00, lineTotal: 700.00 },
+          { sortOrder: 2, description: "Stage Backdrop Banner (10ft × 8ft)", quantity: 1, unitPrice: 850.00, lineTotal: 850.00 },
+          { sortOrder: 3, description: "Directional Signs (Coroplast, 24x36)", quantity: 15, unitPrice: 25.00, lineTotal: 375.00 },
+          { sortOrder: 4, description: "Branded Lanyards", quantity: 500, unitPrice: 2.15, lineTotal: 1075.00 },
+          { sortOrder: 5, description: "Conference Tote Bags", quantity: 500, unitPrice: 2.00, lineTotal: 1000.00 },
         ],
       },
     },
   });
 
   await prisma.quote.upsert({
-    where: { displayId: "Q-1002" },
+    where: { number: "QT-2026-002" },
     update: {},
     create: {
-      displayId: "Q-1002",
+      number: "QT-2026-002",
       companyId: globex.id,
-      createdById: cccAdmin.id,
+      createdByUserId: cccAdmin.id,
       status: "DRAFT",
-      version: 1,
       title: "Globex Q2 New Hire Welcome Kits",
-      subtotal: 6240.00,
-      totalAmount: 6240.00,
-      lineItems: {
+      items: {
         create: [
-          { position: 1, contentType: "APPAREL", title: "Welcome Hoodie — Charcoal", quantity: 80, unitPrice: 38.00, lineTotal: 3040.00 },
-          { position: 2, contentType: "APPAREL", title: "Welcome T-Shirt — White", quantity: 80, unitPrice: 12.00, lineTotal: 960.00 },
-          { position: 3, contentType: "PROMO_ITEM", title: "Branded Water Bottle", quantity: 80, unitPrice: 15.00, lineTotal: 1200.00 },
-          { position: 4, contentType: "PROMO_ITEM", title: "Custom Notebook + Pen Set", quantity: 80, unitPrice: 13.00, lineTotal: 1040.00 },
+          { sortOrder: 0, description: "Welcome Hoodie — Charcoal", quantity: 80, unitPrice: 38.00, lineTotal: 3040.00 },
+          { sortOrder: 1, description: "Welcome T-Shirt — White", quantity: 80, unitPrice: 12.00, lineTotal: 960.00 },
+          { sortOrder: 2, description: "Branded Water Bottle", quantity: 80, unitPrice: 15.00, lineTotal: 1200.00 },
+          { sortOrder: 3, description: "Custom Notebook + Pen Set", quantity: 80, unitPrice: 13.00, lineTotal: 1040.00 },
         ],
       },
     },
   });
 
   await prisma.quote.upsert({
-    where: { displayId: "Q-1003" },
+    where: { number: "QT-2026-003" },
     update: {},
     create: {
-      displayId: "Q-1003",
+      number: "QT-2026-003",
       companyId: bloom.id,
-      createdById: cccAdmin.id,
+      createdByUserId: cccAdmin.id,
       status: "CONVERTED",
-      version: 2,
       title: "Bloom Studio Grand Opening Kit",
       notes: "Revised from v1 — added tote bags per client request.",
-      subtotal: 3250.00,
-      shippingAmount: 45.00,
-      taxAmount: 268.13,
-      totalAmount: 3563.13,
-      lineItems: {
+      sentAt: daysAgo(30),
+      convertedAt: daysAgo(20),
+      items: {
         create: [
-          { position: 1, contentType: "APPAREL", title: "Bloom-branded Tees — Sage Green", quantity: 200, unitPrice: 12.50, lineTotal: 2500.00 },
-          { position: 2, contentType: "SIGNAGE", title: "Window Vinyl Decals (Set of 4)", quantity: 4, unitPrice: 75.00, lineTotal: 300.00 },
-          { position: 3, contentType: "PROMO_ITEM", title: "Canvas Tote Bags — Natural", quantity: 100, unitPrice: 4.50, lineTotal: 450.00 },
+          { sortOrder: 0, description: "Bloom-branded Tees — Sage Green", quantity: 200, unitPrice: 12.50, lineTotal: 2500.00 },
+          { sortOrder: 1, description: "Window Vinyl Decals (Set of 4)", quantity: 4, unitPrice: 75.00, lineTotal: 300.00 },
+          { sortOrder: 2, description: "Canvas Tote Bags — Natural", quantity: 100, unitPrice: 4.50, lineTotal: 450.00 },
         ],
       },
-      revisionComments: {
+      changeRequests: {
         create: [{
-          authorId: bloomAdmin.id,
-          body: "Can you add canvas tote bags to the order? About 100 units. Natural color.",
-          version: 1,
+          userId: bloomAdmin.id,
+          message: "Can you add canvas tote bags to the order? About 100 units. Natural color.",
           createdAt: daysAgo(25),
         }],
       },
@@ -887,7 +876,7 @@ async function main() {
         connect: [{ displayId: "CS-1001" }],
       },
       quotes: {
-        connect: [{ displayId: "Q-1001" }],
+        connect: [{ number: "QT-2026-001" }],
       },
     },
   }).catch(() => {});
@@ -924,7 +913,7 @@ async function main() {
         connect: [{ displayId: "CS-1003" }],
       },
       quotes: {
-        connect: [{ displayId: "Q-1002" }],
+        connect: [{ number: "QT-2026-002" }],
       },
     },
   }).catch(() => {});
@@ -944,7 +933,7 @@ async function main() {
         connect: [{ displayId: "CS-1004" }],
       },
       quotes: {
-        connect: [{ displayId: "Q-1003" }],
+        connect: [{ number: "QT-2026-003" }],
       },
     },
   }).catch(() => {});
@@ -1076,6 +1065,208 @@ async function main() {
           { authorId: janeSmith.id, body: "Hi, we were charged twice for order ORD-2025-031. Can you look into this?", senderType: "client", createdAt: hoursAgo(200) },
           { authorId: cccAdmin.id, body: "I see the duplicate. Issuing a refund now — should appear in 3-5 business days.", senderType: "staff", createdAt: hoursAgo(196) },
           { authorId: janeSmith.id, body: "Refund received. Thanks for the quick turnaround!", senderType: "client", createdAt: hoursAgo(100) },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // ─── Seed Quotes ──────────────────────────────────────────────────
+
+  // QT-2026-001 — Acme, SENT (with deposit terms, expiration)
+  const qt1 = await prisma.quote.create({
+    data: {
+      number: "QT-2026-001",
+      companyId: demo.id,
+      createdByUserId: cccAdmin.id,
+      title: "Summer Event Tees — June 2026",
+      status: "SENT",
+      paymentTermType: "DEPOSIT",
+      depositPercent: 50,
+      clientMessage: "Hey Jane — here's the quote for your June event. Let me know if the sizes look right.",
+      sentAt: new Date("2026-02-20"),
+      expiresAt: new Date("2026-03-20"),
+      items: {
+        create: [
+          {
+            description: "Bella+Canvas 3001 — Heather Navy",
+            sku: "BC3001-HTHR-NVY",
+            color: "Heather Navy",
+            unitPrice: 14.50,
+            quantity: 90,
+            decorationNotes: "Left chest: CCC logo, 1-color white. Back: full event graphic, 4-color process.",
+            sizeBreakdown: { S: 10, M: 25, L: 30, XL: 20, "2XL": 5 },
+            sortOrder: 0,
+            lineTotal: 14.50 * 90,
+          },
+          {
+            description: "Richardson 112 — Heather Grey/Black",
+            sku: "R112-HTHR-BLK",
+            color: "Heather Grey/Black",
+            unitPrice: 18.00,
+            quantity: 50,
+            decorationNotes: "Front center: embroidered logo, 8k stitches.",
+            sortOrder: 1,
+            lineTotal: 18.00 * 50,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // QT-2026-002 — Acme, DRAFT
+  await prisma.quote.create({
+    data: {
+      number: "QT-2026-002",
+      companyId: demo.id,
+      createdByUserId: cccAdmin.id,
+      title: "Office Welcome Kits — Q2",
+      status: "DRAFT",
+      paymentTermType: "FULL",
+      notes: "Waiting on final headcount from Jane before sending.",
+      items: {
+        create: [
+          {
+            description: "Custom Moleskine Notebook — Black",
+            unitPrice: 22.00,
+            quantity: 30,
+            decorationNotes: "Debossed logo on cover.",
+            sortOrder: 0,
+            lineTotal: 22.00 * 30,
+          },
+          {
+            description: "Miir 16oz Travel Tumbler — White",
+            unitPrice: 28.50,
+            quantity: 30,
+            decorationNotes: "Laser engraved logo.",
+            sortOrder: 1,
+            lineTotal: 28.50 * 30,
+          },
+          {
+            description: "Branded Sticker Sheet (4x6)",
+            unitPrice: 2.50,
+            quantity: 30,
+            sortOrder: 2,
+            lineTotal: 2.50 * 30,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // QT-2026-003 — Bloom, CHANGES_REQUESTED (with change request)
+  const qt3 = await prisma.quote.create({
+    data: {
+      number: "QT-2026-003",
+      companyId: bloom.id,
+      createdByUserId: cccAdmin.id,
+      title: "Bloom Studio — Brand Launch Merch",
+      status: "CHANGES_REQUESTED",
+      paymentTermType: "DEPOSIT",
+      depositPercent: 50,
+      clientMessage: "Here's the updated merch quote for your rebrand launch!",
+      sentAt: new Date("2026-02-15"),
+      items: {
+        create: [
+          {
+            description: "AS Colour 5001 — Natural",
+            sku: "ASC5001-NAT",
+            color: "Natural",
+            unitPrice: 16.00,
+            quantity: 200,
+            decorationNotes: "Front: oversized screen print, 2 colors. Hang tag with new brand.",
+            sizeBreakdown: { S: 30, M: 60, L: 60, XL: 40, "2XL": 10 },
+            sortOrder: 0,
+            lineTotal: 16.00 * 200,
+          },
+          {
+            description: "Canvas Tote Bag — Natural",
+            unitPrice: 8.50,
+            quantity: 200,
+            decorationNotes: "1-color screen print, both sides.",
+            sortOrder: 1,
+            lineTotal: 8.50 * 200,
+          },
+        ],
+      },
+    },
+  }).catch(() => null);
+
+  // Add change request for QT-2026-003
+  if (qt3) {
+    const toteItem = await prisma.quoteItem.findFirst({
+      where: { quoteId: qt3.id, description: { contains: "Tote Bag" } },
+    });
+
+    await prisma.quoteChangeRequest.create({
+      data: {
+        quoteId: qt3.id,
+        userId: bloomAdmin.id,
+        message: "Love the tee selection! Can we swap the tote for a zip pouch instead? Also wondering if we can get the tees in a slightly heavier weight.",
+        itemComments: toteItem
+          ? [{ quoteItemId: toteItem.id, comment: "Prefer a zip pouch — something more premium feeling." }]
+          : [],
+      },
+    }).catch(() => {});
+  }
+
+  // QT-2026-004 — Acme, APPROVED
+  await prisma.quote.create({
+    data: {
+      number: "QT-2026-004",
+      companyId: demo.id,
+      createdByUserId: cccAdmin.id,
+      title: "Trade Show Banners — March",
+      status: "APPROVED",
+      paymentTermType: "FULL",
+      clientMessage: "Banners for your Austin trade show. Rush turnaround included.",
+      sentAt: new Date("2026-02-10"),
+      approvedAt: new Date("2026-02-11"),
+      approvedByUserId: janeSmith.id,
+      items: {
+        create: [
+          {
+            description: "Retractable Banner Stand — 33x80\"",
+            unitPrice: 185.00,
+            quantity: 3,
+            decorationNotes: "Full color print. Artwork file: acme-tradeshow-2026-v2.pdf",
+            sortOrder: 0,
+            lineTotal: 185.00 * 3,
+          },
+          {
+            description: "Table Throw — 6ft, Full Color",
+            unitPrice: 145.00,
+            quantity: 2,
+            decorationNotes: "Full wrap print. Match PMS 286C.",
+            sortOrder: 1,
+            lineTotal: 145.00 * 2,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // QT-2026-005 — Acme, CONVERTED
+  await prisma.quote.create({
+    data: {
+      number: "QT-2026-005",
+      companyId: demo.id,
+      createdByUserId: cccAdmin.id,
+      title: "Holiday Gift Boxes — Dec 2025 (Reissue)",
+      status: "CONVERTED",
+      paymentTermType: "NET",
+      netDays: 30,
+      sentAt: new Date("2026-01-05"),
+      approvedAt: new Date("2026-01-06"),
+      convertedAt: new Date("2026-01-06"),
+      items: {
+        create: [
+          {
+            description: "Custom Gift Box Kit (Mug + Socks + Card)",
+            unitPrice: 45.00,
+            quantity: 50,
+            sortOrder: 0,
+            lineTotal: 45.00 * 50,
+          },
         ],
       },
     },
