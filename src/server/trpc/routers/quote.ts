@@ -250,6 +250,46 @@ export const quoteRouter = router({
       });
     }),
 
+  // UPLOAD QUOTE MOCKUP — Staff only
+  uploadMockup: staffProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        mockupUrl: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return prisma.quote.update({
+        where: { id: input.id },
+        data: { mockupUrl: input.mockupUrl },
+      });
+    }),
+
+  // UPLOAD ITEM MOCKUP — Staff only
+  uploadItemMockup: staffProcedure
+    .input(
+      z.object({
+        itemId: z.string(),
+        mockupUrl: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const item = await prisma.quoteItem.findUnique({
+        where: { id: input.itemId },
+      });
+      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return prisma.quoteItem.update({
+        where: { id: input.itemId },
+        data: { mockupUrl: input.mockupUrl },
+      });
+    }),
+
   // ADD ITEM — Staff only
   addItem: staffProcedure
     .input(

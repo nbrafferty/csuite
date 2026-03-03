@@ -2,6 +2,7 @@
 
 import { Pencil, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MockupUpload } from "./mockup-upload";
 
 type QuoteItemData = {
   id: string;
@@ -12,6 +13,7 @@ type QuoteItemData = {
   quantity: number;
   lineTotal: number | string;
   decorationNotes?: string | null;
+  mockupUrl?: string | null;
   sizeBreakdown?: Record<string, number> | null;
   savedProduct?: {
     id: string;
@@ -26,6 +28,8 @@ type QuoteItemCardProps = {
   editable?: boolean;
   onEdit?: () => void;
   onRemove?: () => void;
+  onMockupUpload?: (dataUrl: string) => void;
+  onMockupRemove?: () => void;
   dragHandleProps?: Record<string, any>;
   itemComment?: string | null;
 };
@@ -41,6 +45,8 @@ export function QuoteItemCard({
   editable = false,
   onEdit,
   onRemove,
+  onMockupUpload,
+  onMockupRemove,
   dragHandleProps,
   itemComment,
 }: QuoteItemCardProps) {
@@ -67,16 +73,28 @@ export function QuoteItemCard({
           </div>
         )}
 
-        {/* Thumbnail */}
-        {item.savedProduct?.thumbnailUrl && (
-          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-[#22222A]">
-            <img
-              src={item.savedProduct.thumbnailUrl}
-              alt=""
-              className="h-full w-full object-cover"
+        {/* Mockup thumbnail (compact) */}
+        <div className="shrink-0">
+          {(item.mockupUrl || editable) && (
+            <MockupUpload
+              mockupUrl={item.mockupUrl}
+              onUpload={(url) => onMockupUpload?.(url)}
+              onRemove={() => onMockupRemove?.()}
+              editable={editable}
+              compact
             />
-          </div>
-        )}
+          )}
+          {/* Fallback to saved product thumbnail if no mockup */}
+          {!item.mockupUrl && !editable && item.savedProduct?.thumbnailUrl && (
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#22222A]">
+              <img
+                src={item.savedProduct.thumbnailUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+        </div>
 
         {/* Content */}
         <div className="min-w-0 flex-1">

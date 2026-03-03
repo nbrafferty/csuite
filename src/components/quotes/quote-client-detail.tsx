@@ -8,6 +8,7 @@ import { QuoteStatusBadge } from "./quote-status-badge";
 import { QuoteItemCard } from "./quote-item-card";
 import { PaymentTermsSummaryCard } from "./payment-terms-display";
 import { ChangeRequestForm } from "./change-request-form";
+import { MockupUpload } from "./mockup-upload";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 
@@ -206,6 +207,19 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
               </a>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Quote-level mockup */}
+      {quote.mockupUrl && (
+        <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+          <h2 className="mb-3 text-lg font-semibold text-white">Mockup</h2>
+          <MockupUpload
+            mockupUrl={quote.mockupUrl}
+            onUpload={() => {}}
+            onRemove={() => {}}
+            editable={false}
+          />
         </div>
       )}
 

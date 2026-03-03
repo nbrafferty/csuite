@@ -314,6 +314,7 @@ model Quote {
   expiresAt         DateTime?       @map("expires_at")
   notes             String?         @db.Text
   clientMessage     String?         @db.Text @map("client_message")
+  mockupUrl         String?         @db.Text @map("mockup_url")
 
   convertedOrderId  String?         @unique @map("converted_order_id")
   convertedAt       DateTime?       @map("converted_at")
@@ -357,6 +358,7 @@ model QuoteItem {
   unitPrice         Decimal       @map("unit_price") @db.Decimal(10, 2)
   quantity          Int
   decorationNotes   String?       @db.Text @map("decoration_notes")
+  mockupUrl         String?       @db.Text @map("mockup_url")
   sizeBreakdown     Json?         @map("size_breakdown")
   lineTotal         Decimal       @map("line_total") @db.Decimal(10, 2)
 

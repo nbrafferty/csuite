@@ -7,6 +7,7 @@ import { QuoteItemCard } from "./quote-item-card";
 import { QuoteItemForm } from "./quote-item-form";
 import { QuoteSettingsPanel } from "./quote-settings-panel";
 import { CatalogPickerDialog } from "./catalog-picker-dialog";
+import { MockupUpload } from "./mockup-upload";
 import { Plus, ChevronDown, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +118,14 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       utils.quote.getById.invalidate({ id: quoteId! });
       setShowConfirmConvert(false);
     },
+  });
+
+  const uploadMockup = trpc.quote.uploadMockup.useMutation({
+    onSuccess: () => utils.quote.getById.invalidate({ id: quoteId! }),
+  });
+
+  const uploadItemMockup = trpc.quote.uploadItemMockup.useMutation({
+    onSuccess: () => utils.quote.getById.invalidate({ id: quoteId! }),
   });
 
   // Handlers
@@ -287,6 +296,25 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column — Line items (60%) */}
         <div className="flex-1 lg:w-3/5">
+          {/* Quote-level mockup */}
+          {quoteId && (
+            <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+              <h2 className="mb-3 text-lg font-semibold text-white">
+                Quote Mockup
+              </h2>
+              <MockupUpload
+                mockupUrl={quote?.mockupUrl}
+                onUpload={(url) =>
+                  uploadMockup.mutate({ id: quoteId!, mockupUrl: url })
+                }
+                onRemove={() =>
+                  uploadMockup.mutate({ id: quoteId!, mockupUrl: null })
+                }
+                editable={isEditable}
+              />
+            </div>
+          )}
+
           <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Line Items</h2>
@@ -380,6 +408,12 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                     editable={isEditable}
                     onEdit={() => setEditingItemId(item.id)}
                     onRemove={() => removeItem.mutate({ itemId: item.id })}
+                    onMockupUpload={(url) =>
+                      uploadItemMockup.mutate({ itemId: item.id, mockupUrl: url })
+                    }
+                    onMockupRemove={() =>
+                      uploadItemMockup.mutate({ itemId: item.id, mockupUrl: null })
+                    }
                     itemComment={itemCommentMap[item.id]}
                   />
                 )
