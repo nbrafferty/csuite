@@ -210,19 +210,6 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
         </div>
       )}
 
-      {/* Quote-level mockup */}
-      {quote.mockupUrl && (
-        <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
-          <h2 className="mb-3 text-lg font-semibold text-white">Mockup</h2>
-          <MockupUpload
-            mockupUrl={quote.mockupUrl}
-            onUpload={() => {}}
-            onRemove={() => {}}
-            editable={false}
-          />
-        </div>
-      )}
-
       {/* Line items */}
       <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
         <h2 className="mb-4 text-lg font-semibold text-white">Items</h2>
@@ -254,6 +241,19 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
           </span>
         </div>
       </div>
+
+      {/* Mockups */}
+      {quote.mockupUrl && (
+        <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+          <h2 className="mb-3 text-lg font-semibold text-white">Mockups</h2>
+          <MockupUpload
+            mockupUrl={quote.mockupUrl}
+            onUpload={() => {}}
+            onRemove={() => {}}
+            editable={false}
+          />
+        </div>
+      )}
 
       {/* Payment terms */}
       <div className="mb-6">

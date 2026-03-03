@@ -296,25 +296,6 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column — Line items (60%) */}
         <div className="flex-1 lg:w-3/5">
-          {/* Quote-level mockup */}
-          {quoteId && (
-            <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
-              <h2 className="mb-3 text-lg font-semibold text-white">
-                Quote Mockup
-              </h2>
-              <MockupUpload
-                mockupUrl={quote?.mockupUrl}
-                onUpload={(url) =>
-                  uploadMockup.mutate({ id: quoteId!, mockupUrl: url })
-                }
-                onRemove={() =>
-                  uploadMockup.mutate({ id: quoteId!, mockupUrl: null })
-                }
-                editable={isEditable}
-              />
-            </div>
-          )}
-
           <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Line Items</h2>
@@ -443,6 +424,25 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
               </div>
             )}
           </div>
+
+          {/* Mockups */}
+          {quoteId && (
+            <div className="mt-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+              <h2 className="mb-3 text-lg font-semibold text-white">
+                Mockups
+              </h2>
+              <MockupUpload
+                mockupUrl={quote?.mockupUrl}
+                onUpload={(url) =>
+                  uploadMockup.mutate({ id: quoteId!, mockupUrl: url })
+                }
+                onRemove={() =>
+                  uploadMockup.mutate({ id: quoteId!, mockupUrl: null })
+                }
+                editable={isEditable}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right column — Settings panel (40%) */}
