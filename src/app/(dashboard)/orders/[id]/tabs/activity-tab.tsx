@@ -28,11 +28,11 @@ const ACTION_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   SUBMITTED: "Submitted",
   IN_REVIEW: "In Review",
+  PROOFING: "Proofing",
   APPROVED: "Approved",
-  READY_FOR_PRODUCTION: "Ready for Production",
   IN_PRODUCTION: "In Production",
+  READY: "Ready",
   SHIPPED: "Shipped",
-  DELIVERED: "Delivered",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };

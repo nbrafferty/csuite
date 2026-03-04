@@ -198,9 +198,9 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
             <p className="text-sm font-medium text-purple-400">
               This quote has been converted to an order
             </p>
-            {quote.convertedOrderId && (
+            {quote.convertedOrder && (
               <a
-                href={`/orders/${quote.convertedOrderId}`}
+                href={`/orders/${quote.convertedOrder.id}`}
                 className="mt-0.5 text-xs text-purple-400 underline hover:text-purple-300"
               >
                 View order

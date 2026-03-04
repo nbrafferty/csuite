@@ -22,11 +22,11 @@ const ORDER_STATUSES = [
   { label: "All", value: "" },
   { label: "Submitted", value: "SUBMITTED" },
   { label: "In Review", value: "IN_REVIEW" },
+  { label: "Proofing", value: "PROOFING" },
   { label: "Approved", value: "APPROVED" },
-  { label: "Ready", value: "READY_FOR_PRODUCTION" },
   { label: "In Production", value: "IN_PRODUCTION" },
+  { label: "Ready", value: "READY" },
   { label: "Shipped", value: "SHIPPED" },
-  { label: "Delivered", value: "DELIVERED" },
   { label: "Completed", value: "COMPLETED" },
   { label: "Cancelled", value: "CANCELLED" },
 ] as const;

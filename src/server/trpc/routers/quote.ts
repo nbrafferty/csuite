@@ -2,6 +2,8 @@ import { z } from "zod";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { QuoteStatus, PaymentTermType } from "@prisma/client";
 import { generateQuoteNumber } from "../../lib/quote-number";
+import { generateOrderNumber } from "../../lib/order-number";
+import { generateInvoiceNumber } from "../../lib/invoice-number";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db/prisma";
 
@@ -132,6 +134,9 @@ export const quoteRouter = router({
             include: {
               user: { select: { id: true, name: true } },
             },
+          },
+          convertedOrder: {
+            select: { id: true, number: true },
           },
         },
       });
@@ -557,40 +562,87 @@ export const quoteRouter = router({
         });
       }
 
-      // Generate order display ID
-      const count = await prisma.order.count();
-      const displayId = `CS-${String(count + 1001).padStart(4, "0")}`;
+      const orderNumber = await generateOrderNumber(prisma);
+      const invoiceNumber = await generateInvoiceNumber(prisma);
 
-      // Calculate totals from quote items
-      const subtotal = quote.items.reduce(
+      // Calculate total from quote items
+      const totalAmount = quote.items.reduce(
         (sum, i) => sum + Number(i.lineTotal),
         0
       );
 
-      // Create order + copy line items in a transaction
+      // Create order, auto-invoice, and update quote in a transaction
       const [order] = await prisma.$transaction(async (tx) => {
         const order = await tx.order.create({
           data: {
+            number: orderNumber,
             companyId: quote.companyId,
-            createdBy: (user as any).id,
-            displayId,
-            sourceType: "QUOTE",
+            createdByUserId: (user as any).id,
+            projectId: quote.projectId,
+            quoteId: quote.id,
             title: quote.title,
+            source: "QUOTE",
             status: "SUBMITTED",
-            subtotal,
-            totalAmount: subtotal,
+            paymentTermType: quote.paymentTermType,
+            depositPercent: quote.depositPercent,
+            netDays: quote.netDays,
+            totalAmount,
             items: {
               create: quote.items.map((item, idx) => ({
-                position: idx + 1,
-                title: item.description,
-                description: item.decorationNotes,
-                savedProductId: item.savedProductId,
+                sortOrder: idx,
+                description: item.description,
                 sku: item.sku,
+                color: item.color,
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,
                 sizeBreakdown: item.sizeBreakdown ?? undefined,
+                decorationNotes: item.decorationNotes,
                 lineTotal: item.lineTotal,
               })),
+            },
+          },
+        });
+
+        // Auto-create invoice based on payment terms
+        let invoiceItems: { description: string; quantity: number; unitPrice: number; lineTotal: number }[] = [];
+
+        if (quote.paymentTermType === "DEPOSIT" && quote.depositPercent) {
+          // Create deposit invoice
+          const depositAmount = totalAmount * (quote.depositPercent / 100);
+          invoiceItems = [
+            {
+              description: `Deposit (${quote.depositPercent}%) for ${quote.title}`,
+              quantity: 1,
+              unitPrice: depositAmount,
+              lineTotal: depositAmount,
+            },
+          ];
+        } else {
+          // FULL or NET — invoice for full amount
+          invoiceItems = quote.items.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            lineTotal: Number(item.lineTotal),
+          }));
+        }
+
+        // Calculate due date for NET terms
+        let dueDate: Date | null = null;
+        if (quote.paymentTermType === "NET" && quote.netDays) {
+          dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + quote.netDays);
+        }
+
+        await tx.invoice.create({
+          data: {
+            number: invoiceNumber,
+            orderId: order.id,
+            companyId: quote.companyId,
+            status: "DRAFT",
+            dueDate,
+            items: {
+              create: invoiceItems,
             },
           },
         });
@@ -599,7 +651,6 @@ export const quoteRouter = router({
           where: { id: quote.id },
           data: {
             status: "CONVERTED",
-            convertedOrderId: order.id,
             convertedAt: new Date(),
           },
         });

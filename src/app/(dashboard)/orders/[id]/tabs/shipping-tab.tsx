@@ -55,8 +55,8 @@ export function OrderShippingTab({ order, isStaff }: { order: any; isStaff: bool
       ) : (
         <div className="space-y-4">
           {shipments.map((shipment: any, idx: number) => {
-            const address = shipment.destinationAddress as any;
             const loc = shipment.location;
+            const hasAddress = shipment.addressLine1 || loc;
 
             return (
               <div
@@ -73,8 +73,8 @@ export function OrderShippingTab({ order, isStaff }: { order: any; isStaff: bool
                         Shipment {idx + 1}
                       </h4>
                       <p className="text-xs text-gray-500">
-                        {address
-                          ? `${address.name}, ${address.street}, ${address.city}, ${address.state} ${address.zip}`
+                        {shipment.addressLine1
+                          ? `${shipment.addressName ? shipment.addressName + " — " : ""}${shipment.addressLine1}, ${shipment.addressCity}, ${shipment.addressState} ${shipment.addressZip}`
                           : loc
                           ? `${loc.label} — ${loc.addressLine1}, ${loc.city}, ${loc.state} ${loc.zip}`
                           : "Address pending"}
@@ -130,19 +130,10 @@ export function OrderShippingTab({ order, isStaff }: { order: any; isStaff: bool
                   </div>
                 </div>
 
-                {shipment.lineItems?.length > 0 && (
+                {shipment.contents && (
                   <div className="mt-4 border-t border-surface-border pt-4">
-                    <span className="text-xs text-gray-500">Items in Shipment</span>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {shipment.lineItems.map((li: any) => (
-                        <span
-                          key={li.id}
-                          className="rounded-lg bg-white/5 px-2.5 py-1 text-xs text-gray-300"
-                        >
-                          {li.orderItem?.title ?? "Item"} ×{li.quantity}
-                        </span>
-                      ))}
-                    </div>
+                    <span className="text-xs text-gray-500">Contents</span>
+                    <p className="mt-1 text-sm text-gray-300">{shipment.contents}</p>
                   </div>
                 )}
               </div>
@@ -162,15 +153,17 @@ function AddShipmentForm({
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
-  const [street, setStreet] = useState("");
+  const [line1, setLine1] = useState("");
+  const [line2, setLine2] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [contents, setContents] = useState("");
 
   const utils = trpc.useUtils();
-  const addMutation = trpc.order.addShipment.useMutation({
+  const addMutation = trpc.shipment.create.useMutation({
     onSuccess: () => {
       utils.order.get.invalidate({ id: orderId });
       onClose();
@@ -181,9 +174,15 @@ function AddShipmentForm({
     e.preventDefault();
     addMutation.mutate({
       orderId,
-      destinationAddress: { name, street, city, state, zip, country: "US" },
+      addressName: name || undefined,
+      addressLine1: line1 || undefined,
+      addressLine2: line2 || undefined,
+      addressCity: city || undefined,
+      addressState: state || undefined,
+      addressZip: zip || undefined,
       carrier: carrier || undefined,
       trackingNumber: trackingNumber || undefined,
+      contents: contents || undefined,
     });
   };
 
@@ -193,13 +192,12 @@ function AddShipmentForm({
       className="rounded-xl border border-surface-border bg-surface-card p-6"
     >
       <h3 className="mb-4 text-sm font-semibold text-white">
-        Add Shipment Destination
+        Add Shipment
       </h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="block text-xs text-gray-500 mb-1">Recipient Name</label>
           <input
-            required
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
@@ -208,16 +206,14 @@ function AddShipmentForm({
         <div className="sm:col-span-2">
           <label className="block text-xs text-gray-500 mb-1">Street Address</label>
           <input
-            required
-            value={street}
-            onChange={(e) => setStreet(e.target.value)}
+            value={line1}
+            onChange={(e) => setLine1(e.target.value)}
             className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
           />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">City</label>
           <input
-            required
             value={city}
             onChange={(e) => setCity(e.target.value)}
             className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
@@ -227,7 +223,6 @@ function AddShipmentForm({
           <div>
             <label className="block text-xs text-gray-500 mb-1">State</label>
             <input
-              required
               value={state}
               onChange={(e) => setState(e.target.value)}
               className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
@@ -236,7 +231,6 @@ function AddShipmentForm({
           <div>
             <label className="block text-xs text-gray-500 mb-1">ZIP</label>
             <input
-              required
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
@@ -257,6 +251,15 @@ function AddShipmentForm({
           <input
             value={trackingNumber}
             onChange={(e) => setTrackingNumber(e.target.value)}
+            className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-xs text-gray-500 mb-1">Contents Description</label>
+          <textarea
+            value={contents}
+            onChange={(e) => setContents(e.target.value)}
+            rows={2}
             className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
           />
         </div>

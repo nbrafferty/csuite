@@ -40,7 +40,7 @@ function buildProjectSummary(
   // Total invoiced
   const totalInvoiced = orders.reduce((sum: number, o: any) => {
     const invoiceTotal = (o.invoices ?? []).reduce(
-      (iSum: number, inv: any) => iSum + Number(inv.amountTotal ?? 0),
+      (iSum: number, inv: any) => iSum + (inv.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal ?? 0), 0),
       0
     );
     return sum + invoiceTotal;
@@ -98,7 +98,7 @@ const projectInclude = {
       status: true,
       updatedAt: true,
       creator: { select: { id: true, name: true } },
-      invoices: { select: { amountTotal: true, status: true, dueDate: true } },
+      invoices: { select: { status: true, dueDate: true, items: { select: { lineTotal: true } } } },
       proofs: { select: { status: true } },
       shipments: {
         select: { status: true, shippedAt: true, deliveredAt: true },
@@ -197,7 +197,7 @@ export const projectsRouter = router({
           title: o.title,
           status: o.status,
           amount: o.invoices.reduce(
-            (sum, inv) => sum + Number(inv.amountTotal),
+            (sum, inv) => sum + (inv.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0),
             0
           ),
           updatedAt: new Date(o.updatedAt).toISOString(),
@@ -483,7 +483,7 @@ export const projectsRouter = router({
           projectId: null,
           title: { contains: input.search, mode: "insensitive" },
         },
-        select: { id: true, title: true, displayId: true, status: true },
+        select: { id: true, title: true, number: true, status: true },
         take: 10,
       });
     }),

@@ -521,32 +521,25 @@ async function main() {
 
   // Order 1: Acme — In Production
   await prisma.order.upsert({
-    where: { displayId: "CS-1001" },
+    where: { number: "ORD-2026-001" },
     update: {},
     create: {
       companyId: demo.id,
-      createdBy: janeSmith.id,
-      displayId: "CS-1001",
-      sourceType: "CATALOG",
+      createdByUserId: janeSmith.id,
+      number: "ORD-2026-001",
+      source: "MANUAL",
       title: "Acme Polo Shirts — Q1 Onboarding",
       status: "IN_PRODUCTION",
-      dueDate: daysAgo(-10),
+      inHandsDate: daysAgo(-10),
       poNumber: "ACME-PO-2026-001",
-      eventName: "Q1 New Hire Onboarding",
-      subtotal: 4247.50,
-      taxRate: 0.0825,
-      taxAmount: 350.42,
-      shippingAmount: 89.00,
-      totalAmount: 4686.92,
+      totalAmount: 4247.55,
       createdAt: daysAgo(14),
       items: {
         create: [
           {
-            position: 1,
-            contentType: "APPAREL",
-            title: "Classic Polo Shirt — Navy",
-            description: "Left chest embroidery with Acme logo",
-            catalogProductId: productPolo.id,
+            sortOrder: 0,
+            description: "Classic Polo Shirt — Navy",
+            decorationNotes: "Left chest embroidery with Acme logo",
             sku: "POL-001-NVY",
             vendorId: vendorSanMar.id,
             unitPrice: 18.99,
@@ -554,16 +547,11 @@ async function main() {
             sizeBreakdown: { S: 15, M: 40, L: 50, XL: 30, "2XL": 15 },
             lineTotal: 2848.50,
             costPerUnit: 11.50,
-            totalCost: 1725.00,
-            profitMargin: 1123.50,
-            status: "IN_PRODUCTION",
           },
           {
-            position: 2,
-            contentType: "APPAREL",
-            title: "Classic Polo Shirt — White",
-            description: "Left chest embroidery with Acme logo",
-            catalogProductId: productPolo.id,
+            sortOrder: 1,
+            description: "Classic Polo Shirt — White",
+            decorationNotes: "Left chest embroidery with Acme logo",
             sku: "POL-001-WHT",
             vendorId: vendorSanMar.id,
             unitPrice: 18.99,
@@ -571,16 +559,11 @@ async function main() {
             sizeBreakdown: { S: 5, M: 15, L: 15, XL: 10, "2XL": 5 },
             lineTotal: 949.50,
             costPerUnit: 11.50,
-            totalCost: 575.00,
-            profitMargin: 374.50,
-            status: "IN_PRODUCTION",
           },
           {
-            position: 3,
-            contentType: "APPAREL",
-            title: "Essential Crew T-Shirt — Black",
-            description: "Full back screen print",
-            catalogProductId: productTee.id,
+            sortOrder: 2,
+            description: "Essential Crew T-Shirt — Black",
+            decorationNotes: "Full back screen print",
             sku: "TEE-001-BLK",
             vendorId: vendorPrintShop.id,
             unitPrice: 9.99,
@@ -588,9 +571,6 @@ async function main() {
             sizeBreakdown: { M: 15, L: 15, XL: 10, "2XL": 5 },
             lineTotal: 449.55,
             costPerUnit: 5.25,
-            totalCost: 236.25,
-            profitMargin: 213.30,
-            status: "PENDING",
           },
         ],
       },
@@ -599,26 +579,25 @@ async function main() {
 
   // Order 2: Acme — Submitted
   await prisma.order.upsert({
-    where: { displayId: "CS-1002" },
+    where: { number: "ORD-2026-002" },
     update: {},
     create: {
       companyId: demo.id,
-      createdBy: johnDoe.id,
-      displayId: "CS-1002",
-      sourceType: "CATALOG",
+      createdByUserId: johnDoe.id,
+      number: "ORD-2026-002",
+      source: "MANUAL",
       title: "Trade Show Booth Package",
       status: "SUBMITTED",
-      dueDate: daysAgo(-21),
-      eventName: "SxSW 2026",
-      subtotal: 1633.98,
+      inHandsDate: daysAgo(-21),
+      clientNotes: "SxSW 2026",
       totalAmount: 1633.98,
       createdAt: daysAgo(2),
       items: {
         create: [
-          { position: 1, contentType: "SIGNAGE", title: "Retractable Banner Stand — Main Booth", sku: "BNR-001", unitPrice: 149.99, quantity: 2, lineTotal: 299.98, status: "PENDING" },
-          { position: 2, contentType: "APPAREL", title: "Event Staff T-Shirts — Coral", sku: "TEE-001-CRL", unitPrice: 9.99, quantity: 100, sizeBreakdown: { S: 10, M: 30, L: 30, XL: 20, "2XL": 10 }, lineTotal: 999.00, status: "PENDING" },
-          { position: 3, contentType: "PROMO_ITEM", title: "Custom Die-Cut Stickers", sku: "STK-001", unitPrice: 0.59, quantity: 500, lineTotal: 295.00, status: "PENDING" },
-          { position: 4, contentType: "COMMERCIAL_PRINTING", title: "Business Cards — Matte", sku: "PRT-001", unitPrice: 0.08, quantity: 500, lineTotal: 40.00, status: "PENDING" },
+          { sortOrder: 0, description: "Retractable Banner Stand — Main Booth", sku: "BNR-001", unitPrice: 149.99, quantity: 2, lineTotal: 299.98 },
+          { sortOrder: 1, description: "Event Staff T-Shirts — Coral", sku: "TEE-001-CRL", unitPrice: 9.99, quantity: 100, sizeBreakdown: { S: 10, M: 30, L: 30, XL: 20, "2XL": 10 }, lineTotal: 999.00 },
+          { sortOrder: 2, description: "Custom Die-Cut Stickers", sku: "STK-001", unitPrice: 0.59, quantity: 500, lineTotal: 295.00 },
+          { sortOrder: 3, description: "Business Cards — Matte", sku: "PRT-001", unitPrice: 0.08, quantity: 500, lineTotal: 40.00 },
         ],
       },
     },
@@ -626,40 +605,32 @@ async function main() {
 
   // Order 3: Globex — Approved
   await prisma.order.upsert({
-    where: { displayId: "CS-1003" },
+    where: { number: "ORD-2026-003" },
     update: {},
     create: {
       companyId: globex.id,
-      createdBy: globexAdmin.id,
-      displayId: "CS-1003",
-      sourceType: "CATALOG",
+      createdByUserId: globexAdmin.id,
+      number: "ORD-2026-003",
+      source: "MANUAL",
       title: "Globex Winter Hoodies 2026",
       status: "APPROVED",
-      dueDate: daysAgo(-30),
+      inHandsDate: daysAgo(-30),
       poNumber: "GLX-PO-2026-012",
-      subtotal: 19495.00,
-      shippingAmount: 250.00,
-      taxAmount: 1608.38,
-      taxRate: 0.0825,
-      totalAmount: 21353.38,
+      totalAmount: 19495.00,
       createdAt: daysAgo(7),
       items: {
         create: [
           {
-            position: 1,
-            contentType: "APPAREL",
-            title: "Performance Hoodie — Black",
-            catalogProductId: productHoodie.id,
+            sortOrder: 0,
+            description: "Performance Hoodie — Black",
             sku: "HOD-001-BLK",
+            color: "Black",
             vendorId: vendorSSActive.id,
             unitPrice: 38.99,
             quantity: 500,
             sizeBreakdown: { S: 50, M: 125, L: 150, XL: 100, "2XL": 75 },
             lineTotal: 19495.00,
             costPerUnit: 22.00,
-            totalCost: 11000.00,
-            profitMargin: 8495.00,
-            status: "PENDING",
           },
         ],
       },
@@ -668,32 +639,32 @@ async function main() {
 
   // Order 4: Bloom — Shipped
   await prisma.order.upsert({
-    where: { displayId: "CS-1004" },
+    where: { number: "ORD-2026-004" },
     update: {},
     create: {
       companyId: bloom.id,
-      createdBy: bloomAdmin.id,
-      displayId: "CS-1004",
-      sourceType: "QUOTE",
+      createdByUserId: bloomAdmin.id,
+      number: "ORD-2026-004",
+      source: "QUOTE",
       title: "Bloom Studio Grand Opening Kit",
       status: "SHIPPED",
-      dueDate: daysAgo(-5),
-      subtotal: 3250.00,
-      shippingAmount: 45.00,
-      taxAmount: 268.13,
-      taxRate: 0.0825,
-      totalAmount: 3563.13,
+      inHandsDate: daysAgo(-5),
+      totalAmount: 3250.00,
       createdAt: daysAgo(21),
       items: {
         create: [
-          { position: 1, contentType: "APPAREL", title: "Bloom-branded Tees — Sage Green", unitPrice: 12.50, quantity: 200, lineTotal: 2500.00, status: "COMPLETED" },
-          { position: 2, contentType: "SIGNAGE", title: "Window Vinyl Decals (Set of 4)", unitPrice: 75.00, quantity: 4, lineTotal: 300.00, status: "COMPLETED" },
-          { position: 3, contentType: "PROMO_ITEM", title: "Canvas Tote Bags — Natural", unitPrice: 4.50, quantity: 100, lineTotal: 450.00, status: "COMPLETED" },
+          { sortOrder: 0, description: "Bloom-branded Tees — Sage Green", unitPrice: 12.50, quantity: 200, lineTotal: 2500.00 },
+          { sortOrder: 1, description: "Window Vinyl Decals (Set of 4)", unitPrice: 75.00, quantity: 4, lineTotal: 300.00 },
+          { sortOrder: 2, description: "Canvas Tote Bags — Natural", unitPrice: 4.50, quantity: 100, lineTotal: 450.00 },
         ],
       },
       shipments: {
         create: [{
-          destinationAddress: { name: "Bloom Studio", street: "789 Flower Ave", city: "San Francisco", state: "CA", zip: "94102", country: "US" },
+          addressName: "Bloom Studio",
+          addressLine1: "789 Flower Ave",
+          addressCity: "San Francisco",
+          addressState: "CA",
+          addressZip: "94102",
           carrier: "FedEx",
           trackingNumber: "7948291847561",
           status: "IN_TRANSIT",
@@ -705,30 +676,26 @@ async function main() {
 
   // Order 5: Redline — Completed
   await prisma.order.upsert({
-    where: { displayId: "CS-1005" },
+    where: { number: "ORD-2026-005" },
     update: {},
     create: {
       companyId: redline.id,
-      createdBy: redlineAdmin.id,
-      displayId: "CS-1005",
-      sourceType: "CATALOG",
+      createdByUserId: redlineAdmin.id,
+      number: "ORD-2026-005",
+      source: "MANUAL",
       title: "Redline Events — Corporate Gala Shirts",
       status: "COMPLETED",
-      dueDate: daysAgo(5),
+      inHandsDate: daysAgo(5),
       poNumber: "RDL-2026-003",
-      subtotal: 2997.00,
-      shippingAmount: 65.00,
-      totalAmount: 3062.00,
+      totalAmount: 2997.00,
       createdAt: daysAgo(45),
       items: {
         create: [{
-          position: 1,
-          contentType: "APPAREL",
-          title: "Dress Shirts — White w/ Red Embroidery",
+          sortOrder: 0,
+          description: "Dress Shirts — White w/ Red Embroidery",
           unitPrice: 29.97,
           quantity: 100,
           lineTotal: 2997.00,
-          status: "COMPLETED",
         }],
       },
     },
@@ -736,24 +703,23 @@ async function main() {
 
   // Order 6: Greenfield — In Review
   await prisma.order.upsert({
-    where: { displayId: "CS-1006" },
+    where: { number: "ORD-2026-006" },
     update: {},
     create: {
       companyId: greenfield.id,
-      createdBy: greenfieldAdmin.id,
-      displayId: "CS-1006",
-      sourceType: "CATALOG",
+      createdByUserId: greenfieldAdmin.id,
+      number: "ORD-2026-006",
+      source: "MANUAL",
       title: "Greenfield Earth Day Merch",
       status: "IN_REVIEW",
-      dueDate: daysAgo(-15),
-      eventName: "Earth Day 2026",
-      subtotal: 1674.50,
+      inHandsDate: daysAgo(-15),
+      clientNotes: "Earth Day 2026",
       totalAmount: 1674.50,
       createdAt: daysAgo(3),
       items: {
         create: [
-          { position: 1, contentType: "APPAREL", title: "Organic Cotton Tees — Forest Green", unitPrice: 14.50, quantity: 75, sizeBreakdown: { S: 10, M: 25, L: 25, XL: 10, "2XL": 5 }, lineTotal: 1087.50, status: "PENDING" },
-          { position: 2, contentType: "PROMO_ITEM", title: "Recycled Polyester Drawstring Bags", unitPrice: 5.87, quantity: 100, lineTotal: 587.00, status: "PENDING" },
+          { sortOrder: 0, description: "Organic Cotton Tees — Forest Green", unitPrice: 14.50, quantity: 75, sizeBreakdown: { S: 10, M: 25, L: 25, XL: 10, "2XL": 5 }, lineTotal: 1087.50 },
+          { sortOrder: 1, description: "Recycled Polyester Drawstring Bags", unitPrice: 5.87, quantity: 100, lineTotal: 587.00 },
         ],
       },
     },
@@ -873,7 +839,7 @@ async function main() {
       derivedStatus: "IN_PRODUCTION",
       createdAt: daysAgo(30),
       orders: {
-        connect: [{ displayId: "CS-1001" }],
+        connect: [{ number: "ORD-2026-001" }],
       },
       quotes: {
         connect: [{ number: "QT-2026-001" }],
@@ -893,7 +859,7 @@ async function main() {
       derivedStatus: "IN_REVIEW",
       createdAt: daysAgo(14),
       orders: {
-        connect: [{ displayId: "CS-1002" }],
+        connect: [{ number: "ORD-2026-002" }],
       },
     },
   }).catch(() => {});
@@ -910,7 +876,7 @@ async function main() {
       derivedStatus: "ACTIVE",
       createdAt: daysAgo(21),
       orders: {
-        connect: [{ displayId: "CS-1003" }],
+        connect: [{ number: "ORD-2026-003" }],
       },
       quotes: {
         connect: [{ number: "QT-2026-002" }],
@@ -930,7 +896,7 @@ async function main() {
       derivedStatus: "COMPLETED",
       createdAt: daysAgo(35),
       orders: {
-        connect: [{ displayId: "CS-1004" }],
+        connect: [{ number: "ORD-2026-004" }],
       },
       quotes: {
         connect: [{ number: "QT-2026-003" }],
@@ -950,7 +916,7 @@ async function main() {
       derivedStatus: "COMPLETED",
       createdAt: daysAgo(60),
       orders: {
-        connect: [{ displayId: "CS-1005" }],
+        connect: [{ number: "ORD-2026-005" }],
       },
     },
   }).catch(() => {});
@@ -968,7 +934,7 @@ async function main() {
       statusOverride: "NEEDS_ATTENTION",
       createdAt: daysAgo(10),
       orders: {
-        connect: [{ displayId: "CS-1006" }],
+        connect: [{ number: "ORD-2026-006" }],
       },
     },
   }).catch(() => {});
@@ -995,7 +961,7 @@ async function main() {
     data: {
       companyId: demo.id,
       subject: "Logo placement on polo shirts",
-      orderTitle: "CS-1001 — Acme Polo Shirts",
+      orderTitle: "ORD-2026-001 — Acme Polo Shirts",
       status: "open",
       createdBy: janeSmith.id,
       assigneeId: cccAdmin.id,
@@ -1016,7 +982,7 @@ async function main() {
     data: {
       companyId: demo.id,
       subject: "Delivery timeline for conference booth banners",
-      orderTitle: "CS-1002 — Trade Show Booth Package",
+      orderTitle: "ORD-2026-002 — Trade Show Booth Package",
       status: "waiting_on_client",
       createdBy: johnDoe.id,
       assigneeId: cccAdmin.id,
@@ -1036,7 +1002,7 @@ async function main() {
     data: {
       companyId: globex.id,
       subject: "Bulk hoodie order — sizing samples",
-      orderTitle: "CS-1003 — Globex Winter Hoodies",
+      orderTitle: "ORD-2026-003 — Globex Winter Hoodies",
       status: "waiting_on_ccc",
       createdBy: globexAdmin.id,
       assigneeId: cccAdmin.id,

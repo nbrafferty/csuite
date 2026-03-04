@@ -108,7 +108,7 @@ export const vendorRouter = router({
         where,
         include: {
           vendor: { select: { id: true, name: true } },
-          order: { select: { id: true, displayId: true, title: true } },
+          order: { select: { id: true, number: true, title: true } },
         },
         orderBy: { createdAt: "desc" },
       });

@@ -3,6 +3,8 @@ import { authRouter } from "./routers/auth";
 import { companyRouter } from "./routers/company";
 import { clientRouter } from "./routers/client";
 import { orderRouter } from "./routers/order";
+import { invoiceRouter } from "./routers/invoice";
+import { shipmentRouter } from "./routers/shipment";
 import { quoteRequestRouter } from "./routers/quote-request";
 import { quoteRouter } from "./routers/quote";
 import { vendorRouter } from "./routers/vendor";
@@ -16,6 +18,8 @@ export const appRouter = router({
   company: companyRouter,
   clientOrg: clientRouter,
   order: orderRouter,
+  invoice: invoiceRouter,
+  shipment: shipmentRouter,
   quoteRequest: quoteRequestRouter,
   quote: quoteRouter,
   vendor: vendorRouter,

@@ -2,6 +2,7 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ShoppingCart, Plus, Minus } from "lucide-react";
@@ -21,6 +22,7 @@ export default function CatalogProductPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { data: session } = useSession();
   const [quantity, setQuantity] = useState(1);
 
   const { data: product, isLoading } = trpc.catalog.get.useQuery({ id });
@@ -51,12 +53,11 @@ export default function CatalogProductPage({
 
   const handleAddToOrder = () => {
     createOrderMutation.mutate({
+      companyId: (session?.user as any)?.companyId ?? "",
       title: product.name,
       items: [
         {
-          title: product.name,
-          contentType: product.contentType as any,
-          catalogProductId: product.id,
+          description: product.name,
           sku: product.sku || undefined,
           unitPrice,
           quantity,

@@ -8,54 +8,30 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   ChevronDown,
-  Copy,
   XCircle,
   Package,
   FileText,
   Truck,
   CreditCard,
   Clock,
-  CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
 import { OrderOverviewTab } from "./tabs/overview-tab";
 import { OrderLineItemsTab } from "./tabs/line-items-tab";
 import { OrderShippingTab } from "./tabs/shipping-tab";
 import { OrderBillingTab } from "./tabs/billing-tab";
 import { OrderActivityTab } from "./tabs/activity-tab";
 
-const STATUS_COLORS: Record<string, string> = {
-  SUBMITTED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  IN_REVIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  APPROVED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  READY_FOR_PRODUCTION: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  IN_PRODUCTION: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  SHIPPED: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  DELIVERED: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  COMPLETED: "bg-green-500/10 text-green-400 border-green-500/20",
-  CANCELLED: "bg-red-500/10 text-red-400 border-red-500/20",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  SUBMITTED: "Submitted",
-  IN_REVIEW: "In Review",
-  APPROVED: "Approved",
-  READY_FOR_PRODUCTION: "Ready for Production",
-  IN_PRODUCTION: "In Production",
-  SHIPPED: "Shipped",
-  DELIVERED: "Delivered",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
   SUBMITTED: { label: "Start Review", value: "IN_REVIEW" },
-  IN_REVIEW: { label: "Approve", value: "APPROVED" },
-  APPROVED: { label: "Mark Ready", value: "READY_FOR_PRODUCTION" },
-  READY_FOR_PRODUCTION: { label: "Start Production", value: "IN_PRODUCTION" },
-  IN_PRODUCTION: { label: "Mark Shipped", value: "SHIPPED" },
-  SHIPPED: { label: "Mark Delivered", value: "DELIVERED" },
-  DELIVERED: { label: "Complete", value: "COMPLETED" },
+  IN_REVIEW: { label: "Send Proofs", value: "PROOFING" },
+  PROOFING: { label: "Approve", value: "APPROVED" },
+  APPROVED: { label: "Start Production", value: "IN_PRODUCTION" },
+  IN_PRODUCTION: { label: "Mark Ready", value: "READY" },
+  READY: { label: "Mark Shipped", value: "SHIPPED" },
+  SHIPPED: { label: "Complete", value: "COMPLETED" },
   COMPLETED: null,
   CANCELLED: null,
 };
@@ -93,10 +69,6 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
   const cancelMutation = trpc.order.cancel.useMutation({
     onSuccess: () => utils.order.get.invalidate({ id: orderId }),
-  });
-
-  const duplicateMutation = trpc.order.duplicate.useMutation({
-    onSuccess: (data) => router.push(`/orders/${data.id}`),
   });
 
   if (isLoading) {
@@ -140,33 +112,19 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-white">
-                {order.displayId}
+                {order.number}
               </h1>
-              <span
-                className={cn(
-                  "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
-                  STATUS_COLORS[order.status] ?? "bg-gray-500/10 text-gray-400"
-                )}
-              >
-                {STATUS_LABELS[order.status] ?? order.status}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium",
-                  order.sourceType === "QUOTE"
-                    ? "bg-brand-500/10 text-brand-400"
-                    : "bg-blue-500/10 text-blue-400"
-                )}
-              >
-                {order.sourceType === "QUOTE"
-                  ? `FROM QUOTE ${order.quote?.number ?? ""}`
-                  : "FROM CATALOG"}
-              </span>
+              <OrderStatusBadge status={order.status} />
+              {order.source === "QUOTE" && order.quote && (
+                <span className="inline-flex rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[10px] font-medium text-brand-400">
+                  FROM QUOTE {order.quote.number}
+                </span>
+              )}
             </div>
             <h2 className="mt-1 text-lg text-gray-300">{order.title}</h2>
             {isStaff && (
               <p className="mt-0.5 text-sm text-gray-500">
-                {order.company.name} &middot; {order.creator.name}
+                {order.company.name} &middot; {order.createdBy.name}
               </p>
             )}
           </div>
@@ -207,20 +165,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                       onClick={() => setShowStatusDropdown(false)}
                     />
                     <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-surface-border bg-surface-card py-1 shadow-xl">
-                      <button
-                        onClick={() => {
-                          duplicateMutation.mutate({ id: order.id });
-                          setShowStatusDropdown(false);
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Duplicate Order
-                      </button>
                       {order.status !== "COMPLETED" &&
-                        order.status !== "CANCELLED" &&
-                        order.status !== "SHIPPED" &&
-                        order.status !== "DELIVERED" && (
+                        order.status !== "CANCELLED" && (
                           <button
                             onClick={() => {
                               if (
@@ -244,6 +190,11 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Status Timeline */}
+        <div className="mt-4">
+          <OrderStatusTimeline status={order.status} />
         </div>
       </div>
 

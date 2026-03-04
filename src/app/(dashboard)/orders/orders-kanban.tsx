@@ -1,32 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { COLORS } from "@/lib/tokens";
-import { Clock, Package } from "lucide-react";
+import { Package } from "lucide-react";
 
 type Order = {
   id: string;
-  displayId: string;
+  number: string;
   title: string;
   status: string;
-  sourceType: string;
-  dueDate: string | Date | null;
   totalAmount: any;
   createdAt: string | Date;
   company: { id: string; name: string };
-  creator: { id: string; name: string };
-  items: { id: string; contentType: string; title: string; lineTotal: any }[];
-  _count: { items: number; shipments: number; invoices: number; proofs: number };
+  createdBy: { id: string; name: string };
+  items: { id: string; description: string; lineTotal: any }[];
+  _count: { items: number; shipments: number; invoices: number };
 };
 
 const ORDER_STATUS_COLORS: Record<string, { color: string; bg: string; label: string }> = {
   SUBMITTED: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Submitted" },
   IN_REVIEW: { color: "#A78BFA", bg: "rgba(167,139,250,0.12)", label: "In Review" },
+  PROOFING: { color: "#818CF8", bg: "rgba(129,140,248,0.12)", label: "Proofing" },
   APPROVED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Approved" },
-  READY_FOR_PRODUCTION: { color: "#A78BFA", bg: "rgba(167,139,250,0.12)", label: "Ready for Production" },
   IN_PRODUCTION: { color: "#E85D5D", bg: "rgba(232,93,93,0.12)", label: "In Production" },
+  READY: { color: "#2DD4BF", bg: "rgba(45,212,191,0.12)", label: "Ready" },
   SHIPPED: { color: "#5BDBEF", bg: "rgba(91,219,239,0.12)", label: "Shipped" },
   COMPLETED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Completed" },
 };
@@ -34,9 +32,10 @@ const ORDER_STATUS_COLORS: Record<string, { color: string; bg: string; label: st
 const KANBAN_COLUMNS = [
   "SUBMITTED",
   "IN_REVIEW",
+  "PROOFING",
   "APPROVED",
-  "READY_FOR_PRODUCTION",
   "IN_PRODUCTION",
+  "READY",
   "SHIPPED",
   "COMPLETED",
 ] as const;
@@ -128,101 +127,72 @@ export function OrdersKanban({
             className="relative flex-1 space-y-2 overflow-y-auto p-2"
             style={{ maxHeight: "calc(100vh - 280px)" }}
           >
-            {col.orders.map((order) => {
-              const dueDate = order.dueDate ? new Date(order.dueDate) : null;
-              const isOverdue = dueDate && dueDate < new Date() && !["COMPLETED", "CANCELLED", "DELIVERED"].includes(order.status);
-
-              return (
-                <div
-                  key={order.id}
-                  draggable={isStaff}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("orderId", order.id);
-                  }}
-                  onClick={() => router.push(`/orders/${order.id}`)}
-                  className="rounded-lg border p-3 transition-all"
-                  style={{
-                    backgroundColor: COLORS.card,
-                    borderColor: isOverdue ? "rgba(232,93,93,0.3)" : COLORS.cardBorder,
-                    cursor: isStaff ? "grab" : "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = isOverdue ? "rgba(232,93,93,0.3)" : COLORS.cardBorder;
-                  }}
-                >
-                  {/* Header: ID + overdue badge */}
-                  <div className="mb-2 flex items-center justify-between">
-                    <span
-                      className="font-mono text-xs font-medium"
-                      style={{ color: COLORS.coral }}
-                    >
-                      {order.displayId}
-                    </span>
-                    {isOverdue && (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                        style={{
-                          backgroundColor: "rgba(232,93,93,0.12)",
-                          color: "#E85D5D",
-                        }}
-                      >
-                        Overdue
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title */}
-                  <p
-                    className="mb-1 text-sm font-medium line-clamp-2"
-                    style={{ color: COLORS.textPrimary }}
+            {col.orders.map((order) => (
+              <div
+                key={order.id}
+                draggable={isStaff}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("orderId", order.id);
+                }}
+                onClick={() => router.push(`/orders/${order.id}`)}
+                className="rounded-lg border p-3 transition-all"
+                style={{
+                  backgroundColor: COLORS.card,
+                  borderColor: COLORS.cardBorder,
+                  cursor: isStaff ? "grab" : "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder;
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span
+                    className="font-mono text-xs font-medium"
+                    style={{ color: COLORS.coral }}
                   >
-                    {order.title}
-                  </p>
-
-                  {/* Company */}
-                  <div
-                    className="mb-3 text-xs"
-                    style={{ color: COLORS.textSecondary }}
-                  >
-                    {order.company.name}
-                  </div>
-
-                  {/* Footer: date, items, amount */}
-                  <div className="flex items-center justify-between">
-                    <div
-                      className="flex items-center gap-3 text-xs"
-                      style={{ color: COLORS.textMuted }}
-                    >
-                      {dueDate && (
-                        <span
-                          className="flex items-center gap-1"
-                          style={isOverdue ? { color: "#E85D5D" } : undefined}
-                        >
-                          <Clock className="h-3 w-3" />
-                          {dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        {order._count.items}
-                      </span>
-                    </div>
-                    <span
-                      className="text-xs"
-                      style={{ color: COLORS.textMuted }}
-                    >
-                      ${Number(order.totalAmount).toLocaleString("en-US", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
+                    {order.number}
+                  </span>
                 </div>
-              );
-            })}
+
+                <p
+                  className="mb-1 text-sm font-medium line-clamp-2"
+                  style={{ color: COLORS.textPrimary }}
+                >
+                  {order.title}
+                </p>
+
+                <div
+                  className="mb-3 text-xs"
+                  style={{ color: COLORS.textSecondary }}
+                >
+                  {order.company.name}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div
+                    className="flex items-center gap-3 text-xs"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Package className="h-3 w-3" />
+                      {order._count.items}
+                    </span>
+                  </div>
+                  <span
+                    className="text-xs"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    ${Number(order.totalAmount).toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))}
 
             {col.orders.length === 0 && (
               <div className="flex items-center justify-center py-8">
@@ -230,16 +200,6 @@ export function OrdersKanban({
                   No orders
                 </span>
               </div>
-            )}
-
-            {/* Bottom fade gradient for overflow */}
-            {col.orders.length > 3 && (
-              <div
-                className="pointer-events-none sticky bottom-0 left-0 right-0 h-6"
-                style={{
-                  background: `linear-gradient(transparent, ${COLORS.surface})`,
-                }}
-              />
             )}
           </div>
         </div>

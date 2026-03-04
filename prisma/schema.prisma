@@ -41,18 +41,18 @@ enum QuoteStatus {
 enum OrderStatus {
   SUBMITTED
   IN_REVIEW
+  PROOFING
   APPROVED
-  READY_FOR_PRODUCTION
   IN_PRODUCTION
+  READY
   SHIPPED
-  DELIVERED
   COMPLETED
   CANCELLED
 }
 
-enum OrderSourceType {
-  CATALOG
+enum OrderSource {
   QUOTE
+  MANUAL
 }
 
 enum ContentType {
@@ -61,13 +61,6 @@ enum ContentType {
   SIGNAGE
   PROMO_ITEM
   OTHER
-}
-
-enum OrderItemStatus {
-  PENDING
-  IN_PRODUCTION
-  COMPLETED
-  CANCELLED
 }
 
 enum PricingType {
@@ -89,18 +82,16 @@ enum InvoiceStatus {
   SENT
   PARTIALLY_PAID
   PAID
-  REFUNDED
+  OVERDUE
+  VOID
 }
 
 enum PaymentMethod {
-  CARD
-  MANUAL
-}
-
-enum PaymentStatus {
-  SUCCEEDED
-  FAILED
-  PENDING
+  STRIPE
+  CHECK
+  WIRE
+  CASH
+  OTHER
 }
 
 enum ShipmentStatus {
@@ -210,6 +201,7 @@ model User {
   invitees      User[]     @relation("UserInvites")
 
   ordersCreated       Order[]          @relation("OrderCreator")
+  paymentsRecorded    Payment[]        @relation("PaymentRecorder")
   artworkUploads      ArtworkVersion[] @relation("ArtworkUploader")
   proofsPublished     Proof[]          @relation("ProofPublisher")
   proofsApproved      Proof[]          @relation("ProofApprover")
@@ -316,7 +308,6 @@ model Quote {
   clientMessage     String?         @db.Text @map("client_message")
   mockupUrl         String?         @db.Text @map("mockup_url")
 
-  convertedOrderId  String?         @unique @map("converted_order_id")
   convertedAt       DateTime?       @map("converted_at")
 
   items             QuoteItem[]
@@ -332,7 +323,7 @@ model Quote {
   company           Company         @relation(fields: [companyId], references: [id])
   project           Project?        @relation(fields: [projectId], references: [id])
   createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
-  convertedOrder    Order?          @relation(fields: [convertedOrderId], references: [id])
+  convertedOrder    Order?
   quoteRequest      QuoteRequest?
 
   @@index([companyId, status])
@@ -386,39 +377,44 @@ model QuoteChangeRequest {
 // ─── Order ───────────────────────────────────────────────────────────
 
 model Order {
-  id              String          @id @default(uuid())
-  companyId       String          @map("company_id")
-  createdBy       String          @map("created_by")
-  projectId       String?         @map("project_id")
-  displayId       String          @unique @map("display_id")
-  sourceType      OrderSourceType @default(CATALOG) @map("source_type")
-  title           String
-  status          OrderStatus     @default(SUBMITTED)
-  dueDate         DateTime?       @map("due_date")
-  poNumber        String?         @map("po_number")
-  eventName       String?         @map("event_name")
-  notes           String?
-  subtotal        Decimal         @default(0) @db.Decimal(10, 2)
-  taxRate         Decimal         @default(0) @map("tax_rate") @db.Decimal(5, 4)
-  taxAmount       Decimal         @default(0) @map("tax_amount") @db.Decimal(10, 2)
-  shippingAmount  Decimal         @default(0) @map("shipping_amount") @db.Decimal(10, 2)
-  discountAmount  Decimal         @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  feeAmount       Decimal         @default(0) @map("fee_amount") @db.Decimal(10, 2)
-  totalAmount     Decimal         @default(0) @map("total_amount") @db.Decimal(10, 2)
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  id                String        @id @default(uuid())
+  number            String        @unique
+  companyId         String        @map("company_id")
+  createdByUserId   String        @map("created_by_user_id")
+  projectId         String?       @map("project_id")
+  quoteId           String?       @unique @map("quote_id")
 
-  company         Company         @relation(fields: [companyId], references: [id])
-  creator         User            @relation("OrderCreator", fields: [createdBy], references: [id])
-  project         Project?        @relation(fields: [projectId], references: [id])
-  items           OrderItem[]
-  proofs          Proof[]
-  invoices        Invoice[]
-  shipments       Shipment[]
-  threads         MessageThread[]
-  quote           Quote?
-  internalTasks   InternalTask[]
-  purchaseOrders  PurchaseOrder[]
+  title             String
+  status            OrderStatus   @default(SUBMITTED)
+  source            OrderSource   @default(MANUAL)
+
+  paymentTermType   PaymentTermType @default(FULL) @map("payment_term_type")
+  depositPercent    Int?            @map("deposit_percent")
+  netDays           Int?            @map("net_days")
+
+  inHandsDate       DateTime?     @map("in_hands_date")
+  poNumber          String?       @map("po_number")
+  internalNotes     String?       @db.Text @map("internal_notes")
+  clientNotes       String?       @db.Text @map("client_notes")
+
+  totalAmount       Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  company           Company       @relation(fields: [companyId], references: [id])
+  createdBy         User          @relation("OrderCreator", fields: [createdByUserId], references: [id])
+  project           Project?      @relation(fields: [projectId], references: [id])
+  quote             Quote?        @relation(fields: [quoteId], references: [id])
+
+  items             OrderItem[]
+  artworkLinks      OrderArtworkLink[]
+  invoices          Invoice[]
+  shipments         Shipment[]
+  proofs            Proof[]
+  threads           MessageThread[]
+  internalTasks     InternalTask[]
+  purchaseOrders    PurchaseOrder[]
 
   @@index([companyId, status])
   @@index([companyId, createdAt])
@@ -429,38 +425,40 @@ model Order {
 model OrderItem {
   id                String          @id @default(uuid())
   orderId           String          @map("order_id")
-  position          Int             @default(0)
-  contentType       ContentType     @default(OTHER) @map("content_type")
-  title             String
-  description       String?
-  catalogProductId  String?         @map("catalog_product_id")
-  savedProductId    String?         @map("saved_product_id")
+  sortOrder         Int             @default(0) @map("sort_order")
+  description       String
   sku               String?
-  vendorId          String?         @map("vendor_id")
-  vendorTags        String[]        @default([]) @map("vendor_tags")
+  color             String?
   unitPrice         Decimal         @default(0) @map("unit_price") @db.Decimal(10, 2)
   quantity          Int             @default(1)
-  sizeBreakdown     Json?           @map("size_breakdown")
-  decorationDetails Json?           @map("decoration_details")
-  artworkAssetId    String?         @map("artwork_asset_id")
   lineTotal         Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
+  sizeBreakdown     Json?           @map("size_breakdown")
+  decorationNotes   String?         @db.Text @map("decoration_notes")
+  vendorId          String?         @map("vendor_id")
   costPerUnit       Decimal?        @map("cost_per_unit") @db.Decimal(10, 2)
-  totalCost         Decimal?        @map("total_cost") @db.Decimal(10, 2)
-  profitMargin      Decimal?        @map("profit_margin") @db.Decimal(10, 2)
-  status            OrderItemStatus @default(PENDING)
-  notes             String?
+  notes             String?         @db.Text
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
-  order             Order           @relation(fields: [orderId], references: [id])
-  catalogProduct    CatalogProduct? @relation(fields: [catalogProductId], references: [id])
-  savedProduct      SavedProduct?   @relation(fields: [savedProductId], references: [id])
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
-  artworkAsset      ArtworkAsset?   @relation(fields: [artworkAssetId], references: [id])
-  shipmentItems     ShipmentLineItem[]
 
   @@index([orderId])
   @@map("order_items")
+}
+
+model OrderArtworkLink {
+  id            String       @id @default(uuid())
+  orderId       String       @map("order_id")
+  artworkAssetId String      @map("artwork_asset_id")
+  label         String?
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  artworkAsset  ArtworkAsset @relation(fields: [artworkAssetId], references: [id])
+
+  @@index([orderId])
+  @@map("order_artwork_links")
 }
 
 // ─── Vendor ──────────────────────────────────────────────────────────
@@ -508,7 +506,6 @@ model CatalogProduct {
 
   company           Company?          @relation(fields: [companyId], references: [id])
   vendor            Vendor?           @relation(fields: [vendorId], references: [id])
-  orderItems        OrderItem[]
   quoteRequestItems QuoteRequestItem[]
 
   @@index([contentType])
@@ -529,7 +526,6 @@ model SavedProduct {
 
   company              Company     @relation(fields: [companyId], references: [id])
   creator              User        @relation("SavedProductCreator", fields: [createdBy], references: [id])
-  orderItems           OrderItem[]
   quoteItems           QuoteItem[]
 
   @@index([companyId])
@@ -542,11 +538,16 @@ model Shipment {
   id                  String         @id @default(uuid())
   orderId             String         @map("order_id")
   locationId          String?        @map("location_id")
-  destinationAddress  Json?          @map("destination_address")
+  addressName         String?        @map("address_name")
+  addressLine1        String?        @map("address_line1")
+  addressLine2        String?        @map("address_line2")
+  addressCity         String?        @map("address_city")
+  addressState        String?        @map("address_state")
+  addressZip          String?        @map("address_zip")
   carrier             String?
   trackingNumber      String?        @map("tracking_number")
   trackingUrl         String?        @map("tracking_url")
-  packingSlipUrl      String?        @map("packing_slip_url")
+  contents            String?        @db.Text
   status              ShipmentStatus @default(PENDING)
   shippedAt           DateTime?      @map("shipped_at")
   deliveredAt         DateTime?      @map("delivered_at")
@@ -555,23 +556,9 @@ model Shipment {
 
   order               Order          @relation(fields: [orderId], references: [id])
   location            Location?      @relation(fields: [locationId], references: [id])
-  lineItems           ShipmentLineItem[]
 
   @@index([orderId])
   @@map("shipments")
-}
-
-model ShipmentLineItem {
-  id          String    @id @default(uuid())
-  shipmentId  String    @map("shipment_id")
-  orderItemId String    @map("order_item_id")
-  quantity    Int
-
-  shipment    Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-
-  @@index([shipmentId])
-  @@map("shipment_line_items")
 }
 
 // ─── Purchase Order ──────────────────────────────────────────────────
@@ -628,7 +615,7 @@ model ArtworkAsset {
   company        Company          @relation(fields: [companyId], references: [id])
   creator        User             @relation("ArtworkCreator", fields: [createdBy], references: [id])
   versions       ArtworkVersion[]
-  orderItems     OrderItem[]
+  orderArtworkLinks OrderArtworkLink[]
 
   @@index([companyId])
   @@map("artwork_assets")
@@ -697,21 +684,20 @@ model ProofAnnotation {
 
 model Invoice {
   id               String        @id @default(uuid())
+  number           String        @unique
   orderId          String        @map("order_id")
   companyId        String        @map("company_id")
-  displayId        String        @unique @map("display_id")
-  amountTotal      Decimal       @map("amount_total") @db.Decimal(10, 2)
-  depositRequired  Decimal       @default(0) @map("deposit_required") @db.Decimal(10, 2)
-  depositPaid      Decimal       @default(0) @map("deposit_paid") @db.Decimal(10, 2)
-  balanceRemaining Decimal       @map("balance_remaining") @db.Decimal(10, 2)
   status           InvoiceStatus @default(DRAFT)
-  stripeInvoiceId  String?       @map("stripe_invoice_id")
+  issuedAt         DateTime?     @map("issued_at")
   dueDate          DateTime?     @map("due_date")
-  issuedAt         DateTime      @default(now()) @map("issued_at")
   paidAt           DateTime?     @map("paid_at")
+  memo             String?       @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   order            Order         @relation(fields: [orderId], references: [id])
   company          Company       @relation(fields: [companyId], references: [id])
+  items            InvoiceItem[]
   payments         Payment[]
 
   @@index([companyId])
@@ -719,17 +705,33 @@ model Invoice {
   @@map("invoices")
 }
 
+model InvoiceItem {
+  id            String   @id @default(uuid())
+  invoiceId     String   @map("invoice_id")
+  description   String
+  quantity      Int      @default(1)
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(10, 2)
+  lineTotal     Decimal  @map("line_total") @db.Decimal(10, 2)
+
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
 model Payment {
   id                    String        @id @default(uuid())
   invoiceId             String        @map("invoice_id")
   amount                Decimal       @db.Decimal(10, 2)
-  stripePaymentIntentId String?       @map("stripe_payment_intent_id")
-  stripeChargeId        String?       @map("stripe_charge_id")
   method                PaymentMethod
-  status                PaymentStatus @default(PENDING)
+  reference             String?
+  recordedByUserId      String        @map("recorded_by_user_id")
+  notes                 String?       @db.Text
+  paidAt                DateTime      @default(now()) @map("paid_at")
   createdAt             DateTime      @default(now()) @map("created_at")
 
   invoice               Invoice       @relation(fields: [invoiceId], references: [id])
+  recordedBy            User          @relation("PaymentRecorder", fields: [recordedByUserId], references: [id])
 
   @@index([invoiceId])
   @@map("payments")

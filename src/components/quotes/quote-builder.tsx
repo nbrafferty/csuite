@@ -452,7 +452,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
               quoteId={quoteId}
               status={quote?.status}
               number={quote?.number}
-              convertedOrderId={quote?.convertedOrderId}
+              convertedOrder={quote?.convertedOrder}
               companyId={companyId}
               title={title}
               paymentTermType={paymentTermType}

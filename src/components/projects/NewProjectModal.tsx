@@ -274,7 +274,7 @@ export function NewProjectModal({ open, onClose }: NewProjectModalProps) {
                     >
                       <span className="shrink-0">📦</span>
                       <span className="truncate">
-                        {order.displayId} — {order.title}
+                        {order.number} — {order.title}
                       </span>
                       {selectedOrderIds.includes(order.id) && (
                         <span className="ml-auto">✓</span>
@@ -337,7 +337,7 @@ export function NewProjectModal({ open, onClose }: NewProjectModalProps) {
                         color: COLORS.coral,
                       }}
                     >
-                      📦 {order?.displayId ?? id.slice(0, 8)}
+                      📦 {order?.number ?? id.slice(0, 8)}
                       <button
                         type="button"
                         onClick={() =>
