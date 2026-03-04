@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
@@ -77,8 +77,7 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                     : null;
 
                 return (
-                  <><tr
-                      key={item.id}
+                  <Fragment key={item.id}><tr
                       className="bg-surface-card transition-colors hover:bg-white/[0.02]"
                     >
                       <td className="px-3 py-3">
@@ -145,7 +144,7 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                       )}
                     </tr>
                     {isExpanded && sizeBreakdown && (
-                      <tr key={`${item.id}-sizes`} className="bg-white/[0.01]">
+                      <tr className="bg-white/[0.01]">
                         <td colSpan={isStaff ? 9 : 7} className="px-8 py-3">
                           <div className="flex flex-wrap gap-3">
                             {Object.entries(sizeBreakdown as Record<string, number>).map(
@@ -165,7 +164,7 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>

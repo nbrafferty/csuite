@@ -5,7 +5,7 @@ export async function register() {
     // Push schema to database (creates tables if they don't exist)
     try {
       console.log("[instrumentation] Running prisma db push...");
-      execSync("npx prisma db push --accept-data-loss --skip-generate", {
+      execSync("npx prisma db push --accept-data-loss", {
         stdio: "inherit",
         timeout: 30000,
       });
