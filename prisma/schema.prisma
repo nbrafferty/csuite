@@ -180,6 +180,7 @@ model Company {
   quoteRequests     QuoteRequest[]
   projects          Project[]
   catalogProducts   CatalogProduct[]
+  tasks             Task[]
 
   @@map("companies")
 }
@@ -219,6 +220,8 @@ model User {
   changeRequests      QuoteChangeRequest[]
   internalTasksAssigned InternalTask[] @relation("TaskAssignee")
   projectsCreated     Project[]        @relation("ProjectCreator")
+  createdTasks        Task[]           @relation("TaskCreator")
+  taskAssignments     TaskAssignee[]   @relation("TaskAssignments")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -415,6 +418,7 @@ model Order {
   threads           MessageThread[]
   internalTasks     InternalTask[]
   purchaseOrders    PurchaseOrder[]
+  tasks             Task[]
 
   @@index([companyId, status])
   @@index([companyId, createdAt])
@@ -877,4 +881,51 @@ model Project {
   @@index([archivedAt])
   @@index([derivedStatus])
   @@map("projects")
+}
+
+// ─── Task ───────────────────────────────────────────────────────────
+
+model Task {
+  id                String    @id @default(cuid())
+  orderId           String?   @map("order_id")
+  tenantId          String?   @map("tenant_id")
+  title             String
+  description       String?   @db.Text
+  status            String    @default("TODO")       // TODO | IN_PROGRESS | DONE
+  priority          String    @default("MEDIUM")     // HIGH | MEDIUM | LOW
+  dueDate           DateTime? @map("due_date")
+  visibility        String    @default("INTERNAL")   // INTERNAL | EXTERNAL
+  createdByUserId   String    @map("created_by_user_id")
+  completedAt       DateTime? @map("completed_at")
+  completedByUserId String?   @map("completed_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  order             Order?    @relation(fields: [orderId], references: [id])
+  tenant            Company?  @relation(fields: [tenantId], references: [id])
+  createdBy         User      @relation("TaskCreator", fields: [createdByUserId], references: [id])
+  assignees         TaskAssignee[]
+
+  @@index([orderId])
+  @@index([tenantId, visibility])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdByUserId])
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation("TaskAssignments", fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignees")
 }

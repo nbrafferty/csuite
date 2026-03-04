@@ -17,6 +17,7 @@ import {
   Settings,
   Building2,
   LogOut,
+  CheckSquare,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { label: "Quotes", href: "/quotes", icon: ClipboardList },
   { label: "Catalog", href: "/catalog", icon: BookOpen },
   { label: "Artwork", href: "/artwork", icon: Image },
+  { label: "Tasks", href: "/tasks", icon: CheckSquare },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Messages", href: "/messages", icon: MessageSquare },
   { label: "Clients", href: "/clients", icon: Building2, staffOnly: true },

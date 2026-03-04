@@ -13,6 +13,7 @@ import { threadRouter } from "./routers/thread";
 import { messageRouter } from "./routers/message";
 import { projectsRouter } from "./routers/projects";
 import { dashboardRouter } from "./routers/dashboard";
+import { taskRouter } from "./routers/task";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -29,6 +30,7 @@ export const appRouter = router({
   thread: threadRouter,
   message: messageRouter,
   projects: projectsRouter,
+  task: taskRouter,
 });
 
 export type AppRouter = typeof appRouter;

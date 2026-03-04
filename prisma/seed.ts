@@ -1444,6 +1444,170 @@ async function main() {
     },
   }).catch(() => {});
 
+  // ─── Tasks ──────────────────────────────────────────────────────
+
+  const ord2 = await prisma.order.findUnique({ where: { number: "ORD-2026-002" } });
+
+  // Task 1: Order-linked, HIGH, assigned to staff + client → EXTERNAL
+  await prisma.task.create({
+    data: {
+      orderId: ord1!.id,
+      tenantId: demo.id,
+      title: "Approve final artwork for Acme polos",
+      description: "Client needs to sign off on the embroidery placement before we go to production.",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: daysAgo(-3),
+      visibility: "EXTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(5),
+      assignees: { create: [{ userId: cccAdmin.id }, { userId: janeSmith.id }] },
+    },
+  });
+
+  // Task 2: Order-linked, MEDIUM, staff only → INTERNAL
+  await prisma.task.create({
+    data: {
+      orderId: ord1!.id,
+      tenantId: demo.id,
+      title: "Source backup thread color for navy polos",
+      description: "Primary thread vendor is backordered. Check SanMar and S&S for alternatives.",
+      status: "IN_PROGRESS",
+      priority: "MEDIUM",
+      visibility: "INTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(4),
+      assignees: { create: [{ userId: cccAdmin.id }] },
+    },
+  });
+
+  // Task 3: Order-linked, completed
+  await prisma.task.create({
+    data: {
+      orderId: ord1!.id,
+      tenantId: demo.id,
+      title: "Confirm size breakdown with Acme HR",
+      status: "DONE",
+      priority: "MEDIUM",
+      visibility: "EXTERNAL",
+      createdByUserId: janeSmith.id,
+      completedAt: daysAgo(2),
+      completedByUserId: janeSmith.id,
+      createdAt: daysAgo(8),
+      assignees: { create: [{ userId: janeSmith.id }] },
+    },
+  });
+
+  // Task 4: Order-linked to ORD-2026-002
+  await prisma.task.create({
+    data: {
+      orderId: ord2!.id,
+      tenantId: demo.id,
+      title: "Ship booth display samples to venue",
+      description: "Need to arrive 2 days before event for setup.",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: daysAgo(-5),
+      visibility: "EXTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(3),
+      assignees: { create: [{ userId: cccAdmin.id }, { userId: johnDoe.id }] },
+    },
+  });
+
+  // Task 5: Standalone internal task
+  await prisma.task.create({
+    data: {
+      title: "Update Q2 pricing sheet",
+      description: "New vendor pricing came in. Update the internal pricing calculator.",
+      status: "TODO",
+      priority: "MEDIUM",
+      dueDate: daysAgo(-14),
+      visibility: "INTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(7),
+      assignees: { create: [{ userId: cccAdmin.id }] },
+    },
+  });
+
+  // Task 6: Globex order task
+  await prisma.task.create({
+    data: {
+      orderId: ord3!.id,
+      tenantId: globex.id,
+      title: "Confirm hoodie color swatches with Globex",
+      status: "IN_PROGRESS",
+      priority: "MEDIUM",
+      visibility: "EXTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(6),
+      assignees: { create: [{ userId: globexAdmin.id }] },
+    },
+  });
+
+  // Task 7: Low priority done task
+  await prisma.task.create({
+    data: {
+      orderId: ord3!.id,
+      tenantId: globex.id,
+      title: "Generate PO for Globex winter order",
+      status: "DONE",
+      priority: "LOW",
+      visibility: "INTERNAL",
+      createdByUserId: cccAdmin.id,
+      completedAt: daysAgo(1),
+      completedByUserId: cccAdmin.id,
+      createdAt: daysAgo(10),
+    },
+  });
+
+  // Task 8: Standalone client-visible task
+  await prisma.task.create({
+    data: {
+      tenantId: demo.id,
+      title: "Schedule Q2 planning call with Acme",
+      description: "Discuss upcoming product launches and swag needs for next quarter.",
+      status: "TODO",
+      priority: "LOW",
+      dueDate: daysAgo(-21),
+      visibility: "EXTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(2),
+      assignees: { create: [{ userId: cccAdmin.id }, { userId: janeSmith.id }] },
+    },
+  });
+
+  // Task 9: Urgent standalone
+  await prisma.task.create({
+    data: {
+      title: "Fix invoice template formatting",
+      description: "Tax line is wrapping on PDF export. Need to adjust margins.",
+      status: "IN_PROGRESS",
+      priority: "HIGH",
+      visibility: "INTERNAL",
+      createdByUserId: cccAdmin.id,
+      createdAt: daysAgo(1),
+      assignees: { create: [{ userId: cccAdmin.id }] },
+    },
+  });
+
+  // Task 10: Client-created task
+  await prisma.task.create({
+    data: {
+      orderId: ord1!.id,
+      tenantId: demo.id,
+      title: "Send updated logo file (vector format)",
+      description: "The current logo file is low-res. Need .ai or .eps version.",
+      status: "TODO",
+      priority: "HIGH",
+      dueDate: daysAgo(-2),
+      visibility: "EXTERNAL",
+      createdByUserId: janeSmith.id,
+      createdAt: daysAgo(1),
+      assignees: { create: [{ userId: janeSmith.id }] },
+    },
+  });
+
   console.log("Seed complete!");
   console.log("---");
   console.log("CCC Staff login:  admin@centralcreative.co / password123");
