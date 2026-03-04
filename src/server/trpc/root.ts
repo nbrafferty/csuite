@@ -12,8 +12,10 @@ import { catalogRouter } from "./routers/catalog";
 import { threadRouter } from "./routers/thread";
 import { messageRouter } from "./routers/message";
 import { projectsRouter } from "./routers/projects";
+import { dashboardRouter } from "./routers/dashboard";
 
 export const appRouter = router({
+  dashboard: dashboardRouter,
   auth: authRouter,
   company: companyRouter,
   clientOrg: clientRouter,

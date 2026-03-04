@@ -825,6 +825,31 @@ async function main() {
     },
   }).catch(() => {});
 
+  // QUOTED — Redline, converted to a quote
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: redline.id,
+      createdById: redlineAdmin.id,
+      status: "QUOTED",
+      title: "Redline Awards Night Merch",
+      description: "We need polos and embroidered caps for our annual awards night. Around 75 attendees. Also want custom award plaques if possible.",
+      inHandsDate: daysAgo(-60),
+      createdAt: daysAgo(40),
+    },
+  }).catch(() => {});
+
+  // CLOSED — Globex, declined by staff
+  await prisma.quoteRequest.create({
+    data: {
+      companyId: globex.id,
+      createdById: globexAdmin.id,
+      status: "CLOSED",
+      title: "Globex Office Furniture Branding",
+      description: "Looking into branded desk accessories — mouse pads, phone stands, monitor risers. Not sure if this is something you offer.",
+      createdAt: daysAgo(30),
+    },
+  }).catch(() => {});
+
   // ─── Projects ────────────────────────────────────────────────────
 
   // Project 1: Acme Q1 Onboarding — ACTIVE (has in-production order)

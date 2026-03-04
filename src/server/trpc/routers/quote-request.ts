@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 import { QuoteRequestStatus, Prisma } from "@prisma/client";
+import { generateQuoteNumber } from "../../lib/quote-number";
 
 export const quoteRequestRouter = router({
   list: protectedProcedure
@@ -182,5 +183,85 @@ export const quoteRequestRouter = router({
         where: { id: input.id },
         data: { status: QuoteRequestStatus.CLOSED },
       });
+    }),
+
+  // Staff declines a request
+  decline: staffProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      const request = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: input.id },
+      });
+      if (request.status === QuoteRequestStatus.QUOTED || request.status === QuoteRequestStatus.CLOSED) {
+        throw new Error("Cannot decline a request that is already quoted or closed");
+      }
+      return prisma.quoteRequest.update({
+        where: { id: input.id },
+        data: { status: QuoteRequestStatus.CLOSED },
+      });
+    }),
+
+  // Staff converts request to a DRAFT quote
+  convertToQuote: staffProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await prisma.quoteRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        include: {
+          catalogItems: {
+            include: {
+              catalogProduct: true,
+            },
+          },
+        },
+      });
+
+      if (request.status === QuoteRequestStatus.QUOTED) {
+        throw new Error("This request has already been converted to a quote");
+      }
+      if (request.status === QuoteRequestStatus.CLOSED) {
+        throw new Error("Cannot convert a closed request");
+      }
+
+      const quoteNumber = await generateQuoteNumber(prisma as any);
+
+      // Build quote items from catalog items if they exist
+      const quoteItems = request.catalogItems.map((item, index) => {
+        const product = item.catalogProduct;
+        const unitPrice = product ? Number(product.basePrice) : 0;
+        const quantity = item.quantity ?? 1;
+        return {
+          description: item.description || product?.name || "Item",
+          sku: product?.sku ?? undefined,
+          unitPrice,
+          quantity,
+          lineTotal: unitPrice * quantity,
+          sortOrder: index,
+          decorationNotes: item.notes ?? undefined,
+        };
+      });
+
+      const quote = await prisma.quote.create({
+        data: {
+          number: quoteNumber,
+          companyId: request.companyId,
+          createdByUserId: ctx.user.id,
+          title: request.title,
+          status: "DRAFT",
+          notes: request.description ?? undefined,
+          items: quoteItems.length > 0 ? { create: quoteItems } : undefined,
+        },
+      });
+
+      // Link request to the new quote and mark as QUOTED
+      await prisma.quoteRequest.update({
+        where: { id: input.id },
+        data: {
+          status: QuoteRequestStatus.QUOTED,
+          quoteId: quote.id,
+        },
+      });
+
+      return quote;
     }),
 });
