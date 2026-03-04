@@ -15,12 +15,10 @@ export default function QuotesPage() {
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
 
   const { data: requestsData } = trpc.quoteRequest.list.useQuery(
-    { limit: 1 },
-    { refetchInterval: 30_000 }
+    { limit: 50 },
+    { refetchInterval: 30_000, retry: false }
   );
-  const requestCount = requestsData
-    ? requestsData.requests.length + (requestsData.nextCursor ? "+" : "")
-    : null;
+  const requestCount = requestsData?.requests?.length ?? null;
 
   return (
     <div>

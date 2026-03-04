@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
-  { label: "Quotes", href: "/quotes", icon: ClipboardList, staffOnly: true },
+  { label: "Quotes", href: "/quotes", icon: ClipboardList },
   { label: "Catalog", href: "/catalog", icon: BookOpen },
   { label: "Artwork", href: "/artwork", icon: Image },
   { label: "Billing", href: "/billing", icon: CreditCard },
