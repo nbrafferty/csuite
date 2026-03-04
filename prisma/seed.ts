@@ -1238,6 +1238,187 @@ async function main() {
     },
   }).catch(() => {});
 
+  // ─── Invoices & Payments ─────────────────────────────────────────
+
+  const ord1 = await prisma.order.findUnique({ where: { number: "ORD-2026-001" } });
+  const ord3 = await prisma.order.findUnique({ where: { number: "ORD-2026-003" } });
+  const ord4 = await prisma.order.findUnique({ where: { number: "ORD-2026-004" } });
+  const ord5 = await prisma.order.findUnique({ where: { number: "ORD-2026-005" } });
+
+  // INV-2026-001 — Acme ORD-2026-001, SENT, no payments
+  await prisma.invoice.create({
+    data: {
+      number: "INV-2026-001",
+      orderId: ord1!.id,
+      companyId: demo.id,
+      status: "SENT",
+      issuedAt: daysAgo(10),
+      dueDate: daysAgo(-20),
+      memo: "50% deposit invoice for Acme Q1 polo order.",
+      items: {
+        create: [
+          {
+            description: "Classic Polo Shirt — Navy",
+            quantity: 150,
+            unitPrice: 18.99,
+            lineTotal: 2848.50,
+          },
+          {
+            description: "Classic Polo Shirt — White",
+            quantity: 50,
+            unitPrice: 18.99,
+            lineTotal: 949.50,
+          },
+          {
+            description: "Essential Crew T-Shirt — Black",
+            quantity: 45,
+            unitPrice: 9.99,
+            lineTotal: 449.55,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // INV-2026-002 — Bloom ORD-2026-004, PARTIALLY_PAID, 1 payment
+  await prisma.invoice.create({
+    data: {
+      number: "INV-2026-002",
+      orderId: ord4!.id,
+      companyId: bloom.id,
+      status: "PARTIALLY_PAID",
+      issuedAt: daysAgo(18),
+      dueDate: daysAgo(-3),
+      memo: "Bloom Studio grand opening order — deposit collected, balance due on delivery.",
+      items: {
+        create: [
+          {
+            description: "Bloom-branded Tees — Sage Green",
+            quantity: 200,
+            unitPrice: 12.50,
+            lineTotal: 2500.00,
+          },
+          {
+            description: "Window Vinyl Decals (Set of 4)",
+            quantity: 4,
+            unitPrice: 75.00,
+            lineTotal: 300.00,
+          },
+          {
+            description: "Canvas Tote Bags — Natural",
+            quantity: 100,
+            unitPrice: 4.50,
+            lineTotal: 450.00,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            amount: 1625.00,
+            method: "STRIPE",
+            reference: "pi_3abc123def456",
+            recordedByUserId: cccAdmin.id,
+            paidAt: daysAgo(15),
+            notes: "50% deposit via Stripe",
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // INV-2026-003 — Redline ORD-2026-005, PAID, 1 payment
+  await prisma.invoice.create({
+    data: {
+      number: "INV-2026-003",
+      orderId: ord5!.id,
+      companyId: redline.id,
+      status: "PAID",
+      issuedAt: daysAgo(40),
+      dueDate: daysAgo(10),
+      paidAt: daysAgo(12),
+      memo: "Final invoice — Redline corporate gala shirts.",
+      items: {
+        create: [
+          {
+            description: "Dress Shirts — White w/ Red Embroidery",
+            quantity: 100,
+            unitPrice: 29.97,
+            lineTotal: 2997.00,
+          },
+        ],
+      },
+      payments: {
+        create: [
+          {
+            amount: 2997.00,
+            method: "CHECK",
+            reference: "CHK-7891",
+            recordedByUserId: cccAdmin.id,
+            paidAt: daysAgo(12),
+            notes: "Paid in full via check",
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // INV-2026-004 — Globex ORD-2026-003, DRAFT, no payments
+  await prisma.invoice.create({
+    data: {
+      number: "INV-2026-004",
+      orderId: ord3!.id,
+      companyId: globex.id,
+      status: "DRAFT",
+      memo: "Globex winter hoodie order — pending final approval.",
+      items: {
+        create: [
+          {
+            description: "Performance Hoodie — Black",
+            quantity: 500,
+            unitPrice: 38.99,
+            lineTotal: 19495.00,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
+  // INV-2026-005 — Acme ORD-2026-001, OVERDUE, no payments
+  await prisma.invoice.create({
+    data: {
+      number: "INV-2026-005",
+      orderId: ord1!.id,
+      companyId: demo.id,
+      status: "OVERDUE",
+      issuedAt: daysAgo(35),
+      dueDate: daysAgo(5),
+      memo: "Balance due for Acme Q1 onboarding polos.",
+      items: {
+        create: [
+          {
+            description: "Balance due — Classic Polo Shirt — Navy",
+            quantity: 150,
+            unitPrice: 18.99,
+            lineTotal: 2848.50,
+          },
+          {
+            description: "Balance due — Classic Polo Shirt — White",
+            quantity: 50,
+            unitPrice: 18.99,
+            lineTotal: 949.50,
+          },
+          {
+            description: "Balance due — Essential Crew T-Shirt — Black",
+            quantity: 45,
+            unitPrice: 9.99,
+            lineTotal: 449.55,
+          },
+        ],
+      },
+    },
+  }).catch(() => {});
+
   console.log("Seed complete!");
   console.log("---");
   console.log("CCC Staff login:  admin@centralcreative.co / password123");
