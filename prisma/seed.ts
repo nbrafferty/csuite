@@ -1608,6 +1608,196 @@ async function main() {
     },
   });
 
+  // ─── Artwork Assets ──────────────────────────────────────────────
+
+  const art1 = await prisma.artworkAsset.create({
+    data: {
+      companyId: demo.id,
+      name: "Acme Primary Logo",
+      description: "Official Acme Corp primary logo in vector format",
+      filename: "acme-logo-primary.ai",
+      fileType: "ai",
+      currentVersion: 2,
+      createdBy: janeSmith.id,
+      createdAt: daysAgo(45),
+      versions: {
+        create: [
+          {
+            versionNumber: 1,
+            fileName: "acme-logo-primary-v1.ai",
+            fileUrl: "https://mock-s3.example.com/artwork/acme/logo-v1.ai",
+            fileSize: 2400000,
+            mimeType: "application/illustrator",
+            sourceType: "NATIVE",
+            s3Key: "artwork/acme/logo-v1.ai",
+            uploadedBy: janeSmith.id,
+            notes: "Initial upload",
+            createdAt: daysAgo(45),
+          },
+          {
+            versionNumber: 2,
+            fileName: "acme-logo-primary-v2.ai",
+            fileUrl: "https://mock-s3.example.com/artwork/acme/logo-v2.ai",
+            fileSize: 2650000,
+            mimeType: "application/illustrator",
+            sourceType: "NATIVE",
+            s3Key: "artwork/acme/logo-v2.ai",
+            uploadedBy: janeSmith.id,
+            notes: "Updated brand colors",
+            createdAt: daysAgo(20),
+          },
+        ],
+      },
+      tags: {
+        create: [{ tag: "logo" }, { tag: "brand" }, { tag: "vector" }],
+      },
+      orderArtworkLinks: ord1
+        ? {
+            create: [
+              { orderId: ord1.id, linkedByUserId: janeSmith.id },
+            ],
+          }
+        : undefined,
+    },
+  });
+
+  await prisma.artworkAsset.create({
+    data: {
+      companyId: demo.id,
+      name: "Trade Show Banner Design",
+      description: "36x80 retractable banner for Q2 trade show",
+      filename: "tradeshow-banner-2026.pdf",
+      fileType: "pdf",
+      currentVersion: 1,
+      createdBy: janeSmith.id,
+      createdAt: daysAgo(30),
+      versions: {
+        create: [
+          {
+            versionNumber: 1,
+            fileName: "tradeshow-banner-2026.pdf",
+            fileUrl: "https://www.dropbox.com/s/mock/banner-design.pdf",
+            fileSize: 8500000,
+            mimeType: "application/pdf",
+            sourceType: "DROPBOX",
+            dropboxLink: "https://www.dropbox.com/s/mock/banner-design.pdf",
+            dropboxPath: "/Acme Marketing/Trade Show/banner-2026.pdf",
+            uploadedBy: janeSmith.id,
+            notes: "Linked from team Dropbox",
+            createdAt: daysAgo(30),
+          },
+        ],
+      },
+      tags: {
+        create: [{ tag: "banner" }, { tag: "trade-show" }, { tag: "print" }],
+      },
+      orderArtworkLinks: ord1
+        ? {
+            create: [
+              { orderId: ord1.id, linkedByUserId: cccAdmin.id },
+            ],
+          }
+        : undefined,
+    },
+  });
+
+  await prisma.artworkAsset.create({
+    data: {
+      companyId: demo.id,
+      name: "Product Photography - Widget Pro",
+      description: "High-res product shots for catalog",
+      filename: "widget-pro-photo-set.png",
+      fileType: "png",
+      currentVersion: 1,
+      createdBy: cccAdmin.id,
+      createdAt: daysAgo(15),
+      versions: {
+        create: [
+          {
+            versionNumber: 1,
+            fileName: "widget-pro-photo-set.png",
+            fileUrl: "https://drive.google.com/file/d/mock123/view",
+            fileSize: 12000000,
+            mimeType: "image/png",
+            sourceType: "GOOGLE_DRIVE",
+            googleDriveFileId: "mock123",
+            googleDriveLink: "https://drive.google.com/file/d/mock123/view",
+            uploadedBy: cccAdmin.id,
+            notes: "Studio photos from spring shoot",
+            createdAt: daysAgo(15),
+          },
+        ],
+      },
+      tags: {
+        create: [{ tag: "photography" }, { tag: "product" }, { tag: "catalog" }],
+      },
+    },
+  });
+
+  await prisma.artworkAsset.create({
+    data: {
+      companyId: bloom.id,
+      name: "Bloom Studio Brandmark",
+      description: "Brandmark and wordmark for Bloom Studio",
+      filename: "bloom-brandmark.svg",
+      fileType: "svg",
+      currentVersion: 1,
+      createdBy: bloomAdmin.id,
+      createdAt: daysAgo(60),
+      versions: {
+        create: [
+          {
+            versionNumber: 1,
+            fileName: "bloom-brandmark.svg",
+            fileUrl: "https://mock-s3.example.com/artwork/bloom/brandmark.svg",
+            fileSize: 45000,
+            mimeType: "image/svg+xml",
+            sourceType: "NATIVE",
+            s3Key: "artwork/bloom/brandmark.svg",
+            uploadedBy: bloomAdmin.id,
+            createdAt: daysAgo(60),
+          },
+        ],
+      },
+      tags: {
+        create: [{ tag: "logo" }, { tag: "brand" }, { tag: "svg" }],
+      },
+    },
+  });
+
+  await prisma.artworkAsset.create({
+    data: {
+      companyId: bloom.id,
+      name: "Event Invitation Template",
+      description: "Editable Photoshop template for event invitations",
+      filename: "bloom-invite-template.psd",
+      fileType: "psd",
+      currentVersion: 1,
+      createdBy: bloomAdmin.id,
+      createdAt: daysAgo(25),
+      versions: {
+        create: [
+          {
+            versionNumber: 1,
+            fileName: "bloom-invite-template.psd",
+            fileUrl: "https://www.dropbox.com/s/mock/bloom-invite.psd",
+            fileSize: 18000000,
+            mimeType: "image/vnd.adobe.photoshop",
+            sourceType: "DROPBOX",
+            dropboxLink: "https://www.dropbox.com/s/mock/bloom-invite.psd",
+            dropboxPath: "/Bloom Studio/Templates/invite-2026.psd",
+            uploadedBy: bloomAdmin.id,
+            notes: "Master template - do not flatten layers",
+            createdAt: daysAgo(25),
+          },
+        ],
+      },
+      tags: {
+        create: [{ tag: "template" }, { tag: "invitation" }, { tag: "editable" }],
+      },
+    },
+  });
+
   console.log("Seed complete!");
   console.log("---");
   console.log("CCC Staff login:  admin@centralcreative.co / password123");

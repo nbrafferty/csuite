@@ -328,6 +328,7 @@ model Quote {
   createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
   convertedOrder    Order?
   quoteRequest      QuoteRequest?
+  artworkLinks      ArtworkQuoteLink[]
 
   @@index([companyId, status])
   @@index([createdByUserId])
@@ -452,16 +453,20 @@ model OrderItem {
 }
 
 model OrderArtworkLink {
-  id            String       @id @default(uuid())
-  orderId       String       @map("order_id")
-  artworkAssetId String      @map("artwork_asset_id")
-  label         String?
-  createdAt     DateTime     @default(now()) @map("created_at")
+  id             String       @id @default(uuid())
+  orderId        String       @map("order_id")
+  artworkAssetId String       @map("artwork_asset_id")
+  linkedByUserId String?      @map("linked_by_user_id")
+  label          String?
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
 
-  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  artworkAsset  ArtworkAsset @relation(fields: [artworkAssetId], references: [id])
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  artworkAsset   ArtworkAsset @relation(fields: [artworkAssetId], references: [id])
 
+  @@unique([orderId, artworkAssetId])
   @@index([orderId])
+  @@index([artworkAssetId])
   @@map("order_artwork_links")
 }
 
@@ -611,15 +616,21 @@ model InternalTask {
 model ArtworkAsset {
   id             String           @id @default(uuid())
   companyId      String           @map("company_id")
+  name           String           @default("")
+  description    String?          @db.Text
   filename       String
+  fileType       String?          @map("file_type")
   currentVersion Int              @default(1) @map("current_version")
   createdBy      String           @map("created_by")
   createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
 
   company        Company          @relation(fields: [companyId], references: [id])
   creator        User             @relation("ArtworkCreator", fields: [createdBy], references: [id])
   versions       ArtworkVersion[]
+  tags           ArtworkTag[]
   orderArtworkLinks OrderArtworkLink[]
+  quoteArtworkLinks ArtworkQuoteLink[]
 
   @@index([companyId])
   @@map("artwork_assets")
@@ -629,17 +640,58 @@ model ArtworkVersion {
   id            String       @id @default(uuid())
   artworkId     String       @map("artwork_id")
   versionNumber Int          @map("version_number")
+  fileName      String       @map("file_name")
   fileUrl       String       @map("file_url")
   fileSize      Int          @map("file_size")
   mimeType      String       @map("mime_type")
   uploadedBy    String       @map("uploaded_by")
+  notes         String?      @db.Text
+  sourceType    String       @default("NATIVE") @map("source_type")
+  s3Key         String?      @map("s3_key")
+  dropboxLink   String?      @map("dropbox_link")
+  dropboxPath   String?      @map("dropbox_path")
+  googleDriveFileId   String? @map("google_drive_file_id")
+  googleDriveLink     String? @map("google_drive_link")
+  thumbnailUrl  String?      @map("thumbnail_url")
+  sourceAvailable Boolean    @default(true) @map("source_available")
   createdAt     DateTime     @default(now()) @map("created_at")
 
-  artwork       ArtworkAsset @relation(fields: [artworkId], references: [id])
+  artwork       ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
   uploader      User         @relation("ArtworkUploader", fields: [uploadedBy], references: [id])
 
+  @@unique([artworkId, versionNumber])
   @@index([artworkId])
   @@map("artwork_versions")
+}
+
+model ArtworkTag {
+  id          String       @id @default(uuid())
+  artworkId   String       @map("artwork_id")
+  tag         String
+
+  artwork     ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, tag])
+  @@index([tag])
+  @@index([artworkId])
+  @@map("artwork_tags")
+}
+
+model ArtworkQuoteLink {
+  id             String       @id @default(uuid())
+  artworkId      String       @map("artwork_id")
+  quoteId        String       @map("quote_id")
+  linkedByUserId String?      @map("linked_by_user_id")
+  notes          String?
+  linkedAt       DateTime     @default(now()) @map("linked_at")
+
+  artwork        ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, quoteId])
+  @@index([artworkId])
+  @@index([quoteId])
+  @@map("artwork_quote_links")
 }
 
 // ─── Proof ───────────────────────────────────────────────────────────

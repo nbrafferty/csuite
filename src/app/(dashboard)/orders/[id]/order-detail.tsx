@@ -16,6 +16,7 @@ import {
   Clock,
   AlertCircle,
   CheckSquare,
+  Image,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
@@ -25,6 +26,7 @@ import { OrderShippingTab } from "./tabs/shipping-tab";
 import { OrderBillingTab } from "./tabs/billing-tab";
 import { OrderActivityTab } from "./tabs/activity-tab";
 import { OrderTasksTab } from "./tabs/tasks-tab";
+import { OrderArtworkTab } from "./tabs/artwork-tab";
 
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
   SUBMITTED: { label: "Start Review", value: "IN_REVIEW" },
@@ -43,6 +45,7 @@ const TABS = [
   { id: "items", label: "Line Items", icon: FileText },
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
+  { id: "artwork", label: "Artwork", icon: Image },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "activity", label: "Activity", icon: Clock },
 ] as const;
@@ -225,6 +228,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       {activeTab === "items" && <OrderLineItemsTab order={order} isStaff={isStaff} />}
       {activeTab === "shipping" && <OrderShippingTab order={order} isStaff={isStaff} />}
       {activeTab === "tasks" && <OrderTasksTab orderId={order.id} isStaff={isStaff} />}
+      {activeTab === "artwork" && <OrderArtworkTab orderId={order.id} />}
       {activeTab === "billing" && <OrderBillingTab order={order} isStaff={isStaff} />}
       {activeTab === "activity" && <OrderActivityTab orderId={order.id} />}
     </div>
