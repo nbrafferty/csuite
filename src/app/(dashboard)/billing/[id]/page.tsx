@@ -1,13 +1,9 @@
 "use client";
 
-import { use } from "react";
+import { useParams } from "next/navigation";
 import { InvoiceDetail } from "./invoice-detail";
 
-export default function InvoiceDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function InvoiceDetailPage() {
+  const { id } = useParams<{ id: string }>();
   return <InvoiceDetail invoiceId={id} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -15,12 +15,8 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
-export default function CatalogProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function CatalogProductPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session } = useSession();
   const [quantity, setQuantity] = useState(1);
