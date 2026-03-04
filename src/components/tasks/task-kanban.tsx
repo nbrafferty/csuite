@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -8,24 +8,15 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCenter,
-  rectIntersection,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent,
-  type CollisionDetection,
-  pointerWithin,
-  getFirstCollision,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { COLORS } from "@/lib/tokens";
 import { trpc } from "@/lib/trpc";
 import { TaskKanbanCard } from "./task-kanban-card";
+import { TaskPriorityBadge } from "./task-priority-badge";
+import { Calendar, Link as LinkIcon } from "lucide-react";
 
 type Task = {
   id: string;
@@ -47,40 +38,39 @@ const COLUMNS = [
   { id: "DONE", label: "Done", color: COLORS.green, dimColor: COLORS.greenDim },
 ] as const;
 
-type ColumnId = (typeof COLUMNS)[number]["id"];
-
 interface TaskKanbanProps {
   tasks: Task[];
   onSelect: (id: string) => void;
 }
 
-function DroppableColumn({
-  columnId,
+function KanbanColumn({
+  status,
   label,
   color,
   dimColor,
   tasks,
   isDragging,
-  isOver,
+  activeId,
   onSelect,
   onArchive,
 }: {
-  columnId: string;
+  status: string;
   label: string;
   color: string;
   dimColor: string;
   tasks: Task[];
   isDragging: boolean;
-  isOver: boolean;
+  activeId: string | null;
   onSelect: (id: string) => void;
   onArchive: (id: string) => void;
 }) {
-  const { setNodeRef } = useDroppable({
-    id: columnId,
-    data: { type: "column", status: columnId },
+  const { isOver, setNodeRef } = useDroppable({
+    id: `column-${status}`,
+    data: { status },
   });
 
   const isHighlighted = isDragging && isOver;
+  const isDimmed = isDragging && !isOver;
 
   return (
     <div
@@ -89,6 +79,7 @@ function DroppableColumn({
       style={{
         backgroundColor: isHighlighted ? `${color}08` : COLORS.surface,
         borderColor: isHighlighted ? color : COLORS.cardBorder,
+        opacity: isDimmed ? 0.6 : 1,
         boxShadow: isHighlighted ? `0 0 12px ${color}30` : undefined,
       }}
     >
@@ -115,65 +106,57 @@ function DroppableColumn({
       </div>
 
       {/* Card list */}
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
+      <div
+        className="relative flex-1 space-y-2 overflow-y-auto p-2"
+        style={{ maxHeight: "calc(100vh - 280px)", minHeight: 80 }}
       >
-        <div
-          className="flex-1 space-y-2 overflow-y-auto p-2"
-          style={{ maxHeight: "calc(100vh - 280px)", minHeight: 80 }}
-        >
-          {tasks.length === 0 ? (
-            isDragging ? (
-              <div
-                className="flex items-center justify-center rounded-lg border-2 border-dashed p-6"
-                style={{
-                  borderColor: `${color}66`,
-                  backgroundColor: `${color}08`,
-                }}
-              >
-                <span className="text-xs font-medium" style={{ color }}>
-                  Drop here
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <span className="text-xs" style={{ color: COLORS.textSecondary }}>
-                  No tasks
-                </span>
-              </div>
-            )
+        {tasks.length === 0 ? (
+          isDragging ? (
+            <div
+              className="flex items-center justify-center rounded-lg border-2 border-dashed p-6"
+              style={{
+                borderColor: `${color}66`,
+                backgroundColor: `${color}08`,
+              }}
+            >
+              <span className="text-xs font-medium" style={{ color }}>
+                Drop here
+              </span>
+            </div>
           ) : (
-            tasks.map((task) => (
-              <TaskKanbanCard
-                key={task.id}
-                task={task}
-                onSelect={onSelect}
-                onArchive={columnId === "DONE" ? onArchive : undefined}
-              />
-            ))
-          )}
-        </div>
-      </SortableContext>
+            <div className="flex items-center justify-center py-8">
+              <span className="text-xs" style={{ color: COLORS.textSecondary }}>
+                No tasks
+              </span>
+            </div>
+          )
+        ) : (
+          tasks.map((task) => (
+            <TaskKanbanCard
+              key={task.id}
+              task={task}
+              onSelect={onSelect}
+              onArchive={status === "DONE" ? onArchive : undefined}
+            />
+          ))
+        )}
+
+        {/* Bottom fade */}
+        {tasks.length > 4 && (
+          <div
+            className="pointer-events-none sticky bottom-0 left-0 right-0 h-6"
+            style={{
+              background: `linear-gradient(transparent, ${COLORS.surface})`,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
 export function TaskKanban({ tasks, onSelect }: TaskKanbanProps) {
-  // Use a map of column -> ordered task IDs for local state
-  const [columns, setColumns] = useState<Record<string, Task[]>>(() =>
-    buildColumns(tasks)
-  );
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [overColumnId, setOverColumnId] = useState<string | null>(null);
-  const lastOverIdRef = useRef<string | null>(null);
-
-  // Sync from server when not dragging
-  useEffect(() => {
-    if (!activeId) {
-      setColumns(buildColumns(tasks));
-    }
-  }, [tasks, activeId]);
 
   const utils = trpc.useUtils();
 
@@ -196,209 +179,107 @@ export function TaskKanban({ tasks, onSelect }: TaskKanbanProps) {
     useSensor(KeyboardSensor)
   );
 
-  function buildColumns(taskList: Task[]): Record<string, Task[]> {
-    const result: Record<string, Task[]> = {
-      TODO: [],
-      IN_PROGRESS: [],
-      DONE: [],
-    };
-    for (const t of taskList) {
-      if (result[t.status]) {
-        result[t.status].push(t);
-      }
+  // Group tasks by status
+  const todoTasks = tasks.filter((t) => t.status === "TODO");
+  const inProgressTasks = tasks.filter((t) => t.status === "IN_PROGRESS");
+  const doneTasks = tasks.filter((t) => t.status === "DONE");
+
+  const getColumnTasks = (status: string): Task[] => {
+    switch (status) {
+      case "TODO": return todoTasks;
+      case "IN_PROGRESS": return inProgressTasks;
+      case "DONE": return doneTasks;
+      default: return [];
     }
-    return result;
-  }
+  };
 
-  function findColumn(taskId: string): string | null {
-    for (const [col, colTasks] of Object.entries(columns)) {
-      if (colTasks.some((t) => t.id === taskId)) return col;
-    }
-    return null;
-  }
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over } = event;
-      if (!over) {
-        setOverColumnId(null);
-        return;
-      }
-
-      const activeTaskId = active.id as string;
-      const overId = over.id as string;
-
-      // Find the source column of the dragged task
-      const sourceCol = findColumn(activeTaskId);
-      if (!sourceCol) return;
-
-      // Determine target column: either directly a column, or the column of the hovered task
-      let targetCol: string | null = null;
-      if (COLUMNS.some((c) => c.id === overId)) {
-        targetCol = overId;
-      } else {
-        targetCol = findColumn(overId);
-      }
-
-      if (!targetCol) return;
-      setOverColumnId(targetCol);
-
-      // If same column, no cross-column move needed (sortable handles reorder)
-      if (sourceCol === targetCol) return;
-
-      // Move the task from source to target column optimistically
-      setColumns((prev) => {
-        const sourceTasks = [...prev[sourceCol]];
-        const targetTasks = [...prev[targetCol!]];
-
-        const taskIndex = sourceTasks.findIndex((t) => t.id === activeTaskId);
-        if (taskIndex === -1) return prev;
-
-        const [movedTask] = sourceTasks.splice(taskIndex, 1);
-        const updatedTask = { ...movedTask, status: targetCol! };
-
-        // Insert at the position of the hovered task, or at end
-        const overIndex = targetTasks.findIndex((t) => t.id === overId);
-        if (overIndex !== -1) {
-          targetTasks.splice(overIndex, 0, updatedTask);
-        } else {
-          targetTasks.push(updatedTask);
-        }
-
-        return {
-          ...prev,
-          [sourceCol]: sourceTasks,
-          [targetCol!]: targetTasks,
-        };
-      });
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const task = (event.active.data.current as any)?.task as Task | undefined;
+      if (!task) return;
+      setActiveId(task.id);
     },
-    [columns]
+    []
   );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveId(null);
-      setOverColumnId(null);
 
       if (!over) return;
 
-      const activeTaskId = active.id as string;
-      const overId = over.id as string;
+      const task = (active.data.current as any)?.task as Task | undefined;
+      const targetStatus = (over.data.current as any)?.status as string | undefined;
 
-      const activeCol = findColumn(activeTaskId);
-      if (!activeCol) return;
+      if (!task || !targetStatus) return;
+      if (task.status === targetStatus) return;
 
-      // Handle reorder within same column
-      let targetCol: string | null = null;
-      if (COLUMNS.some((c) => c.id === overId)) {
-        targetCol = overId;
-      } else {
-        targetCol = findColumn(overId);
-      }
+      // Build payload: move task to new column, assign sortOrder
+      const targetColumnTasks = getColumnTasks(targetStatus);
+      const payload: Array<{
+        id: string;
+        sortOrder: number;
+        status: "TODO" | "IN_PROGRESS" | "DONE";
+      }> = [];
 
-      if (!targetCol) return;
-
-      if (activeCol === targetCol && overId !== activeTaskId && !COLUMNS.some((c) => c.id === overId)) {
-        // Reorder within same column
-        setColumns((prev) => {
-          const colTasks = [...prev[activeCol]];
-          const oldIndex = colTasks.findIndex((t) => t.id === activeTaskId);
-          const newIndex = colTasks.findIndex((t) => t.id === overId);
-          if (oldIndex === -1 || newIndex === -1) return prev;
-
-          const reordered = arrayMove(colTasks, oldIndex, newIndex);
-          return { ...prev, [activeCol]: reordered };
+      // Add the moved task at the end of the target column
+      for (let i = 0; i < targetColumnTasks.length; i++) {
+        payload.push({
+          id: targetColumnTasks[i].id,
+          sortOrder: i,
+          status: targetStatus as "TODO" | "IN_PROGRESS" | "DONE",
         });
       }
+      payload.push({
+        id: task.id,
+        sortOrder: targetColumnTasks.length,
+        status: targetStatus as "TODO" | "IN_PROGRESS" | "DONE",
+      });
 
-      // Persist all positions for the affected column(s)
-      // Use a setTimeout to ensure state has settled
-      setTimeout(() => {
-        setColumns((current) => {
-          const affectedCols: string[] = [activeCol];
-          if (targetCol && targetCol !== activeCol) affectedCols.push(targetCol);
-
-          const reorderPayload: Array<{
-            id: string;
-            sortOrder: number;
-            status: "TODO" | "IN_PROGRESS" | "DONE";
-          }> = [];
-
-          for (const col of affectedCols) {
-            const colTasks = current[col] ?? [];
-            for (let i = 0; i < colTasks.length; i++) {
-              reorderPayload.push({
-                id: colTasks[i].id,
-                sortOrder: i,
-                status: col as "TODO" | "IN_PROGRESS" | "DONE",
-              });
-            }
-          }
-
-          if (reorderPayload.length > 0) {
-            reorderMutation.mutate({ tasks: reorderPayload });
-          }
-
-          return current;
-        });
-      }, 0);
+      reorderMutation.mutate({ tasks: payload });
     },
-    [columns, reorderMutation]
+    [tasks, reorderMutation]
   );
 
   const handleArchive = useCallback(
     (taskId: string) => {
-      setColumns((prev) => {
-        const updated: Record<string, Task[]> = {};
-        for (const [col, colTasks] of Object.entries(prev)) {
-          updated[col] = colTasks.filter((t) => t.id !== taskId);
-        }
-        return updated;
-      });
       archiveMutation.mutate({ id: taskId });
     },
     [archiveMutation]
   );
 
-  const allTasks = Object.values(columns).flat();
   const activeTask = activeId
-    ? allTasks.find((t) => t.id === activeId)
+    ? tasks.find((t) => t.id === activeId)
     : null;
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map((col) => (
-          <DroppableColumn
+          <KanbanColumn
             key={col.id}
-            columnId={col.id}
+            status={col.id}
             label={col.label}
             color={col.color}
             dimColor={col.dimColor}
-            tasks={columns[col.id] ?? []}
+            tasks={getColumnTasks(col.id)}
             isDragging={!!activeId}
-            isOver={overColumnId === col.id}
+            activeId={activeId}
             onSelect={onSelect}
             onArchive={handleArchive}
           />
         ))}
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay>
         {activeTask && (
           <div
-            className="rounded-lg border p-3 shadow-2xl rotate-1"
+            className="rounded-lg border p-3 shadow-2xl rotate-2"
             style={{
               backgroundColor: COLORS.card,
               borderColor: COLORS.coral,
@@ -413,12 +294,25 @@ export function TaskKanban({ tasks, onSelect }: TaskKanbanProps) {
               >
                 {activeTask.title}
               </span>
+              <TaskPriorityBadge priority={activeTask.priority} />
             </div>
-            {activeTask.order && (
-              <span className="text-[11px]" style={{ color: COLORS.textSecondary }}>
-                {activeTask.order.number}
-              </span>
-            )}
+            <div className="flex items-center gap-2.5 text-[11px]" style={{ color: COLORS.textSecondary }}>
+              {activeTask.order && (
+                <span className="flex items-center gap-1">
+                  <LinkIcon className="h-3 w-3" />
+                  {activeTask.order.number}
+                </span>
+              )}
+              {activeTask.dueDate && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {new Date(activeTask.dueDate).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              )}
+            </div>
           </div>
         )}
       </DragOverlay>

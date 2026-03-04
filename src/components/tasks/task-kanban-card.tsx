@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { TaskPriorityBadge } from "./task-priority-badge";
 import { Calendar, Link as LinkIcon, Archive } from "lucide-react";
@@ -25,59 +24,47 @@ interface TaskKanbanCardProps {
 }
 
 export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProps) {
-  const didDragRef = useRef(false);
-
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({
+  } = useDraggable({
     id: task.id,
-    data: { task, type: "task" },
+    data: { task },
   });
+
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+        zIndex: isDragging ? 50 : undefined,
+      }
+    : undefined;
 
   const isDone = task.status === "DONE";
   const isOverdue =
     task.dueDate && !isDone && new Date(task.dueDate) < new Date();
 
-  // Wrap listeners to track whether a drag actually occurred
-  const wrappedListeners = {
-    ...listeners,
-    onPointerDown: (e: React.PointerEvent) => {
-      didDragRef.current = false;
-      listeners?.onPointerDown?.(e);
-    },
-    onPointerMove: (e: React.PointerEvent) => {
-      didDragRef.current = true;
-      listeners?.onPointerMove?.(e);
-    },
-  };
-
   return (
     <div
       ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`group rounded-lg border p-3 transition-all ${
+        isDragging ? "rotate-2 shadow-xl" : ""
+      }`}
       style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-        zIndex: isDragging ? 50 : undefined,
         backgroundColor: COLORS.card,
         borderColor: isDragging ? COLORS.coral : COLORS.cardBorder,
-        boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.4)" : undefined,
+        cursor: isDragging ? "grabbing" : "grab",
+        opacity: isDragging ? 0.9 : 1,
+        boxShadow: isDragging
+          ? `0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px ${COLORS.coral}40`
+          : undefined,
+        ...style,
       }}
-      {...attributes}
-      {...wrappedListeners}
-      className="group cursor-grab active:cursor-grabbing rounded-lg border p-3 transition-colors hover:border-gray-500"
       data-task-id={task.id}
-      onClick={() => {
-        // Only open detail panel if we didn't just drag
-        if (!didDragRef.current) {
-          onSelect(task.id);
-        }
-      }}
     >
       {/* Title + Priority */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -86,6 +73,12 @@ export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProp
             isDone ? "line-through" : ""
           }`}
           style={{ color: isDone ? COLORS.textSecondary : COLORS.textPrimary }}
+          onClick={(e) => {
+            if (!isDragging) {
+              e.stopPropagation();
+              onSelect(task.id);
+            }
+          }}
         >
           {task.title}
         </span>
