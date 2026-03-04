@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Plus, Search, ListFilter } from "lucide-react";
+import { Plus, Search, ListFilter, LayoutList, Columns3, Archive } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { TaskRow } from "@/components/tasks/task-row";
 import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
 import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
+import { TaskKanban } from "@/components/tasks/task-kanban";
 
 type StatusFilter = "" | "TODO" | "IN_PROGRESS" | "DONE";
 type PriorityFilter = "" | "HIGH" | "MEDIUM" | "LOW";
+type ViewMode = "list" | "kanban";
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "", label: "All" },
@@ -30,9 +32,11 @@ export default function TasksPage() {
   const { data: session } = useSession();
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
 
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("");
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -41,13 +45,14 @@ export default function TasksPage() {
       status: statusFilter || undefined,
       priority: priorityFilter || undefined,
       search: search || undefined,
+      includeArchived: showArchived,
     },
     { refetchInterval: 15_000 }
   );
 
   const tasks = data?.tasks ?? [];
 
-  // Group tasks by status for the grouped view
+  // For list view grouping
   const todoTasks = tasks.filter((t: any) => t.status === "TODO");
   const inProgressTasks = tasks.filter((t: any) => t.status === "IN_PROGRESS");
   const doneTasks = tasks.filter((t: any) => t.status === "DONE");
@@ -68,13 +73,43 @@ export default function TasksPage() {
             {isStaff ? "Manage all tasks across orders" : "Your assigned tasks"}
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          New Task
-        </button>
+        <div className="flex items-center gap-3">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-surface-border bg-surface-card p-0.5">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-coral/20 text-coral"
+                  : "text-gray-500 hover:text-gray-300"
+              )}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                viewMode === "kanban"
+                  ? "bg-coral/20 text-coral"
+                  : "text-gray-500 hover:text-gray-300"
+              )}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Board
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -90,24 +125,26 @@ export default function TasksPage() {
           />
         </div>
 
-        {/* Status filter pills */}
-        <div className="flex items-center gap-1">
-          <ListFilter className="h-4 w-4 text-gray-500 mr-1" />
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                statusFilter === f.value
-                  ? "bg-coral/20 text-coral"
-                  : "text-gray-500 hover:text-gray-300"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {/* Status filter pills (only in list view) */}
+        {viewMode === "list" && (
+          <div className="flex items-center gap-1">
+            <ListFilter className="h-4 w-4 text-gray-500 mr-1" />
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  statusFilter === f.value
+                    ? "bg-coral/20 text-coral"
+                    : "text-gray-500 hover:text-gray-300"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Priority filter */}
         <select
@@ -124,9 +161,23 @@ export default function TasksPage() {
             </option>
           ))}
         </select>
+
+        {/* Show archived toggle */}
+        <button
+          onClick={() => setShowArchived(!showArchived)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            showArchived
+              ? "bg-coral/20 text-coral"
+              : "text-gray-500 hover:text-gray-300"
+          )}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Archived
+        </button>
       </div>
 
-      {/* Task list */}
+      {/* Content */}
       {isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2, 3].map((i) => (
@@ -146,6 +197,11 @@ export default function TasksPage() {
             Create your first task
           </button>
         </div>
+      ) : viewMode === "kanban" ? (
+        <TaskKanban
+          tasks={tasks as any}
+          onSelect={setSelectedTaskId}
+        />
       ) : statusFilter ? (
         // Flat list when filtering by status
         <div className="space-y-2">
@@ -158,7 +214,7 @@ export default function TasksPage() {
           ))}
         </div>
       ) : (
-        // Grouped by status
+        // Grouped by status (list view)
         <div className="space-y-6">
           {groups
             .filter((g) => g.tasks.length > 0)

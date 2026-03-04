@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Calendar, User, Trash2 } from "lucide-react";
+import { X, Calendar, User, Trash2, Archive } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSession } from "next-auth/react";
 import { TaskPriorityBadge } from "./task-priority-badge";
@@ -47,6 +47,13 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
     onSuccess: () => {
       utils.task.list.invalidate();
       onClose();
+    },
+  });
+
+  const archiveMutation = trpc.task.archive.useMutation({
+    onSuccess: () => {
+      utils.task.getById.invalidate({ id: taskId });
+      utils.task.list.invalidate();
     },
   });
 
@@ -303,8 +310,20 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
               </div>
             )}
 
-            {/* Delete */}
-            <div className="pt-4 border-t border-surface-border">
+            {/* Actions */}
+            <div className="pt-4 border-t border-surface-border space-y-2">
+              {task.status === "DONE" && (
+                <button
+                  onClick={() => archiveMutation.mutate({ id: taskId })}
+                  disabled={archiveMutation.isPending}
+                  className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors disabled:opacity-50"
+                >
+                  <Archive className="h-4 w-4" />
+                  {(task as any).archivedAt
+                    ? archiveMutation.isPending ? "Unarchiving..." : "Unarchive"
+                    : archiveMutation.isPending ? "Archiving..." : "Archive"}
+                </button>
+              )}
               <button
                 onClick={() => {
                   if (confirm("Delete this task?")) {

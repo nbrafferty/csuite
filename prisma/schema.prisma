@@ -893,8 +893,10 @@ model Task {
   description       String?   @db.Text
   status            String    @default("TODO")       // TODO | IN_PROGRESS | DONE
   priority          String    @default("MEDIUM")     // HIGH | MEDIUM | LOW
+  sortOrder         Int       @default(0) @map("sort_order")
   dueDate           DateTime? @map("due_date")
   visibility        String    @default("INTERNAL")   // INTERNAL | EXTERNAL
+  archivedAt        DateTime? @map("archived_at")
   createdByUserId   String    @map("created_by_user_id")
   completedAt       DateTime? @map("completed_at")
   completedByUserId String?   @map("completed_by_user_id")

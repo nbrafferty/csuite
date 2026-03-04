@@ -31,6 +31,7 @@ export const taskRouter = router({
           assigneeId: z.string().optional(),
           standalone: z.boolean().optional(),
           search: z.string().optional(),
+          includeArchived: z.boolean().default(false),
           page: z.number().int().default(1),
           perPage: z.number().int().default(50),
         })
@@ -45,11 +46,17 @@ export const taskRouter = router({
         assigneeId,
         standalone,
         search,
+        includeArchived = false,
         page = 1,
         perPage = 50,
       } = input ?? {};
 
       const where: Prisma.TaskWhereInput = {};
+
+      // Exclude archived unless requested
+      if (!includeArchived) {
+        where.archivedAt = null;
+      }
 
       // Tenant scoping + visibility
       if (!isStaff) {
@@ -94,7 +101,7 @@ export const taskRouter = router({
               },
             },
           },
-          orderBy: [{ createdAt: "desc" }],
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
           skip: (page - 1) * perPage,
           take: perPage,
         }),
@@ -420,6 +427,48 @@ export const taskRouter = router({
         });
       }
       return prisma.task.delete({ where: { id: input.id } });
+    }),
+
+  // ARCHIVE — soft-archive completed tasks
+  archive: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+      const task = await prisma.task.findUnique({
+        where: { id: input.id },
+      });
+      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isStaff && task.createdByUserId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return prisma.task.update({
+        where: { id: input.id },
+        data: { archivedAt: task.archivedAt ? null : new Date() },
+      });
+    }),
+
+  // REORDER — update sort positions within a status column
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        tasks: z.array(
+          z.object({
+            id: z.string(),
+            sortOrder: z.number().int(),
+            status: z.enum(["TODO", "IN_PROGRESS", "DONE"]),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const promises = input.tasks.map((t) =>
+        prisma.task.update({
+          where: { id: t.id },
+          data: { sortOrder: t.sortOrder, status: t.status },
+        })
+      );
+      await Promise.all(promises);
+      return { success: true };
     }),
 
   // TOGGLE DONE — convenience for checkboxes
