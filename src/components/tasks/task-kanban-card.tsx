@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TaskPriorityBadge } from "./task-priority-badge";
@@ -24,6 +25,8 @@ interface TaskKanbanCardProps {
 }
 
 export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProps) {
+  const didDragRef = useRef(false);
+
   const {
     attributes,
     listeners,
@@ -33,12 +36,25 @@ export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProp
     isDragging,
   } = useSortable({
     id: task.id,
-    data: { task },
+    data: { task, type: "task" },
   });
 
   const isDone = task.status === "DONE";
   const isOverdue =
     task.dueDate && !isDone && new Date(task.dueDate) < new Date();
+
+  // Wrap listeners to track whether a drag actually occurred
+  const wrappedListeners = {
+    ...listeners,
+    onPointerDown: (e: React.PointerEvent) => {
+      didDragRef.current = false;
+      listeners?.onPointerDown?.(e);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      didDragRef.current = true;
+      listeners?.onPointerMove?.(e);
+    },
+  };
 
   return (
     <div
@@ -46,23 +62,19 @@ export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProp
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.4 : 1,
         zIndex: isDragging ? 50 : undefined,
         backgroundColor: COLORS.card,
         borderColor: isDragging ? COLORS.coral : COLORS.cardBorder,
         boxShadow: isDragging ? "0 8px 24px rgba(0,0,0,0.4)" : undefined,
       }}
       {...attributes}
-      {...listeners}
+      {...wrappedListeners}
       className="group cursor-grab active:cursor-grabbing rounded-lg border p-3 transition-colors hover:border-gray-500"
       data-task-id={task.id}
-      onClick={() => onSelect(task.id)}
-      role="button"
-      tabIndex={0}
-      aria-label={`Task: ${task.title}`}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
+      onClick={() => {
+        // Only open detail panel if we didn't just drag
+        if (!didDragRef.current) {
           onSelect(task.id);
         }
       }}
