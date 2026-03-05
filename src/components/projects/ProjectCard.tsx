@@ -1,27 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { COLORS, STATUS_COLORS, CATEGORY_LABELS } from "@/lib/tokens";
-import { DerivedStatusBadge } from "./DerivedStatusBadge";
+import { COLORS } from "@/lib/tokens";
+import { ProjectStatusBadge } from "./project-status-badge";
 import type { ProjectSummary } from "@/lib/types";
+import { Folder } from "lucide-react";
 
 interface ProjectCardProps {
   project: ProjectSummary;
-  variant: "kanban" | "list";
+  variant: "grid" | "kanban" | "list";
   isAdminView?: boolean;
-  canDrag?: boolean;
 }
 
-export function ProjectCard({
-  project,
-  variant,
-  isAdminView,
-  canDrag = true,
-}: ProjectCardProps) {
-  const category = CATEGORY_LABELS[project.category];
-  const statusColor = STATUS_COLORS[project.status];
-  const progressBarColor = statusColor.color;
-
+export function ProjectCard({ project, variant, isAdminView }: ProjectCardProps) {
   if (variant === "list") {
     return (
       <Link
@@ -30,250 +21,156 @@ export function ProjectCard({
         style={{
           backgroundColor: COLORS.card,
           borderColor: COLORS.cardBorder,
-          cursor: "pointer",
         }}
       >
-        {/* Name + category */}
+        {/* Logo */}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden"
+          style={{ backgroundColor: COLORS.cardBorder }}>
+          {project.logoUrl ? (
+            <img src={project.logoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Folder className="h-4 w-4" style={{ color: COLORS.textMuted }} />
+          )}
+        </div>
+
+        {/* Name */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{category?.icon}</span>
-            <span
-              className="truncate text-sm font-medium"
-              style={{ color: COLORS.textPrimary }}
-            >
-              {project.name}
-            </span>
-          </div>
+          <span className="truncate text-sm font-medium" style={{ color: COLORS.textPrimary }}>
+            {project.name}
+          </span>
         </div>
 
         {/* Client (admin only) */}
         {isAdminView && project.companyName && (
-          <div
-            className="w-28 shrink-0 truncate text-xs"
-            style={{ color: COLORS.textSecondary }}
-          >
+          <div className="w-28 shrink-0 truncate text-xs" style={{ color: COLORS.textSecondary }}>
             {project.companyName}
           </div>
         )}
 
         {/* Status */}
-        <div className="w-32 shrink-0">
-          <DerivedStatusBadge
-            status={project.status}
-            hasStatusOverride={project.hasStatusOverride}
-            size="sm"
-          />
+        <div className="w-28 shrink-0">
+          <ProjectStatusBadge status={project.status} size="sm" />
         </div>
 
         {/* Orders / Quotes */}
-        <div
-          className="w-28 shrink-0 text-xs"
-          style={{ color: COLORS.textSecondary }}
-        >
-          {project.orderCount} orders · {project.quoteCount} quotes
+        <div className="w-28 shrink-0 text-xs" style={{ color: COLORS.textSecondary }}>
+          {project.orderCount} orders &middot; {project.quoteCount} quotes
         </div>
 
-        {/* Progress */}
-        <div className="w-24 shrink-0">
-          <div className="flex items-center gap-2">
-            <div
-              className="h-1.5 flex-1 rounded-full"
-              style={{ backgroundColor: COLORS.cardBorder }}
-            >
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${project.progressPercent}%`,
-                  backgroundColor: progressBarColor,
-                }}
-              />
-            </div>
-            <span
-              className="text-xs tabular-nums"
-              style={{ color: COLORS.textMuted }}
-            >
-              {project.progressPercent}%
-            </span>
-          </div>
-        </div>
-
-        {/* Budget */}
-        <div
-          className="w-24 shrink-0 text-right text-xs"
-          style={{ color: COLORS.textSecondary }}
-        >
-          ${project.totalInvoiced.toLocaleString()}
-          {project.totalQuoted > 0 && (
-            <span style={{ color: COLORS.textMuted }}>
-              {" "}
-              / ${project.totalQuoted.toLocaleString()}
-            </span>
-          )}
+        {/* Total */}
+        <div className="w-24 shrink-0 text-right text-xs" style={{ color: COLORS.textSecondary }}>
+          ${project.totalAmount.toLocaleString()}
         </div>
 
         {/* Event date */}
-        <div
-          className="w-20 shrink-0 text-right text-xs"
-          style={{ color: COLORS.textSecondary }}
-        >
+        <div className="w-20 shrink-0 text-right text-xs" style={{ color: COLORS.textSecondary }}>
           {project.eventDate
-            ? new Date(project.eventDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })
-            : "—"}
+            ? new Date(project.eventDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            : "\u2014"}
         </div>
 
-        {/* Updated */}
-        <div
-          className="w-20 shrink-0 text-right text-xs"
-          style={{ color: COLORS.textMuted }}
-        >
-          {formatRelativeTime(project.updatedAt)}
-        </div>
-
-        {/* Team */}
-        <div className="flex w-16 shrink-0 justify-end -space-x-1">
-          {project.team.slice(0, 3).map((member) => (
-            <div
-              key={member.id}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
-              style={{
-                backgroundColor: member.color,
-                boxShadow: `0 0 0 2px ${COLORS.card}`,
-              }}
-              title={member.initials}
-            >
-              {member.initials}
-            </div>
-          ))}
-          {project.team.length > 3 && (
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium"
-              style={{
-                backgroundColor: COLORS.cardBorder,
-                color: COLORS.textSecondary,
-                boxShadow: `0 0 0 2px ${COLORS.card}`,
-              }}
-            >
-              +{project.team.length - 3}
-            </div>
-          )}
+        {/* Contact */}
+        <div className="w-20 shrink-0 text-right text-xs" style={{ color: COLORS.textMuted }}>
+          {project.clientContact ?? "\u2014"}
         </div>
       </Link>
     );
   }
 
-  // Kanban variant — pure content card (drag is handled by KanbanBoard wrapper)
-  return (
-    <Link
-      href={`/projects/${project.id}`}
-      className="block rounded-lg border p-3 transition-all"
-      style={{
-        backgroundColor: COLORS.card,
-        borderColor: COLORS.cardBorder,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder;
-      }}
-    >
-      {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs" style={{ color: COLORS.textMuted }}>
-          {category?.icon} {category?.label}
-        </span>
-        <DerivedStatusBadge
-          status={project.status}
-          hasStatusOverride={project.hasStatusOverride}
-          size="sm"
-        />
-      </div>
-
-      {/* Title */}
-      <span
-        className="mb-1 block text-sm font-medium"
-        style={{ color: COLORS.textPrimary }}
+  if (variant === "kanban") {
+    return (
+      <Link
+        href={`/projects/${project.id}`}
+        className="block rounded-lg border p-3 transition-all"
+        style={{ backgroundColor: COLORS.card, borderColor: COLORS.cardBorder }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder; }}
       >
-        {project.name}
-      </span>
-
-      {/* Subtitle */}
-      <div className="mb-3 text-xs" style={{ color: COLORS.textSecondary }}>
-        {project.orderCount} orders · {project.quoteCount} quotes
-        {project.eventDate && (
-          <>
-            {" "}
-            ·{" "}
-            {new Date(project.eventDate).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div
-        className="mb-3 h-1 w-full rounded-full"
-        style={{ backgroundColor: COLORS.cardBorder }}
-      >
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${project.progressPercent}%`,
-            backgroundColor: progressBarColor,
-          }}
-        />
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex -space-x-1">
-          {project.team.slice(0, 3).map((member) => (
-            <div
-              key={member.id}
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
-              style={{
-                backgroundColor: member.color,
-                boxShadow: `0 0 0 2px ${COLORS.card}`,
-              }}
-              title={member.initials}
-            >
-              {member.initials}
+        <div className="mb-2 flex items-center gap-2">
+          {project.logoUrl ? (
+            <img src={project.logoUrl} alt="" className="h-6 w-6 rounded object-cover" />
+          ) : (
+            <div className="flex h-6 w-6 items-center justify-center rounded"
+              style={{ backgroundColor: COLORS.cardBorder }}>
+              <Folder className="h-3 w-3" style={{ color: COLORS.textMuted }} />
             </div>
-          ))}
+          )}
+          <span className="truncate text-sm font-medium" style={{ color: COLORS.textPrimary }}>
+            {project.name}
+          </span>
+        </div>
+
+        <div className="text-xs" style={{ color: COLORS.textSecondary }}>
+          {project.orderCount} orders &middot; {project.quoteCount} quotes
+        </div>
+
+        <div className="mt-1 text-xs font-medium" style={{ color: COLORS.textPrimary }}>
+          ${project.totalAmount.toLocaleString()}
         </div>
 
         {isAdminView && project.companyName && (
-          <span className="text-xs" style={{ color: COLORS.textMuted }}>
+          <div className="mt-1 text-xs" style={{ color: COLORS.textMuted }}>
             {project.companyName}
-          </span>
+          </div>
         )}
+      </Link>
+    );
+  }
 
-        {!isAdminView && project.totalInvoiced > 0 && (
-          <span className="text-xs" style={{ color: COLORS.textMuted }}>
-            ${project.totalInvoiced.toLocaleString()}
-          </span>
-        )}
+  // Grid variant
+  return (
+    <Link
+      href={`/projects/${project.id}`}
+      className="block rounded-lg border p-4 transition-all hover:shadow-lg"
+      style={{ backgroundColor: COLORS.card, borderColor: COLORS.cardBorder }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder; }}
+    >
+      {/* Logo + Status */}
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg overflow-hidden"
+          style={{ backgroundColor: COLORS.cardBorder }}>
+          {project.logoUrl ? (
+            <img src={project.logoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Folder className="h-6 w-6" style={{ color: COLORS.textMuted }} />
+          )}
+        </div>
+        <ProjectStatusBadge status={project.status} size="sm" />
+      </div>
+
+      {/* Name */}
+      <h3 className="mb-1 text-base font-semibold" style={{ color: COLORS.textPrimary }}>
+        {project.name}
+      </h3>
+
+      {/* Description */}
+      {project.description && (
+        <p className="mb-3 line-clamp-1 text-xs" style={{ color: COLORS.textMuted }}>
+          {project.description}
+        </p>
+      )}
+
+      {/* Stats */}
+      <div className="mb-2 flex items-center gap-3 text-xs" style={{ color: COLORS.textSecondary }}>
+        <span>{project.orderCount} orders</span>
+        <span>{project.quoteCount} quotes</span>
+        <span className="font-medium">${project.totalAmount.toLocaleString()}</span>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs" style={{ color: COLORS.textMuted }}>
+        <span>
+          {project.eventDate
+            ? new Date(project.eventDate).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : "No date"}
+        </span>
+        {project.clientContact && <span>{project.clientContact}</span>}
       </div>
     </Link>
   );
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }

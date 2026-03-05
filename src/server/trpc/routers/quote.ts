@@ -138,6 +138,9 @@ export const quoteRouter = router({
           convertedOrder: {
             select: { id: true, number: true },
           },
+          project: {
+            select: { id: true, name: true, status: true, logoUrl: true },
+          },
         },
       });
 

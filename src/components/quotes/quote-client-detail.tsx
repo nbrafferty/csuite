@@ -11,6 +11,7 @@ import { ChangeRequestForm } from "./change-request-form";
 import { MockupUpload } from "./mockup-upload";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
+import { ProjectPicker } from "@/components/projects/project-picker";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("en-US", {
@@ -55,6 +56,20 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
     onSuccess: () => {
       utils.quote.getById.invalidate({ id: quoteId });
       setShowChangeRequestForm(false);
+    },
+  });
+
+  const addToProject = trpc.projects.addQuote.useMutation({
+    onSuccess: () => {
+      utils.quote.getById.invalidate({ id: quoteId });
+      utils.projects.list.invalidate();
+    },
+  });
+
+  const removeFromProject = trpc.projects.removeQuote.useMutation({
+    onSuccess: () => {
+      utils.quote.getById.invalidate({ id: quoteId });
+      utils.projects.list.invalidate();
     },
   });
 
@@ -117,6 +132,20 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
               : "—"}
           </p>
         </div>
+      </div>
+
+      {/* Project section */}
+      <div className="mb-4">
+        <ProjectPicker
+          currentProjectId={(quote as any).project?.id ?? null}
+          currentProjectName={(quote as any).project?.name ?? null}
+          currentProjectStatus={(quote as any).project?.status ?? null}
+          currentProjectLogoUrl={(quote as any).project?.logoUrl ?? null}
+          onLink={(projectId) => addToProject.mutate({ projectId, quoteId })}
+          onUnlink={() => removeFromProject.mutate({ quoteId })}
+          itemType="quote"
+          itemId={quoteId}
+        />
       </div>
 
       {/* Expiration warning */}

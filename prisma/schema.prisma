@@ -128,24 +128,6 @@ enum AuditAction {
   STATUS_CHANGED
 }
 
-enum ProjectCategory {
-  APPAREL
-  SIGNAGE
-  PACKAGING
-  HEADWEAR
-  DRINKWARE
-  OTHER
-}
-
-enum ProjectStatus {
-  EMPTY
-  IN_REVIEW
-  ACTIVE
-  IN_PRODUCTION
-  NEEDS_ATTENTION
-  COMPLETED
-}
-
 enum PaymentTermType {
   FULL
   DEPOSIT
@@ -910,28 +892,28 @@ model AuditLogEvent {
 // ─── Project ─────────────────────────────────────────────────────────
 
 model Project {
-  id              String          @id @default(cuid())
-  companyId       String          @map("company_id")
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
   name            String
   description     String?
-  category        ProjectCategory @default(OTHER)
-  eventDate       DateTime?       @map("event_date")
-  statusOverride  ProjectStatus?  @map("status_override")
-  derivedStatus   ProjectStatus   @default(EMPTY) @map("derived_status")
-  createdById     String          @map("created_by_id")
-  archivedAt      DateTime?       @map("archived_at")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  status          String    @default("PLANNING") // PLANNING | ACTIVE | COMPLETED | ARCHIVED
+  eventDate       DateTime? @map("event_date")
+  clientContact   String?   @map("client_contact")
+  budget          Float?
+  logoUrl         String?   @map("logo_url")
+  createdById     String    @map("created_by_id")
+  archivedAt      DateTime? @map("archived_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   company   Company @relation(fields: [companyId], references: [id])
   createdBy User    @relation("ProjectCreator", fields: [createdById], references: [id])
   orders    Order[]
   quotes    Quote[]
 
+  @@index([companyId, status])
   @@index([companyId])
-  @@index([updatedAt])
-  @@index([archivedAt])
-  @@index([derivedStatus])
+  @@index([createdById])
   @@map("projects")
 }
 

@@ -1,5 +1,3 @@
-import type { ProjectStatus } from "@prisma/client";
-
 // ─── Design Tokens ─────────────────────────────────────────────────
 
 export const COLORS = {
@@ -29,102 +27,25 @@ export const COLORS = {
 export const FONT_STACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
-// ─── Status Colors ─────────────────────────────────────────────────
+// ─── Project Status Colors ────────────────────────────────────────
 
-export const STATUS_COLORS: Record<
+export type ProjectStatus = "PLANNING" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
+
+export const PROJECT_STATUSES: ProjectStatus[] = [
+  "PLANNING",
+  "ACTIVE",
+  "COMPLETED",
+  "ARCHIVED",
+];
+
+export const PROJECT_STATUS_COLORS: Record<
   ProjectStatus,
   { color: string; bg: string; label: string }
 > = {
-  EMPTY: { color: "#666666", bg: "rgba(102,102,102,0.12)", label: "Empty" },
-  IN_REVIEW: {
-    color: "#A78BFA",
-    bg: "rgba(167,139,250,0.12)",
-    label: "In Review",
-  },
-  ACTIVE: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Active" },
-  IN_PRODUCTION: {
-    color: "#E85D5D",
-    bg: "rgba(232,93,93,0.12)",
-    label: "In Production",
-  },
-  NEEDS_ATTENTION: {
-    color: "#FFD60A",
-    bg: "rgba(255,214,10,0.12)",
-    label: "Needs Attention",
-  },
-  COMPLETED: {
-    color: "#34C759",
-    bg: "rgba(52,199,89,0.12)",
-    label: "Completed",
-  },
+  PLANNING: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Planning" },
+  ACTIVE: { color: "#E85D5D", bg: "rgba(232,93,93,0.12)", label: "Active" },
+  COMPLETED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Completed" },
+  ARCHIVED: { color: "#666666", bg: "rgba(102,102,102,0.12)", label: "Archived" },
 };
-
-// ─── Column Order ──────────────────────────────────────────────────
-
-export const COLUMN_ORDER: ProjectStatus[] = [
-  "EMPTY",
-  "IN_REVIEW",
-  "ACTIVE",
-  "IN_PRODUCTION",
-  "NEEDS_ATTENTION",
-  "COMPLETED",
-];
-
-export const ALWAYS_VISIBLE_COLUMNS: ProjectStatus[] = [
-  "IN_REVIEW",
-  "ACTIVE",
-  "IN_PRODUCTION",
-  "COMPLETED",
-];
-
-// ─── Category Labels ───────────────────────────────────────────────
-
-export const CATEGORY_LABELS: Record<string, { label: string; icon: string }> =
-  {
-    APPAREL: { label: "Apparel", icon: "👕" },
-    SIGNAGE: { label: "Signage", icon: "🪧" },
-    PACKAGING: { label: "Packaging", icon: "📦" },
-    HEADWEAR: { label: "Headwear", icon: "🧢" },
-    DRINKWARE: { label: "Drinkware", icon: "🥤" },
-    OTHER: { label: "Other", icon: "📋" },
-  };
-
-// ─── Role-aware transitions ────────────────────────────────────────
 
 export type UserRole = "CLIENT_ADMIN" | "CLIENT_USER" | "CCC_STAFF";
-
-export const CLIENT_TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
-  EMPTY: ["IN_REVIEW"],
-  IN_REVIEW: ["ACTIVE"],
-  ACTIVE: [],
-  IN_PRODUCTION: [],
-  NEEDS_ATTENTION: [],
-  COMPLETED: [],
-};
-
-export const STAFF_TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
-  EMPTY: ["IN_REVIEW", "ACTIVE", "IN_PRODUCTION"],
-  IN_REVIEW: ["ACTIVE", "IN_PRODUCTION", "EMPTY"],
-  ACTIVE: ["IN_PRODUCTION", "IN_REVIEW", "COMPLETED"],
-  IN_PRODUCTION: ["ACTIVE", "COMPLETED"],
-  NEEDS_ATTENTION: ["IN_PRODUCTION", "ACTIVE", "COMPLETED"],
-  COMPLETED: ["ACTIVE"],
-};
-
-export function canTransition(
-  from: ProjectStatus,
-  to: ProjectStatus,
-  role: UserRole
-): boolean {
-  if (from === to) return false;
-  const map = role === "CCC_STAFF" ? STAFF_TRANSITIONS : CLIENT_TRANSITIONS;
-  return map[from]?.includes(to) ?? false;
-}
-
-export function getValidTargets(
-  from: ProjectStatus,
-  role: UserRole
-): ProjectStatus[] {
-  const map = role === "CCC_STAFF" ? STAFF_TRANSITIONS : CLIENT_TRANSITIONS;
-  return map[from] ?? [];
-}

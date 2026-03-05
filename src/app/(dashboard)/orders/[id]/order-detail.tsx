@@ -27,6 +27,7 @@ import { OrderBillingTab } from "./tabs/billing-tab";
 import { OrderActivityTab } from "./tabs/activity-tab";
 import { OrderTasksTab } from "./tabs/tasks-tab";
 import { OrderArtworkTab } from "./tabs/artwork-tab";
+import { ProjectPicker } from "@/components/projects/project-picker";
 
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
   SUBMITTED: { label: "Start Review", value: "IN_REVIEW" },
@@ -75,6 +76,20 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
   const cancelMutation = trpc.order.cancel.useMutation({
     onSuccess: () => utils.order.get.invalidate({ id: orderId }),
+  });
+
+  const addToProject = trpc.projects.addOrder.useMutation({
+    onSuccess: () => {
+      utils.order.get.invalidate({ id: orderId });
+      utils.projects.list.invalidate();
+    },
+  });
+
+  const removeFromProject = trpc.projects.removeOrder.useMutation({
+    onSuccess: () => {
+      utils.order.get.invalidate({ id: orderId });
+      utils.projects.list.invalidate();
+    },
   });
 
   if (isLoading) {
@@ -202,6 +217,20 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <div className="mt-4">
           <OrderStatusTimeline status={order.status} />
         </div>
+      </div>
+
+      {/* Project section */}
+      <div className="mb-6">
+        <ProjectPicker
+          currentProjectId={(order as any).project?.id ?? null}
+          currentProjectName={(order as any).project?.name ?? null}
+          currentProjectStatus={(order as any).project?.status ?? null}
+          currentProjectLogoUrl={(order as any).project?.logoUrl ?? null}
+          onLink={(projectId) => addToProject.mutate({ projectId, orderId: order.id })}
+          onUnlink={() => removeFromProject.mutate({ orderId: order.id })}
+          itemType="order"
+          itemId={order.id}
+        />
       </div>
 
       {/* Tabs */}

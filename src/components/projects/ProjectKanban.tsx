@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useCallback, useState } from "react";
-import type { ProjectStatus } from "@prisma/client";
 import {
-  COLUMN_ORDER,
-  ALWAYS_VISIBLE_COLUMNS,
-  getValidTargets,
+  PROJECT_STATUSES,
+  PROJECT_STATUS_COLORS,
   COLORS,
-  STATUS_COLORS,
+  type ProjectStatus,
   type UserRole,
 } from "@/lib/tokens";
 import { KanbanBoard, type KanbanColumnConfig } from "@/components/kanban/kanban-board";
@@ -20,6 +18,7 @@ interface ProjectKanbanProps {
   isLoading?: boolean;
   userRole: UserRole;
   isAdminView?: boolean;
+  showArchived?: boolean;
 }
 
 export function ProjectKanban({
@@ -27,29 +26,24 @@ export function ProjectKanban({
   isLoading,
   userRole,
   isAdminView,
+  showArchived,
 }: ProjectKanbanProps) {
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
-  const moveStatus = trpc.projects.moveStatus.useMutation({
-    onMutate: async ({ id, toStatus }) => {
+  const updateStatus = trpc.projects.updateStatus.useMutation({
+    onMutate: async ({ id, status }) => {
       await utils.projects.list.cancel();
       const prev = utils.projects.list.getData({});
       utils.projects.list.setData({}, (old) => {
         if (!old) return old;
-        return old.map((p) =>
-          p.id === id ? { ...p, status: toStatus, hasStatusOverride: true } : p
-        );
+        return old.map((p) => (p.id === id ? { ...p, status: status as ProjectStatus } : p));
       });
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        utils.projects.list.setData({}, ctx.prev);
-      }
-      setErrorToast(
-        `Couldn't move project — ${_err.message || "unknown error"}`
-      );
+      if (ctx?.prev) utils.projects.list.setData({}, ctx.prev);
+      setErrorToast(`Couldn't move project — ${_err.message || "unknown error"}`);
       setTimeout(() => setErrorToast(null), 5000);
     },
     onSettled: () => {
@@ -59,21 +53,18 @@ export function ProjectKanban({
 
   const canDrag = userRole !== "CLIENT_USER";
 
-  // Build column configs from visible statuses
   const columns: KanbanColumnConfig[] = useMemo(() => {
-    return COLUMN_ORDER.filter((status) => {
-      if (ALWAYS_VISIBLE_COLUMNS.includes(status)) return true;
-      if (projects.some((p) => p.status === status)) return true;
-      return false;
-    }).map((status) => ({
+    const statuses = showArchived
+      ? PROJECT_STATUSES
+      : PROJECT_STATUSES.filter((s) => s !== "ARCHIVED");
+    return statuses.map((status) => ({
       id: status,
-      label: STATUS_COLORS[status].label,
-      color: STATUS_COLORS[status].color,
-      bg: STATUS_COLORS[status].bg,
+      label: PROJECT_STATUS_COLORS[status].label,
+      color: PROJECT_STATUS_COLORS[status].color,
+      bg: PROJECT_STATUS_COLORS[status].bg,
     }));
-  }, [projects]);
+  }, [showArchived]);
 
-  // Group projects by status
   const items = useMemo(() => {
     const grouped: Record<string, ProjectSummary[]> = {};
     for (const col of columns) {
@@ -83,36 +74,29 @@ export function ProjectKanban({
   }, [projects, columns]);
 
   const handleMove = useCallback(
-    (projectId: string, fromColumn: string, toColumn: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-
-      // Validate the transition
-      const targets = getValidTargets(project.status, userRole);
-      if (!targets.includes(toColumn as ProjectStatus)) {
-        setErrorToast("Invalid status transition");
+    (projectId: string, _fromColumn: string, toColumn: string) => {
+      // Client Users can't drag
+      if (userRole === "CLIENT_USER") return;
+      // Client Admins can't set ARCHIVED
+      if (userRole === "CLIENT_ADMIN" && toColumn === "ARCHIVED") {
+        setErrorToast("Only staff can archive projects");
         setTimeout(() => setErrorToast(null), 3000);
         return;
       }
 
-      moveStatus.mutate({
+      updateStatus.mutate({
         id: projectId,
-        toStatus: toColumn as ProjectStatus,
+        status: toColumn as "PLANNING" | "ACTIVE" | "COMPLETED" | "ARCHIVED",
       });
     },
-    [projects, userRole, moveStatus]
+    [userRole, updateStatus]
   );
 
   const renderCard = useCallback(
     (project: ProjectSummary) => (
-      <ProjectCard
-        project={project}
-        variant="kanban"
-        isAdminView={isAdminView}
-        canDrag={canDrag}
-      />
+      <ProjectCard project={project} variant="kanban" isAdminView={isAdminView} />
     ),
-    [isAdminView, canDrag]
+    [isAdminView]
   );
 
   if (isLoading) {
@@ -124,15 +108,11 @@ export function ProjectKanban({
             className="flex w-72 shrink-0 flex-col rounded-lg border"
             style={{ backgroundColor: COLORS.surface, borderColor: COLORS.cardBorder }}
           >
-            <div
-              className="flex items-center justify-between px-3 py-2.5 border-b"
-              style={{ borderColor: COLORS.cardBorder }}
-            >
+            <div className="flex items-center justify-between px-3 py-2.5 border-b"
+              style={{ borderColor: COLORS.cardBorder }}>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.color }} />
-                <span className="text-xs font-medium" style={{ color: col.color }}>
-                  {col.label}
-                </span>
+                <span className="text-xs font-medium" style={{ color: col.color }}>{col.label}</span>
               </div>
             </div>
             <div className="space-y-2 p-2">
@@ -157,32 +137,13 @@ export function ProjectKanban({
         emptyLabel="No projects"
       />
 
-      {/* Error toast */}
       {errorToast && (
         <div
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg"
-          style={{
-            backgroundColor: COLORS.card,
-            borderColor: "#E85D5D40",
-            color: COLORS.textPrimary,
-          }}
+          style={{ backgroundColor: COLORS.card, borderColor: "#E85D5D40", color: COLORS.textPrimary }}
         >
           <span className="text-sm">{errorToast}</span>
-          <button
-            onClick={() => {
-              setErrorToast(null);
-              moveStatus.reset();
-            }}
-            className="text-xs font-medium underline"
-            style={{ color: COLORS.coral }}
-          >
-            Retry
-          </button>
-          <button
-            onClick={() => setErrorToast(null)}
-            className="text-xs"
-            style={{ color: COLORS.textMuted }}
-          >
+          <button onClick={() => setErrorToast(null)} className="text-xs" style={{ color: COLORS.textMuted }}>
             x
           </button>
         </div>

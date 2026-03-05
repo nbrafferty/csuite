@@ -10,6 +10,7 @@ import { CatalogPickerDialog } from "./catalog-picker-dialog";
 import { MockupUpload } from "./mockup-upload";
 import { Plus, ChevronDown, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProjectPicker } from "@/components/projects/project-picker";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("en-US", {
@@ -110,6 +111,20 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
     onSuccess: () => {
       utils.quote.getById.invalidate({ id: quoteId! });
       setShowConfirmSend(false);
+    },
+  });
+
+  const addToProject = trpc.projects.addQuote.useMutation({
+    onSuccess: () => {
+      utils.quote.getById.invalidate({ id: quoteId! });
+      utils.projects.list.invalidate();
+    },
+  });
+
+  const removeFromProject = trpc.projects.removeQuote.useMutation({
+    onSuccess: () => {
+      utils.quote.getById.invalidate({ id: quoteId! });
+      utils.projects.list.invalidate();
     },
   });
 
@@ -484,6 +499,22 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
               isConverting={convertToOrder.isPending}
             />
           </div>
+
+          {/* Project section */}
+          {quoteId && quote && (
+            <div className="mt-4">
+              <ProjectPicker
+                currentProjectId={(quote as any).project?.id ?? null}
+                currentProjectName={(quote as any).project?.name ?? null}
+                currentProjectStatus={(quote as any).project?.status ?? null}
+                currentProjectLogoUrl={(quote as any).project?.logoUrl ?? null}
+                onLink={(projectId) => addToProject.mutate({ projectId, quoteId: quoteId! })}
+                onUnlink={() => removeFromProject.mutate({ quoteId: quoteId! })}
+                itemType="quote"
+                itemId={quoteId}
+              />
+            </div>
+          )}
         </div>
       </div>
 

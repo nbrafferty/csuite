@@ -1,122 +1,44 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure, adminProcedure, staffProcedure } from "../trpc";
+import { router, protectedProcedure, adminProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
-import {
-  recomputeProjectStatus,
-  getEffectiveStatus,
-  computeProjectProgress,
-  getTeamColor,
-  getInitials,
-} from "@/lib/projects";
-import { canTransition } from "@/lib/tokens";
-import type { ProjectStatus, ProjectCategory } from "@prisma/client";
-import type { ProjectSummary, ProjectDetail, TeamMember } from "@/lib/types";
+import type { ProjectSummary, ProjectDetail } from "@/lib/types";
+import type { ProjectStatus } from "@/lib/tokens";
 
-// ─── Helpers ───────────────────────────────────────────────────────
+const VALID_STATUSES: ProjectStatus[] = ["PLANNING", "ACTIVE", "COMPLETED", "ARCHIVED"];
 
-function buildProjectSummary(
-  project: any,
-  isStaff: boolean
-): ProjectSummary {
-  const effectiveStatus: ProjectStatus =
-    project.statusOverride ?? project.derivedStatus;
-
+function toSummary(project: any, isStaff: boolean): ProjectSummary {
   const orders = project.orders ?? [];
   const quotes = project.quotes ?? [];
-
-  // Team members from order creators
-  const teamMap = new Map<string, TeamMember>();
-  for (const order of orders) {
-    if (order.creator && !teamMap.has(order.creator.id)) {
-      teamMap.set(order.creator.id, {
-        id: order.creator.id,
-        initials: getInitials(order.creator.name),
-        color: getTeamColor(order.creator.id),
-      });
-    }
-  }
-
-  // Total invoiced
-  const totalInvoiced = orders.reduce((sum: number, o: any) => {
-    const invoiceTotal = (o.invoices ?? []).reduce(
-      (iSum: number, inv: any) => iSum + (inv.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal ?? 0), 0),
-      0
-    );
-    return sum + invoiceTotal;
-  }, 0);
-
-  // Total quoted
-  const totalQuoted = quotes.reduce(
-    (sum: number, q: any) => sum + Number(q.totalAmount ?? 0),
+  const totalAmount = orders.reduce(
+    (sum: number, o: any) => sum + Number(o.totalAmount ?? 0),
     0
   );
-
-  // Estimated delivery: earliest upcoming shipment
-  let estimatedDelivery: string | null = null;
-  for (const order of orders) {
-    for (const shipment of order.shipments ?? []) {
-      if (shipment.status === "PENDING" || shipment.status === "SHIPPED") {
-        const date = shipment.shippedAt || shipment.deliveredAt;
-        if (date) {
-          const dateStr = new Date(date).toISOString();
-          if (!estimatedDelivery || dateStr < estimatedDelivery) {
-            estimatedDelivery = dateStr;
-          }
-        }
-      }
-    }
-  }
 
   return {
     id: project.id,
     name: project.name,
-    category: project.category as ProjectCategory,
-    status: effectiveStatus,
-    hasStatusOverride: project.statusOverride != null,
+    description: project.description,
+    status: project.status as ProjectStatus,
     orderCount: orders.length,
     quoteCount: quotes.length,
-    progressPercent: computeProjectProgress(orders),
-    totalInvoiced,
-    totalQuoted,
-    eventDate: project.eventDate
-      ? new Date(project.eventDate).toISOString()
-      : null,
-    estimatedDelivery,
-    team: Array.from(teamMap.values()),
+    totalAmount,
+    eventDate: project.eventDate ? new Date(project.eventDate).toISOString() : null,
+    clientContact: project.clientContact,
+    budget: project.budget,
+    logoUrl: project.logoUrl,
     companyName: isStaff ? (project.company?.name ?? null) : null,
+    createdByName: project.createdBy?.name ?? "Unknown",
     updatedAt: new Date(project.updatedAt).toISOString(),
   };
 }
 
-const projectInclude = {
+const listInclude = {
   company: { select: { name: true } },
-  orders: {
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      updatedAt: true,
-      creator: { select: { id: true, name: true } },
-      invoices: { select: { status: true, dueDate: true, items: { select: { lineTotal: true } } } },
-      proofs: { select: { status: true } },
-      shipments: {
-        select: { status: true, shippedAt: true, deliveredAt: true },
-      },
-    },
-  },
-  quotes: {
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      totalAmount: true,
-      updatedAt: true,
-    },
-  },
+  createdBy: { select: { name: true } },
+  orders: { select: { id: true, totalAmount: true } },
+  quotes: { select: { id: true } },
 };
-
-// ─── Router ────────────────────────────────────────────────────────
 
 export const projectsRouter = router({
   list: protectedProcedure
@@ -132,40 +54,39 @@ export const projectsRouter = router({
       const isStaff = ctx.role === "CCC_STAFF";
       const where: any = {};
 
-      // Tenant scoping
       if (isStaff && input.companyId) {
         where.companyId = input.companyId;
       } else if (!isStaff) {
         where.companyId = ctx.companyId;
       }
 
-      // Archive filter
-      if (!input.includeArchived || !isStaff) {
-        where.archivedAt = null;
+      if (!input.includeArchived) {
+        where.status = { not: "ARCHIVED" };
       }
 
-      // Search filter
+      if (input.status && input.status.length > 0) {
+        if (where.status) {
+          where.AND = [{ status: where.status }, { status: { in: input.status } }];
+          delete where.status;
+        } else {
+          where.status = { in: input.status };
+        }
+      }
+
       if (input.search) {
         where.name = { contains: input.search, mode: "insensitive" };
       }
 
       const projects = await prisma.project.findMany({
         where,
-        include: projectInclude,
+        include: listInclude,
         orderBy: { updatedAt: "desc" },
       });
 
-      let summaries = projects.map((p) => buildProjectSummary(p, isStaff));
-
-      // Status filter (applied on effective status)
-      if (input.status && input.status.length > 0) {
-        summaries = summaries.filter((s) => input.status!.includes(s.status));
-      }
-
-      return summaries;
+      return projects.map((p) => toSummary(p, isStaff));
     }),
 
-  detail: protectedProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const isStaff = ctx.role === "CCC_STAFF";
@@ -173,8 +94,31 @@ export const projectsRouter = router({
       const project = await prisma.project.findUnique({
         where: { id: input.id },
         include: {
-          ...projectInclude,
-          createdBy: { select: { name: true } },
+          company: { select: { name: true } },
+          createdBy: { select: { id: true, name: true } },
+          orders: {
+            select: {
+              id: true,
+              number: true,
+              title: true,
+              status: true,
+              totalAmount: true,
+              inHandsDate: true,
+              poNumber: true,
+            },
+            orderBy: { createdAt: "desc" },
+          },
+          quotes: {
+            select: {
+              id: true,
+              number: true,
+              title: true,
+              status: true,
+              expiresAt: true,
+              items: { select: { lineTotal: true } },
+            },
+            orderBy: { createdAt: "desc" },
+          },
         },
       });
 
@@ -182,127 +126,122 @@ export const projectsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
       }
 
-      // Tenant check
       if (!isStaff && project.companyId !== ctx.companyId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const summary = buildProjectSummary(project, isStaff);
+      const orders = project.orders ?? [];
+      const totalAmount = orders.reduce(
+        (sum, o) => sum + Number(o.totalAmount ?? 0),
+        0
+      );
 
       const detail: ProjectDetail = {
-        ...summary,
+        id: project.id,
+        name: project.name,
         description: project.description,
-        orders: project.orders.map((o) => ({
+        status: project.status as ProjectStatus,
+        orderCount: orders.length,
+        quoteCount: project.quotes.length,
+        totalAmount,
+        eventDate: project.eventDate ? new Date(project.eventDate).toISOString() : null,
+        clientContact: project.clientContact,
+        budget: project.budget,
+        logoUrl: project.logoUrl,
+        companyName: isStaff ? (project.company?.name ?? null) : null,
+        createdByName: project.createdBy?.name ?? "Unknown",
+        createdById: project.createdBy?.id ?? project.createdById,
+        updatedAt: new Date(project.updatedAt).toISOString(),
+        createdAt: new Date(project.createdAt).toISOString(),
+        orders: orders.map((o) => ({
           id: o.id,
+          number: o.number,
           title: o.title,
           status: o.status,
-          amount: o.invoices.reduce(
-            (sum, inv) => sum + (inv.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0),
-            0
-          ),
-          updatedAt: new Date(o.updatedAt).toISOString(),
+          totalAmount: Number(o.totalAmount ?? 0),
+          inHandsDate: o.inHandsDate ? new Date(o.inHandsDate).toISOString() : null,
+          poNumber: o.poNumber,
         })),
         quotes: project.quotes.map((q) => ({
           id: q.id,
+          number: q.number,
           title: q.title,
           status: q.status,
-          amount: Number(q.totalAmount),
-          updatedAt: new Date(q.updatedAt).toISOString(),
+          totalAmount: q.items.reduce((sum, i) => sum + Number(i.lineTotal ?? 0), 0),
+          expiresAt: q.expiresAt ? new Date(q.expiresAt).toISOString() : null,
         })),
-        createdAt: new Date(project.createdAt).toISOString(),
       };
 
       return detail;
     }),
 
-  create: adminProcedure
+  create: protectedProcedure
     .input(
       z.object({
         name: z.string().min(2),
         description: z.string().optional(),
-        category: z.enum([
-          "APPAREL",
-          "SIGNAGE",
-          "PACKAGING",
-          "HEADWEAR",
-          "DRINKWARE",
-          "OTHER",
-        ]),
+        status: z.string().optional().default("PLANNING"),
         eventDate: z.string().optional(),
+        clientContact: z.string().optional(),
+        budget: z.number().optional(),
+        logoUrl: z.string().optional(),
+        companyId: z.string().optional(), // staff only
         orderIds: z.array(z.string()).optional(),
         quoteIds: z.array(z.string()).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+      const companyId = isStaff && input.companyId ? input.companyId : ctx.companyId;
+
       const project = await prisma.project.create({
         data: {
-          companyId: ctx.companyId,
+          companyId,
           name: input.name,
           description: input.description,
-          category: input.category,
+          status: input.status,
           eventDate: input.eventDate ? new Date(input.eventDate) : undefined,
+          clientContact: input.clientContact,
+          budget: input.budget,
+          logoUrl: input.logoUrl,
           createdById: ctx.user.id!,
         },
       });
 
-      // Link orders
       if (input.orderIds && input.orderIds.length > 0) {
         await prisma.order.updateMany({
-          where: {
-            id: { in: input.orderIds },
-            companyId: ctx.companyId,
-          },
+          where: { id: { in: input.orderIds }, companyId },
           data: { projectId: project.id },
         });
       }
 
-      // Link quotes
       if (input.quoteIds && input.quoteIds.length > 0) {
         await prisma.quote.updateMany({
-          where: {
-            id: { in: input.quoteIds },
-            companyId: ctx.companyId,
-          },
+          where: { id: { in: input.quoteIds }, companyId },
           data: { projectId: project.id },
         });
       }
 
-      // Recompute derived status
-      await recomputeProjectStatus(prisma, project.id);
-
-      return prisma.project.findUniqueOrThrow({
-        where: { id: project.id },
-        include: projectInclude,
-      });
+      return project;
     }),
 
-  update: adminProcedure
+  update: protectedProcedure
     .input(
       z.object({
         id: z.string(),
         name: z.string().min(2).optional(),
-        description: z.string().optional(),
-        category: z
-          .enum([
-            "APPAREL",
-            "SIGNAGE",
-            "PACKAGING",
-            "HEADWEAR",
-            "DRINKWARE",
-            "OTHER",
-          ])
-          .optional(),
+        description: z.string().nullable().optional(),
         eventDate: z.string().nullable().optional(),
+        clientContact: z.string().nullable().optional(),
+        budget: z.number().nullable().optional(),
+        logoUrl: z.string().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-
-      // Verify tenant
       const existing = await prisma.project.findUnique({ where: { id } });
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
       if (ctx.role !== "CCC_STAFF" && existing.companyId !== ctx.companyId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -311,195 +250,238 @@ export const projectsRouter = router({
         where: { id },
         data: {
           ...data,
-          eventDate: data.eventDate ? new Date(data.eventDate) : data.eventDate === null ? null : undefined,
+          eventDate:
+            data.eventDate === null
+              ? null
+              : data.eventDate
+                ? new Date(data.eventDate)
+                : undefined,
         },
       });
     }),
 
-  moveStatus: adminProcedure
+  updateStatus: protectedProcedure
     .input(
       z.object({
         id: z.string(),
-        toStatus: z.enum([
-          "EMPTY",
-          "IN_REVIEW",
-          "ACTIVE",
-          "IN_PRODUCTION",
-          "NEEDS_ATTENTION",
-          "COMPLETED",
-        ]),
+        status: z.enum(["PLANNING", "ACTIVE", "COMPLETED", "ARCHIVED"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const project = await prisma.project.findUnique({
-        where: { id: input.id },
-      });
+      const project = await prisma.project.findUnique({ where: { id: input.id } });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (!project) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
       if (ctx.role !== "CCC_STAFF" && project.companyId !== ctx.companyId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const currentStatus = getEffectiveStatus(project);
-      const role = ctx.role as "CLIENT_ADMIN" | "CLIENT_USER" | "CCC_STAFF";
+      // Client Users cannot change status
+      if (ctx.role === "CLIENT_USER") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cannot change project status" });
+      }
 
-      if (!canTransition(currentStatus, input.toStatus, role)) {
+      // Client Admins cannot set ARCHIVED
+      if (ctx.role === "CLIENT_ADMIN" && input.status === "ARCHIVED") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only staff can archive projects" });
+      }
+
+      return prisma.project.update({
+        where: { id: input.id },
+        data: {
+          status: input.status,
+          archivedAt: input.status === "ARCHIVED" ? new Date() : null,
+        },
+      });
+    }),
+
+  addOrder: protectedProcedure
+    .input(z.object({ projectId: z.string(), orderId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const project = await prisma.project.findUnique({ where: { id: input.projectId } });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (ctx.role !== "CCC_STAFF" && project.companyId !== ctx.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const order = await prisma.order.findUnique({ where: { id: input.orderId } });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+
+      if (order.projectId && order.projectId !== input.projectId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Cannot transition from ${currentStatus} to ${input.toStatus}`,
+          message: "This order already belongs to another project. Remove it from that project first.",
         });
       }
 
-      return prisma.project.update({
-        where: { id: input.id },
-        data: { statusOverride: input.toStatus },
-        include: projectInclude,
+      await prisma.order.update({
+        where: { id: input.orderId },
+        data: { projectId: input.projectId },
       });
+
+      return { success: true };
     }),
 
-  clearStatusOverride: staffProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.project.update({
-        where: { id: input.id },
-        data: { statusOverride: null },
-        include: projectInclude,
-      });
-    }),
-
-  linkItem: adminProcedure
-    .input(
-      z
-        .object({
-          projectId: z.string(),
-          orderId: z.string().optional(),
-          quoteId: z.string().optional(),
-        })
-        .refine((d) => !!d.orderId !== !!d.quoteId, {
-          message: "Exactly one of orderId or quoteId must be provided",
-        })
-    )
+  removeOrder: protectedProcedure
+    .input(z.object({ orderId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Verify project ownership
-      const project = await prisma.project.findUnique({
-        where: { id: input.projectId },
+      const order = await prisma.order.findUnique({
+        where: { id: input.orderId },
+        include: { project: true },
       });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (ctx.role !== "CCC_STAFF" && order.companyId !== ctx.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await prisma.order.update({
+        where: { id: input.orderId },
+        data: { projectId: null },
+      });
+
+      return { success: true };
+    }),
+
+  addQuote: protectedProcedure
+    .input(z.object({ projectId: z.string(), quoteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const project = await prisma.project.findUnique({ where: { id: input.projectId } });
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+
       if (ctx.role !== "CCC_STAFF" && project.companyId !== ctx.companyId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      if (input.orderId) {
-        await prisma.order.update({
-          where: { id: input.orderId },
-          data: { projectId: input.projectId },
+      const quote = await prisma.quote.findUnique({ where: { id: input.quoteId } });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+
+      if (quote.projectId && quote.projectId !== input.projectId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This quote already belongs to another project. Remove it from that project first.",
         });
       }
 
-      if (input.quoteId) {
-        await prisma.quote.update({
-          where: { id: input.quoteId },
-          data: { projectId: input.projectId },
-        });
-      }
-
-      await recomputeProjectStatus(prisma, input.projectId);
-
-      return prisma.project.findUniqueOrThrow({
-        where: { id: input.projectId },
-        include: projectInclude,
+      await prisma.quote.update({
+        where: { id: input.quoteId },
+        data: { projectId: input.projectId },
       });
+
+      return { success: true };
     }),
 
-  unlinkItem: adminProcedure
-    .input(
-      z
-        .object({
-          projectId: z.string(),
-          orderId: z.string().optional(),
-          quoteId: z.string().optional(),
-        })
-        .refine((d) => !!d.orderId !== !!d.quoteId, {
-          message: "Exactly one of orderId or quoteId must be provided",
-        })
-    )
+  removeQuote: protectedProcedure
+    .input(z.object({ quoteId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const project = await prisma.project.findUnique({
-        where: { id: input.projectId },
-      });
-      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
-      if (ctx.role !== "CCC_STAFF" && project.companyId !== ctx.companyId) {
+      const quote = await prisma.quote.findUnique({ where: { id: input.quoteId } });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (ctx.role !== "CCC_STAFF" && quote.companyId !== ctx.companyId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      if (input.orderId) {
-        await prisma.order.update({
-          where: { id: input.orderId },
-          data: { projectId: null },
-        });
-      }
-
-      if (input.quoteId) {
-        await prisma.quote.update({
-          where: { id: input.quoteId },
-          data: { projectId: null },
-        });
-      }
-
-      await recomputeProjectStatus(prisma, input.projectId);
-
-      return prisma.project.findUniqueOrThrow({
-        where: { id: input.projectId },
-        include: projectInclude,
+      await prisma.quote.update({
+        where: { id: input.quoteId },
+        data: { projectId: null },
       });
+
+      return { success: true };
     }),
 
-  archive: adminProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const project = await prisma.project.findUnique({
-        where: { id: input.id },
-      });
+      const project = await prisma.project.findUnique({ where: { id: input.id } });
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
-      if (ctx.role !== "CCC_STAFF" && project.companyId !== ctx.companyId) {
-        throw new TRPCError({ code: "FORBIDDEN" });
+
+      const isStaff = ctx.role === "CCC_STAFF";
+      if (!isStaff && project.createdById !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Can only delete projects you created" });
       }
 
-      return prisma.project.update({
-        where: { id: input.id },
-        data: { archivedAt: new Date() },
+      // Unlink all orders and quotes
+      await prisma.order.updateMany({
+        where: { projectId: input.id },
+        data: { projectId: null },
       });
+      await prisma.quote.updateMany({
+        where: { projectId: input.id },
+        data: { projectId: null },
+      });
+
+      await prisma.project.delete({ where: { id: input.id } });
+
+      return { success: true };
     }),
 
-  // Search orders available for linking
   searchOrders: protectedProcedure
-    .input(z.object({ search: z.string().min(1) }))
+    .input(z.object({ search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
       return prisma.order.findMany({
         where: {
-          companyId: ctx.companyId,
+          ...(isStaff ? {} : { companyId: ctx.companyId }),
           projectId: null,
-          title: { contains: input.search, mode: "insensitive" },
+          ...(input.search
+            ? {
+                OR: [
+                  { title: { contains: input.search, mode: "insensitive" as const } },
+                  { number: { contains: input.search, mode: "insensitive" as const } },
+                ],
+              }
+            : {}),
         },
-        select: { id: true, title: true, number: true, status: true },
-        take: 10,
+        select: { id: true, title: true, number: true, status: true, totalAmount: true },
+        take: 20,
+        orderBy: { createdAt: "desc" },
       });
     }),
 
-  // Search quotes available for linking
   searchQuotes: protectedProcedure
-    .input(z.object({ search: z.string().min(1) }))
+    .input(z.object({ search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
       return prisma.quote.findMany({
         where: {
-          companyId: ctx.companyId,
+          ...(isStaff ? {} : { companyId: ctx.companyId }),
           projectId: null,
-          title: { contains: input.search, mode: "insensitive" },
+          ...(input.search
+            ? {
+                OR: [
+                  { title: { contains: input.search, mode: "insensitive" as const } },
+                  { number: { contains: input.search, mode: "insensitive" as const } },
+                ],
+              }
+            : {}),
         },
         select: { id: true, title: true, number: true, status: true },
-        take: 10,
+        take: 20,
+        orderBy: { createdAt: "desc" },
+      });
+    }),
+
+  searchProjects: protectedProcedure
+    .input(z.object({ search: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+      return prisma.project.findMany({
+        where: {
+          ...(isStaff ? {} : { companyId: ctx.companyId }),
+          status: { not: "ARCHIVED" },
+          ...(input.search
+            ? { name: { contains: input.search, mode: "insensitive" as const } }
+            : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          logoUrl: true,
+          _count: { select: { orders: true, quotes: true } },
+        },
+        take: 20,
+        orderBy: { updatedAt: "desc" },
       });
     }),
 });

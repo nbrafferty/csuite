@@ -94,6 +94,7 @@ export const orderRouter = router({
             },
           },
           quote: { select: { id: true, number: true } },
+          project: { select: { id: true, name: true, status: true, logoUrl: true } },
           invoices: {
             orderBy: { createdAt: "desc" },
             include: {

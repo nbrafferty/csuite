@@ -1,54 +1,50 @@
-import type { ProjectStatus, ProjectCategory } from "@prisma/client";
+import type { ProjectStatus } from "./tokens";
 
-export type { ProjectStatus, ProjectCategory };
+export type { ProjectStatus };
 
 export type UserRole = "CLIENT_ADMIN" | "CLIENT_USER" | "CCC_STAFF";
-
-export interface TeamMember {
-  id: string;
-  initials: string;
-  color: string;
-}
 
 export interface ProjectSummary {
   id: string;
   name: string;
-  category: ProjectCategory;
+  description: string | null;
   status: ProjectStatus;
-  hasStatusOverride: boolean;
   orderCount: number;
   quoteCount: number;
-  progressPercent: number;
-  totalInvoiced: number;
-  totalQuoted: number;
+  totalAmount: number;
   eventDate: string | null;
-  estimatedDelivery: string | null;
-  team: TeamMember[];
+  clientContact: string | null;
+  budget: number | null;
+  logoUrl: string | null;
   companyName: string | null;
+  createdByName: string;
   updatedAt: string;
-}
-
-export interface ProjectDetail extends ProjectSummary {
-  description: string | null;
-  orders: LinkedOrder[];
-  quotes: LinkedQuote[];
-  createdAt: string;
 }
 
 export interface LinkedOrder {
   id: string;
+  number: string;
   title: string;
   status: string;
-  amount: number;
-  updatedAt: string;
+  totalAmount: number;
+  inHandsDate: string | null;
+  poNumber: string | null;
 }
 
 export interface LinkedQuote {
   id: string;
+  number: string;
   title: string;
   status: string;
-  amount: number;
-  updatedAt: string;
+  totalAmount: number;
+  expiresAt: string | null;
+}
+
+export interface ProjectDetail extends ProjectSummary {
+  orders: LinkedOrder[];
+  quotes: LinkedQuote[];
+  createdAt: string;
+  createdById: string;
 }
 
 export interface ActionQueueItem {

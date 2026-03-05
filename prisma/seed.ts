@@ -852,16 +852,17 @@ async function main() {
 
   // ─── Projects ────────────────────────────────────────────────────
 
-  // Project 1: Acme Q1 Onboarding — ACTIVE (has in-production order)
+  // Project 1: TechConnect 2026 Trade Show — ACTIVE
   await prisma.project.create({
     data: {
       companyId: demo.id,
       createdById: janeSmith.id,
-      name: "Q1 New Hire Onboarding",
-      description: "Branded apparel and collateral for 150 new hires joining in Q1. Polo shirts, tees, and welcome kits.",
-      category: "APPAREL",
-      eventDate: daysAgo(-10),
-      derivedStatus: "IN_PRODUCTION",
+      name: "TechConnect 2026 Trade Show",
+      description: "Everything for our booth at TechConnect Austin. Banners, table throws, tees for the team, and giveaways.",
+      status: "ACTIVE",
+      eventDate: daysAgo(-45),
+      clientContact: "Lisa Chen",
+      budget: 5000,
       createdAt: daysAgo(30),
       orders: {
         connect: [{ number: "ORD-2026-001" }],
@@ -872,56 +873,18 @@ async function main() {
     },
   }).catch(() => {});
 
-  // Project 2: Acme Trade Show — IN_REVIEW (submitted order)
+  // Project 2: Holiday Campaign 2025 — COMPLETED
   await prisma.project.create({
     data: {
       companyId: demo.id,
       createdById: johnDoe.id,
-      name: "SxSW 2026 Booth Package",
-      description: "Complete trade show booth: banners, staff shirts, stickers, and business cards for our SxSW 2026 presence.",
-      category: "SIGNAGE",
-      eventDate: daysAgo(-21),
-      derivedStatus: "IN_REVIEW",
-      createdAt: daysAgo(14),
+      name: "Holiday Campaign 2025",
+      description: "Client gift boxes and holiday cards for top accounts.",
+      status: "COMPLETED",
+      eventDate: daysAgo(75),
+      createdAt: daysAgo(90),
       orders: {
         connect: [{ number: "ORD-2026-002" }],
-      },
-    },
-  }).catch(() => {});
-
-  // Project 3: Globex Winter Hoodies — ACTIVE (approved order)
-  await prisma.project.create({
-    data: {
-      companyId: globex.id,
-      createdById: globexAdmin.id,
-      name: "Winter 2026 Employee Hoodies",
-      description: "500 black performance hoodies for the entire Globex team. Embroidered logo on left chest.",
-      category: "APPAREL",
-      eventDate: daysAgo(-30),
-      derivedStatus: "ACTIVE",
-      createdAt: daysAgo(21),
-      orders: {
-        connect: [{ number: "ORD-2026-003" }],
-      },
-      quotes: {
-        connect: [{ number: "QT-2026-002" }],
-      },
-    },
-  }).catch(() => {});
-
-  // Project 4: Bloom Grand Opening — COMPLETED (shipped order + converted quote)
-  await prisma.project.create({
-    data: {
-      companyId: bloom.id,
-      createdById: bloomAdmin.id,
-      name: "Bloom Studio Grand Opening",
-      description: "Tees, window decals, and tote bags for the grand opening event. Everything in Bloom's signature sage green.",
-      category: "APPAREL",
-      eventDate: daysAgo(-5),
-      derivedStatus: "COMPLETED",
-      createdAt: daysAgo(35),
-      orders: {
-        connect: [{ number: "ORD-2026-004" }],
       },
       quotes: {
         connect: [{ number: "QT-2026-003" }],
@@ -929,52 +892,53 @@ async function main() {
     },
   }).catch(() => {});
 
-  // Project 5: Redline Corporate Gala — COMPLETED
-  await prisma.project.create({
-    data: {
-      companyId: redline.id,
-      createdById: redlineAdmin.id,
-      name: "Corporate Gala 2026",
-      description: "Custom dress shirts with red embroidery for the annual corporate gala dinner.",
-      category: "APPAREL",
-      eventDate: daysAgo(5),
-      derivedStatus: "COMPLETED",
-      createdAt: daysAgo(60),
-      orders: {
-        connect: [{ number: "ORD-2026-005" }],
-      },
-    },
-  }).catch(() => {});
-
-  // Project 6: Greenfield Earth Day — NEEDS_ATTENTION (in review, upcoming deadline)
-  await prisma.project.create({
-    data: {
-      companyId: greenfield.id,
-      createdById: greenfieldAdmin.id,
-      name: "Earth Day 2026 Merch",
-      description: "Eco-friendly organic cotton tees and recycled polyester drawstring bags for the Earth Day celebration.",
-      category: "APPAREL",
-      eventDate: daysAgo(-15),
-      derivedStatus: "NEEDS_ATTENTION",
-      statusOverride: "NEEDS_ATTENTION",
-      createdAt: daysAgo(10),
-      orders: {
-        connect: [{ number: "ORD-2026-006" }],
-      },
-    },
-  }).catch(() => {});
-
-  // Project 7: Acme Client Appreciation — EMPTY (no orders yet, just planning)
+  // Project 3: Q2 Team Gear — PLANNING
   await prisma.project.create({
     data: {
       companyId: demo.id,
       createdById: janeSmith.id,
-      name: "Client Appreciation Gift Boxes",
-      description: "Personalized gift boxes for top 50 clients — branded pen, notebook, t-shirt, and thank-you card.",
-      category: "OTHER",
-      eventDate: daysAgo(-60),
-      derivedStatus: "EMPTY",
+      name: "Q2 Team Gear",
+      description: "Polos and branded gear for new hires starting in April.",
+      status: "PLANNING",
+      eventDate: daysAgo(-30),
+      clientContact: "Mike Park",
+      createdAt: daysAgo(10),
+      quotes: {
+        connect: [{ number: "QT-2026-002" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 4: Bloom Rebrand Launch — ACTIVE
+  await prisma.project.create({
+    data: {
+      companyId: bloom.id,
+      createdById: bloomAdmin.id,
+      name: "Bloom Rebrand Launch",
+      description: "Merch and materials for the rebrand launch. Tees, totes, stickers.",
+      status: "ACTIVE",
+      eventDate: daysAgo(-15),
+      clientContact: "Lisa Chen",
+      budget: 8000,
+      createdAt: daysAgo(21),
+      orders: {
+        connect: [{ number: "ORD-2026-004" }],
+      },
+    },
+  }).catch(() => {});
+
+  // Project 5: NovaTech Conference Booth — PLANNING
+  await prisma.project.create({
+    data: {
+      companyId: globex.id,
+      createdById: globexAdmin.id,
+      name: "NovaTech Conference Booth",
+      description: "Booth setup for the annual tech conference. Need banners, swag bags, branded USB drives.",
+      status: "PLANNING",
       createdAt: daysAgo(5),
+      orders: {
+        connect: [{ number: "ORD-2026-003" }],
+      },
     },
   }).catch(() => {});
 
