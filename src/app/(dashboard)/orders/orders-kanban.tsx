@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { COLORS } from "@/lib/tokens";
 import { Package } from "lucide-react";
+import { KanbanBoard, type KanbanColumnConfig } from "@/components/kanban/kanban-board";
 
 type Order = {
   id: string;
@@ -18,27 +20,16 @@ type Order = {
   _count: { items: number; shipments: number; invoices: number };
 };
 
-const ORDER_STATUS_COLORS: Record<string, { color: string; bg: string; label: string }> = {
-  SUBMITTED: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Submitted" },
-  IN_REVIEW: { color: "#A78BFA", bg: "rgba(167,139,250,0.12)", label: "In Review" },
-  PROOFING: { color: "#818CF8", bg: "rgba(129,140,248,0.12)", label: "Proofing" },
-  APPROVED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Approved" },
-  IN_PRODUCTION: { color: "#E85D5D", bg: "rgba(232,93,93,0.12)", label: "In Production" },
-  READY: { color: "#2DD4BF", bg: "rgba(45,212,191,0.12)", label: "Ready" },
-  SHIPPED: { color: "#5BDBEF", bg: "rgba(91,219,239,0.12)", label: "Shipped" },
-  COMPLETED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Completed" },
-};
-
-const KANBAN_COLUMNS = [
-  "SUBMITTED",
-  "IN_REVIEW",
-  "PROOFING",
-  "APPROVED",
-  "IN_PRODUCTION",
-  "READY",
-  "SHIPPED",
-  "COMPLETED",
-] as const;
+const KANBAN_COLUMNS: KanbanColumnConfig[] = [
+  { id: "SUBMITTED", label: "Submitted", color: "#5B8DEF", bg: "rgba(91,141,239,0.12)" },
+  { id: "IN_REVIEW", label: "In Review", color: "#A78BFA", bg: "rgba(167,139,250,0.12)" },
+  { id: "PROOFING", label: "Proofing", color: "#818CF8", bg: "rgba(129,140,248,0.12)" },
+  { id: "APPROVED", label: "Approved", color: "#34C759", bg: "rgba(52,199,89,0.12)" },
+  { id: "IN_PRODUCTION", label: "In Production", color: "#E85D5D", bg: "rgba(232,93,93,0.12)" },
+  { id: "READY", label: "Ready", color: "#2DD4BF", bg: "rgba(45,212,191,0.12)" },
+  { id: "SHIPPED", label: "Shipped", color: "#5BDBEF", bg: "rgba(91,219,239,0.12)" },
+  { id: "COMPLETED", label: "Completed", color: "#34C759", bg: "rgba(52,199,89,0.12)" },
+];
 
 export function OrdersKanban({
   orders,
@@ -53,157 +44,96 @@ export function OrdersKanban({
     onSuccess: () => utils.order.list.invalidate(),
   });
 
-  const grouped = KANBAN_COLUMNS.map((status) => ({
-    status,
-    config: ORDER_STATUS_COLORS[status],
-    orders: orders.filter((o) => o.status === status),
-  }));
+  const items = useMemo(() => {
+    const grouped: Record<string, Order[]> = {};
+    for (const col of KANBAN_COLUMNS) {
+      grouped[col.id] = orders.filter((o) => o.status === col.id);
+    }
+    return grouped;
+  }, [orders]);
 
-  const handleDrop = (orderId: string, newStatus: string) => {
-    if (!isStaff) return;
-    transitionMutation.mutate({ id: orderId, status: newStatus as any });
-  };
+  const handleMove = useCallback(
+    (orderId: string, _fromColumn: string, toColumn: string) => {
+      if (!isStaff) return;
+      transitionMutation.mutate({ id: orderId, status: toColumn as any });
+    },
+    [isStaff, transitionMutation]
+  );
 
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
-      {grouped.map((col) => (
-        <div
-          key={col.status}
-          className="flex w-72 shrink-0 flex-col rounded-lg border transition-all"
-          style={{
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.cardBorder,
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.currentTarget.style.borderColor = col.config.color;
-            e.currentTarget.style.boxShadow = `0 0 12px ${col.config.color}30`;
-            e.currentTarget.style.backgroundColor = `${col.config.color}08`;
-          }}
-          onDragLeave={(e) => {
-            e.currentTarget.style.borderColor = COLORS.cardBorder;
-            e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.backgroundColor = COLORS.surface;
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.currentTarget.style.borderColor = COLORS.cardBorder;
-            e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.backgroundColor = COLORS.surface;
-            const orderId = e.dataTransfer.getData("orderId");
-            if (orderId) handleDrop(orderId, col.status);
-          }}
-        >
-          {/* Column header */}
-          <div
-            className="flex items-center justify-between px-3 py-2.5 border-b"
-            style={{ borderColor: COLORS.cardBorder }}
+  const renderCard = useCallback(
+    (order: Order) => (
+      <div
+        onClick={() => router.push(`/orders/${order.id}`)}
+        className="rounded-lg border p-3 transition-all"
+        style={{
+          backgroundColor: COLORS.card,
+          borderColor: COLORS.cardBorder,
+          cursor: isStaff ? "inherit" : "pointer",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder;
+        }}
+      >
+        <div className="mb-2 flex items-center justify-between">
+          <span
+            className="font-mono text-xs font-medium"
+            style={{ color: COLORS.coral }}
           >
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: col.config.color }}
-              />
-              <span
-                className="text-xs font-medium"
-                style={{ color: col.config.color }}
-              >
-                {col.config.label}
-              </span>
-            </div>
-            <span
-              className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-medium"
-              style={{
-                backgroundColor: col.config.bg,
-                color: col.config.color,
-              }}
-            >
-              {col.orders.length}
+            {order.number}
+          </span>
+        </div>
+
+        <p
+          className="mb-1 text-sm font-medium line-clamp-2"
+          style={{ color: COLORS.textPrimary }}
+        >
+          {order.title}
+        </p>
+
+        <div
+          className="mb-3 text-xs"
+          style={{ color: COLORS.textSecondary }}
+        >
+          {order.company.name}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div
+            className="flex items-center gap-3 text-xs"
+            style={{ color: COLORS.textMuted }}
+          >
+            <span className="flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              {order._count.items}
             </span>
           </div>
-
-          {/* Cards */}
-          <div
-            className="relative flex-1 space-y-2 overflow-y-auto p-2"
-            style={{ maxHeight: "calc(100vh - 280px)" }}
+          <span
+            className="text-xs"
+            style={{ color: COLORS.textMuted }}
           >
-            {col.orders.map((order) => (
-              <div
-                key={order.id}
-                draggable={isStaff}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("orderId", order.id);
-                }}
-                onClick={() => router.push(`/orders/${order.id}`)}
-                className="rounded-lg border p-3 transition-all"
-                style={{
-                  backgroundColor: COLORS.card,
-                  borderColor: COLORS.cardBorder,
-                  cursor: isStaff ? "grab" : "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder;
-                }}
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <span
-                    className="font-mono text-xs font-medium"
-                    style={{ color: COLORS.coral }}
-                  >
-                    {order.number}
-                  </span>
-                </div>
-
-                <p
-                  className="mb-1 text-sm font-medium line-clamp-2"
-                  style={{ color: COLORS.textPrimary }}
-                >
-                  {order.title}
-                </p>
-
-                <div
-                  className="mb-3 text-xs"
-                  style={{ color: COLORS.textSecondary }}
-                >
-                  {order.company.name}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-3 text-xs"
-                    style={{ color: COLORS.textMuted }}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Package className="h-3 w-3" />
-                      {order._count.items}
-                    </span>
-                  </div>
-                  <span
-                    className="text-xs"
-                    style={{ color: COLORS.textMuted }}
-                  >
-                    ${Number(order.totalAmount).toLocaleString("en-US", {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {col.orders.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>
-                  No orders
-                </span>
-              </div>
-            )}
-          </div>
+            ${Number(order.totalAmount).toLocaleString("en-US", {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </span>
         </div>
-      ))}
-    </div>
+      </div>
+    ),
+    [router, isStaff]
+  );
+
+  return (
+    <KanbanBoard<Order>
+      columns={KANBAN_COLUMNS}
+      items={items}
+      renderCard={renderCard}
+      onMove={handleMove}
+      disabled={!isStaff}
+      columnWidth="18rem"
+      emptyLabel="No orders"
+    />
   );
 }

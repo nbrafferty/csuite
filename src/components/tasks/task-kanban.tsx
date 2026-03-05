@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { COLORS } from "@/lib/tokens";
 import { trpc } from "@/lib/trpc";
+import { KanbanBoard, type KanbanColumnConfig } from "@/components/kanban/kanban-board";
 import { TaskKanbanCard } from "./task-kanban-card";
 
 type Task = {
@@ -18,11 +20,11 @@ type Task = {
   }>;
 };
 
-const COLUMNS = [
-  { status: "TODO", label: "To Do", color: COLORS.blue, bg: COLORS.blueDim },
-  { status: "IN_PROGRESS", label: "In Progress", color: COLORS.yellow, bg: COLORS.yellowDim },
-  { status: "DONE", label: "Done", color: COLORS.green, bg: COLORS.greenDim },
-] as const;
+const COLUMNS: KanbanColumnConfig[] = [
+  { id: "TODO", label: "To Do", color: COLORS.blue, bg: COLORS.blueDim },
+  { id: "IN_PROGRESS", label: "In Progress", color: COLORS.yellow, bg: COLORS.yellowDim },
+  { id: "DONE", label: "Done", color: COLORS.green, bg: COLORS.greenDim },
+];
 
 interface TaskKanbanProps {
   tasks: Task[];
@@ -40,112 +42,66 @@ export function TaskKanban({ tasks, onSelect }: TaskKanbanProps) {
     onSuccess: () => utils.task.list.invalidate(),
   });
 
-  const grouped = COLUMNS.map((col) => ({
-    ...col,
-    tasks: tasks.filter((t) => t.status === col.status),
-  }));
+  const items = useMemo(() => {
+    const grouped: Record<string, Task[]> = {};
+    for (const col of COLUMNS) {
+      grouped[col.id] = tasks.filter((t) => t.status === col.id);
+    }
+    return grouped;
+  }, [tasks]);
 
-  const handleDrop = (taskId: string, newStatus: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task || task.status === newStatus) return;
+  const handleMove = useCallback(
+    (taskId: string, _fromColumn: string, toColumn: string) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
 
-    const targetColumnTasks = tasks.filter((t) => t.status === newStatus);
-    const payload = [
-      ...targetColumnTasks.map((t, i) => ({
-        id: t.id,
-        sortOrder: i,
-        status: newStatus as "TODO" | "IN_PROGRESS" | "DONE",
-      })),
-      {
-        id: taskId,
-        sortOrder: targetColumnTasks.length,
-        status: newStatus as "TODO" | "IN_PROGRESS" | "DONE",
-      },
-    ];
+      const targetColumnTasks = tasks.filter(
+        (t) => t.status === toColumn && t.id !== taskId
+      );
+      const payload = [
+        ...targetColumnTasks.map((t, i) => ({
+          id: t.id,
+          sortOrder: i,
+          status: toColumn as "TODO" | "IN_PROGRESS" | "DONE",
+        })),
+        {
+          id: taskId,
+          sortOrder: targetColumnTasks.length,
+          status: toColumn as "TODO" | "IN_PROGRESS" | "DONE",
+        },
+      ];
 
-    reorderMutation.mutate({ tasks: payload });
-  };
+      reorderMutation.mutate({ tasks: payload });
+    },
+    [tasks, reorderMutation]
+  );
 
-  const handleArchive = (taskId: string) => {
-    archiveMutation.mutate({ id: taskId });
-  };
+  const handleArchive = useCallback(
+    (taskId: string) => {
+      archiveMutation.mutate({ id: taskId });
+    },
+    [archiveMutation]
+  );
+
+  const renderCard = useCallback(
+    (task: Task, columnId: string) => (
+      <TaskKanbanCard
+        task={task}
+        onSelect={onSelect}
+        onArchive={columnId === "DONE" ? handleArchive : undefined}
+      />
+    ),
+    [onSelect, handleArchive]
+  );
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
-      {grouped.map((col) => (
-        <div
-          key={col.status}
-          className="flex w-80 shrink-0 flex-col rounded-lg border transition-all"
-          style={{
-            backgroundColor: COLORS.surface,
-            borderColor: COLORS.cardBorder,
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.currentTarget.style.borderColor = col.color;
-            e.currentTarget.style.boxShadow = `0 0 12px ${col.color}30`;
-            e.currentTarget.style.backgroundColor = `${col.color}08`;
-          }}
-          onDragLeave={(e) => {
-            e.currentTarget.style.borderColor = COLORS.cardBorder;
-            e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.backgroundColor = COLORS.surface;
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.currentTarget.style.borderColor = COLORS.cardBorder;
-            e.currentTarget.style.boxShadow = "none";
-            e.currentTarget.style.backgroundColor = COLORS.surface;
-            const taskId = e.dataTransfer.getData("taskId");
-            if (taskId) handleDrop(taskId, col.status);
-          }}
-        >
-          {/* Column header */}
-          <div
-            className="flex items-center justify-between px-3 py-2.5 border-b"
-            style={{ borderColor: COLORS.cardBorder }}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: col.color }}
-              />
-              <span className="text-xs font-medium" style={{ color: col.color }}>
-                {col.label}
-              </span>
-            </div>
-            <span
-              className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-medium"
-              style={{ backgroundColor: col.bg, color: col.color }}
-            >
-              {col.tasks.length}
-            </span>
-          </div>
-
-          {/* Cards */}
-          <div
-            className="relative flex-1 space-y-2 overflow-y-auto p-2"
-            style={{ maxHeight: "calc(100vh - 280px)", minHeight: 80 }}
-          >
-            {col.tasks.map((task) => (
-              <TaskKanbanCard
-                key={task.id}
-                task={task}
-                onSelect={onSelect}
-                onArchive={col.status === "DONE" ? handleArchive : undefined}
-              />
-            ))}
-
-            {col.tasks.length === 0 && (
-              <div className="flex items-center justify-center py-8">
-                <span className="text-xs" style={{ color: COLORS.textSecondary }}>
-                  No tasks
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+    <KanbanBoard<Task>
+      columns={COLUMNS}
+      items={items}
+      renderCard={renderCard}
+      onMove={handleMove}
+      columnWidth="20rem"
+      emptyLabel="No tasks"
+    />
   );
 }

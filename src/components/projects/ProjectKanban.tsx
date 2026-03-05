@@ -1,27 +1,19 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import {
-  DndContext,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragStartEvent,
-  type DragEndEvent,
-  type DragOverEvent,
-} from "@dnd-kit/core";
+import { useMemo, useCallback, useState } from "react";
 import type { ProjectStatus } from "@prisma/client";
 import {
   COLUMN_ORDER,
   ALWAYS_VISIBLE_COLUMNS,
   getValidTargets,
+  COLORS,
+  STATUS_COLORS,
   type UserRole,
 } from "@/lib/tokens";
-import { KanbanColumn } from "./KanbanColumn";
+import { KanbanBoard, type KanbanColumnConfig } from "@/components/kanban/kanban-board";
+import { ProjectCard } from "./ProjectCard";
 import type { ProjectSummary } from "@/lib/types";
 import { trpc } from "@/lib/trpc";
-import { COLORS } from "@/lib/tokens";
 
 interface ProjectKanbanProps {
   projects: ProjectSummary[];
@@ -36,8 +28,6 @@ export function ProjectKanban({
   userRole,
   isAdminView,
 }: ProjectKanbanProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [validTargets, setValidTargets] = useState<ProjectStatus[]>([]);
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
@@ -69,92 +59,87 @@ export function ProjectKanban({
 
   const canDrag = userRole !== "CLIENT_USER";
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor)
-  );
+  // Build column configs from visible statuses
+  const columns: KanbanColumnConfig[] = useMemo(() => {
+    return COLUMN_ORDER.filter((status) => {
+      if (ALWAYS_VISIBLE_COLUMNS.includes(status)) return true;
+      if (projects.some((p) => p.status === status)) return true;
+      return false;
+    }).map((status) => ({
+      id: status,
+      label: STATUS_COLORS[status].label,
+      color: STATUS_COLORS[status].color,
+      bg: STATUS_COLORS[status].bg,
+    }));
+  }, [projects]);
 
-  // Group projects by effective status
-  const grouped = COLUMN_ORDER.reduce(
-    (acc, status) => {
-      acc[status] = projects.filter((p) => p.status === status);
-      return acc;
-    },
-    {} as Record<ProjectStatus, ProjectSummary[]>
-  );
+  // Group projects by status
+  const items = useMemo(() => {
+    const grouped: Record<string, ProjectSummary[]> = {};
+    for (const col of columns) {
+      grouped[col.id] = projects.filter((p) => p.status === col.id);
+    }
+    return grouped;
+  }, [projects, columns]);
 
-  // Determine visible columns
-  const visibleColumns = COLUMN_ORDER.filter((status) => {
-    if (ALWAYS_VISIBLE_COLUMNS.includes(status)) return true;
-    if (grouped[status].length > 0) return true;
-    if (activeId && validTargets.includes(status)) return true;
-    return false;
-  });
-
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const project = (event.active.data.current as any)?.project as
-        | ProjectSummary
-        | undefined;
+  const handleMove = useCallback(
+    (projectId: string, fromColumn: string, toColumn: string) => {
+      const project = projects.find((p) => p.id === projectId);
       if (!project) return;
-      setActiveId(project.id);
-      setValidTargets(getValidTargets(project.status, userRole));
-    },
-    [userRole]
-  );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveId(null);
-      setValidTargets([]);
-
-      if (!over) return;
-
-      const project = (active.data.current as any)?.project as
-        | ProjectSummary
-        | undefined;
-      const targetStatus = (over.data.current as any)?.status as
-        | ProjectStatus
-        | undefined;
-
-      if (!project || !targetStatus) return;
-      if (project.status === targetStatus) return;
-
-      // Check if valid transition
+      // Validate the transition
       const targets = getValidTargets(project.status, userRole);
-      if (!targets.includes(targetStatus)) {
-        // Trigger shake animation
-        const el = document.querySelector(
-          `[data-project-id="${project.id}"]`
-        );
-        if (el) {
-          el.classList.add("shake");
-          setTimeout(() => el.classList.remove("shake"), 300);
-        }
+      if (!targets.includes(toColumn as ProjectStatus)) {
+        setErrorToast("Invalid status transition");
+        setTimeout(() => setErrorToast(null), 3000);
         return;
       }
 
-      moveStatus.mutate({ id: project.id, toStatus: targetStatus });
+      moveStatus.mutate({
+        id: projectId,
+        toStatus: toColumn as ProjectStatus,
+      });
     },
-    [userRole, moveStatus]
+    [projects, userRole, moveStatus]
   );
 
-  if (!canDrag) {
-    // Read-only board (no DnD)
+  const renderCard = useCallback(
+    (project: ProjectSummary) => (
+      <ProjectCard
+        project={project}
+        variant="kanban"
+        isAdminView={isAdminView}
+        canDrag={canDrag}
+      />
+    ),
+    [isAdminView, canDrag]
+  );
+
+  if (isLoading) {
     return (
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {visibleColumns.map((status) => (
-          <KanbanColumn
-            key={status}
-            status={status}
-            projects={grouped[status]}
-            isLoading={isLoading}
-            isAdminView={isAdminView}
-            canDrag={false}
-          />
+        {columns.map((col) => (
+          <div
+            key={col.id}
+            className="flex w-72 shrink-0 flex-col rounded-lg border"
+            style={{ backgroundColor: COLORS.surface, borderColor: COLORS.cardBorder }}
+          >
+            <div
+              className="flex items-center justify-between px-3 py-2.5 border-b"
+              style={{ borderColor: COLORS.cardBorder }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.color }} />
+                <span className="text-xs font-medium" style={{ color: col.color }}>
+                  {col.label}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2 p-2">
+              <div className="h-24 animate-pulse rounded-lg" style={{ backgroundColor: COLORS.card }} />
+              <div className="h-24 animate-pulse rounded-lg" style={{ backgroundColor: COLORS.card }} />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -162,36 +147,15 @@ export function ProjectKanban({
 
   return (
     <>
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-3 overflow-x-auto pb-4">
-          {visibleColumns.map((status) => {
-            const isValidTarget =
-              !!activeId && validTargets.includes(status);
-            const isInvalidTarget =
-              !!activeId &&
-              !validTargets.includes(status) &&
-              status !== projects.find((p) => p.id === activeId)?.status;
-
-            return (
-              <KanbanColumn
-                key={status}
-                status={status}
-                projects={grouped[status]}
-                isLoading={isLoading}
-                isValidTarget={isValidTarget}
-                isInvalidTarget={isInvalidTarget}
-                isDragging={!!activeId}
-                isAdminView={isAdminView}
-                canDrag={canDrag}
-              />
-            );
-          })}
-        </div>
-      </DndContext>
+      <KanbanBoard<ProjectSummary>
+        columns={columns}
+        items={items}
+        renderCard={renderCard}
+        onMove={handleMove}
+        disabled={!canDrag}
+        columnWidth="18rem"
+        emptyLabel="No projects"
+      />
 
       {/* Error toast */}
       {errorToast && (
@@ -219,7 +183,7 @@ export function ProjectKanban({
             className="text-xs"
             style={{ color: COLORS.textMuted }}
           >
-            ✕
+            x
           </button>
         </div>
       )}

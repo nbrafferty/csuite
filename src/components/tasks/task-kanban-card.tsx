@@ -28,17 +28,11 @@ export function TaskKanbanCard({ task, onSelect, onArchive }: TaskKanbanCardProp
 
   return (
     <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("taskId", task.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
       onClick={() => onSelect(task.id)}
       className="group rounded-lg border p-3 transition-all"
       style={{
         backgroundColor: COLORS.card,
         borderColor: COLORS.cardBorder,
-        cursor: "grab",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;

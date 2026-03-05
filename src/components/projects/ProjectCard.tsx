@@ -1,9 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { COLORS, STATUS_COLORS, CATEGORY_LABELS } from "@/lib/tokens";
 import { DerivedStatusBadge } from "./DerivedStatusBadge";
 import type { ProjectSummary } from "@/lib/types";
@@ -11,7 +8,6 @@ import type { ProjectSummary } from "@/lib/types";
 interface ProjectCardProps {
   project: ProjectSummary;
   variant: "kanban" | "list";
-  isDragging?: boolean;
   isAdminView?: boolean;
   canDrag?: boolean;
 }
@@ -22,44 +18,8 @@ export function ProjectCard({
   isAdminView,
   canDrag = true,
 }: ProjectCardProps) {
-  const [shaking, setShaking] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging: isDraggingDnd,
-  } = useDraggable({
-    id: project.id,
-    data: { project },
-    disabled: !canDrag || variant === "list",
-  });
-
-  const style =
-    variant === "kanban" && transform
-      ? {
-          transform: CSS.Translate.toString(transform),
-          zIndex: isDraggingDnd ? 50 : undefined,
-        }
-      : undefined;
-
-  // External shake trigger
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const handler = () => {
-      setShaking(true);
-      setTimeout(() => setShaking(false), 300);
-    };
-    el.addEventListener("card-shake", handler);
-    return () => el.removeEventListener("card-shake", handler);
-  }, []);
-
   const category = CATEGORY_LABELS[project.category];
   const statusColor = STATUS_COLORS[project.status];
-
   const progressBarColor = statusColor.color;
 
   if (variant === "list") {
@@ -204,34 +164,21 @@ export function ProjectCard({
     );
   }
 
-  // Kanban variant
+  // Kanban variant — pure content card (drag is handled by KanbanBoard wrapper)
   return (
-    <div
-      ref={(node) => {
-        setNodeRef(node);
-        (cardRef as any).current = node;
-      }}
-      {...(canDrag ? { ...listeners, ...attributes } : {})}
-      className={`rounded-lg border p-3 transition-all ${shaking ? "shake" : ""} ${
-        isDraggingDnd ? "rotate-2 shadow-xl" : ""
-      }`}
+    <Link
+      href={`/projects/${project.id}`}
+      className="block rounded-lg border p-3 transition-all"
       style={{
         backgroundColor: COLORS.card,
-        borderColor: isDraggingDnd
-          ? statusColor.color
-          : COLORS.cardBorder,
-        cursor: canDrag ? (isDraggingDnd ? "grabbing" : "grab") : "default",
-        opacity: isDraggingDnd ? 0.9 : 1,
-        boxShadow: isDraggingDnd
-          ? `0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px ${statusColor.color}40`
-          : undefined,
-        ...style,
+        borderColor: COLORS.cardBorder,
       }}
-      role="button"
-      tabIndex={0}
-      aria-label={`${project.name}, ${STATUS_COLORS[project.status].label}. ${
-        canDrag ? "Press space to grab." : ""
-      }`}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorderHover;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = COLORS.cardBorder;
+      }}
     >
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
@@ -246,16 +193,12 @@ export function ProjectCard({
       </div>
 
       {/* Title */}
-      <Link
-        href={`/projects/${project.id}`}
-        className="mb-1 block text-sm font-medium hover:underline"
+      <span
+        className="mb-1 block text-sm font-medium"
         style={{ color: COLORS.textPrimary }}
-        onClick={(e) => {
-          if (isDraggingDnd) e.preventDefault();
-        }}
       >
         {project.name}
-      </Link>
+      </span>
 
       {/* Subtitle */}
       <div className="mb-3 text-xs" style={{ color: COLORS.textSecondary }}>
@@ -316,7 +259,7 @@ export function ProjectCard({
           </span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
