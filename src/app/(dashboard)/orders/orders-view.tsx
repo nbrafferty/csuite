@@ -38,10 +38,16 @@ export function OrdersView() {
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+
+  const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
+    enabled: isStaff,
+  });
 
   const { data, isLoading } = trpc.order.list.useQuery(
     {
       status: statusFilter ? (statusFilter as any) : undefined,
+      companyId: clientFilter || undefined,
       search: search || undefined,
       limit: 50,
     },
@@ -109,6 +115,25 @@ export function OrdersView() {
             </button>
           ))}
         </div>
+
+        {/* Client filter (staff only) */}
+        {isStaff && clients && clients.length > 0 && (
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className={cn(
+              "rounded-lg border border-surface-border bg-surface-card px-3 py-1.5 text-xs font-medium text-gray-400 outline-none",
+              clientFilter && "border-coral text-white"
+            )}
+          >
+            <option value="">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* View toggle */}
         <div className="ml-auto flex items-center gap-2">

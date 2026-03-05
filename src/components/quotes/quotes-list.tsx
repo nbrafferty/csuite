@@ -45,11 +45,17 @@ export function QuotesList() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(
     undefined
   );
+  const [clientFilter, setClientFilter] = useState("");
   const [page, setPage] = useState(1);
+
+  const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
+    enabled: isStaff,
+  });
 
   const { data, isLoading } = trpc.quote.list.useQuery(
     {
       status: statusFilter as any,
+      companyId: clientFilter || undefined,
       search: search || undefined,
       page,
       perPage: 20,
@@ -117,6 +123,28 @@ export function QuotesList() {
             </button>
           ))}
         </div>
+
+        {/* Client filter (staff only) */}
+        {isStaff && clients && clients.length > 0 && (
+          <select
+            value={clientFilter}
+            onChange={(e) => {
+              setClientFilter(e.target.value);
+              setPage(1);
+            }}
+            className={cn(
+              "rounded-lg border border-[#333338] bg-[#1A1A1E] px-3 py-1.5 text-xs font-medium text-gray-400 outline-none",
+              clientFilter && "border-coral text-white"
+            )}
+          >
+            <option value="">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* New Quote button (staff only) */}
         {isStaff && (

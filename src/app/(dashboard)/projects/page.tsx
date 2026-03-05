@@ -12,19 +12,17 @@ import {
 } from "@/lib/tokens";
 import { ProjectKanban } from "@/components/projects/ProjectKanban";
 import { ProjectListView } from "@/components/projects/ProjectListView";
-import { ProjectGrid } from "@/components/projects/project-grid";
 import { ProjectCreateDialog } from "@/components/projects/project-create-dialog";
-import { ProjectCardSkeleton, ProjectListSkeleton } from "@/components/projects/ProjectCardSkeleton";
+import { ProjectListSkeleton } from "@/components/projects/ProjectCardSkeleton";
 import {
   Plus,
-  LayoutGrid,
   List,
   Search,
   FolderKanban,
   Columns3,
 } from "lucide-react";
 
-type ViewMode = "grid" | "list" | "kanban";
+type ViewMode = "list" | "kanban";
 
 export default function ProjectsPage() {
   const { data: session } = useSession();
@@ -32,17 +30,23 @@ export default function ProjectsPage() {
   const isStaff = role === "CCC_STAFF";
   const isAdmin = role === "CLIENT_ADMIN" || isStaff;
 
-  const [view, setView] = useState<ViewMode>("grid");
+  const [view, setView] = useState<ViewMode>("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [clientFilter, setClientFilter] = useState<string>("");
+
+  const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
+    enabled: isStaff,
+  });
 
   const { data: projects, isLoading } = trpc.projects.list.useQuery(
     {
       search: search || undefined,
       status: statusFilter.length > 0 ? statusFilter : undefined,
       includeArchived: showArchived,
+      companyId: clientFilter || undefined,
     },
     { refetchInterval: 30_000 }
   );
@@ -84,7 +88,6 @@ export default function ProjectsPage() {
           {/* View toggle */}
           <div className="flex rounded-lg border" style={{ borderColor: COLORS.cardBorder }}>
             {([
-              { mode: "grid" as const, icon: LayoutGrid, title: "Grid view" },
               { mode: "list" as const, icon: List, title: "List view" },
               { mode: "kanban" as const, icon: Columns3, title: "Kanban view" },
             ] as const).map(({ mode, icon: Icon, title }, i) => (
@@ -92,7 +95,7 @@ export default function ProjectsPage() {
                 key={mode}
                 onClick={() => setView(mode)}
                 className={`p-2 transition-colors ${
-                  i === 0 ? "rounded-l-lg" : i === 2 ? "rounded-r-lg" : ""
+                  i === 0 ? "rounded-l-lg" : "rounded-r-lg"
                 }`}
                 style={{
                   backgroundColor: view === mode ? COLORS.card : "transparent",
@@ -167,6 +170,26 @@ export default function ProjectsPage() {
           })}
         </div>
 
+        {isStaff && clients && clients.length > 0 && (
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="rounded-lg border px-3 py-2 text-xs font-medium outline-none"
+            style={{
+              backgroundColor: COLORS.card,
+              borderColor: clientFilter ? COLORS.coral : COLORS.cardBorder,
+              color: clientFilter ? COLORS.textPrimary : COLORS.textMuted,
+            }}
+          >
+            <option value="">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         <label className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.textMuted }}>
           <input
             type="checkbox"
@@ -180,25 +203,19 @@ export default function ProjectsPage() {
 
       {/* Content */}
       {isLoading ? (
-        view === "grid" ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <ProjectCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : view === "kanban" ? (
+        view === "kanban" ? (
           <ProjectKanban projects={[]} isLoading userRole={role} isAdminView={isStaff} showArchived={showArchived} />
         ) : (
           <ProjectListSkeleton />
         )
       ) : filteredProjects.length === 0 ? (
-        search ? (
+        search || clientFilter ? (
           <div className="flex flex-col items-center justify-center py-20">
             <p className="text-sm" style={{ color: COLORS.textSecondary }}>
-              No projects match &ldquo;{search}&rdquo;
+              No projects match your filters.
             </p>
-            <button onClick={() => setSearch("")} className="mt-2 text-xs font-medium underline" style={{ color: COLORS.coral }}>
-              Clear search
+            <button onClick={() => { setSearch(""); setClientFilter(""); }} className="mt-2 text-xs font-medium underline" style={{ color: COLORS.coral }}>
+              Clear filters
             </button>
           </div>
         ) : (
@@ -222,8 +239,6 @@ export default function ProjectsPage() {
             )}
           </div>
         )
-      ) : view === "grid" ? (
-        <ProjectGrid projects={filteredProjects} isAdminView={isStaff} />
       ) : view === "kanban" ? (
         <ProjectKanban
           projects={filteredProjects}
