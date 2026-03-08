@@ -12,6 +12,41 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...");
 
+  // Clean up all seeded data to prevent duplicates on re-run.
+  // Order: leaf tables first, then parents (respects FK constraints).
+  await prisma.auditLogEvent.deleteMany();
+  await prisma.proofAnnotation.deleteMany();
+  await prisma.proof.deleteMany();
+  await prisma.artworkVersion.deleteMany();
+  await prisma.artworkTag.deleteMany();
+  await prisma.orderArtworkLink.deleteMany();
+  await prisma.artworkQuoteLink.deleteMany();
+  await prisma.artworkAsset.deleteMany();
+  await prisma.taskAssignee.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.quoteChangeRequest.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.invoiceItem.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.threadReadState.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.messageThread.deleteMany();
+  await prisma.quoteRequestItem.deleteMany();
+  await prisma.quoteRequest.deleteMany();
+  await prisma.quoteItem.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.shipment.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.inventoryLedgerEntry.deleteMany();
+  await prisma.inventoryItem.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.project.deleteMany();
+  await prisma.savedProduct.deleteMany();
+  await prisma.location.deleteMany();
+  await prisma.catalogProduct.deleteMany();
+  await prisma.vendor.deleteMany();
+
   // Create CCC super-tenant
   const ccc = await prisma.company.upsert({
     where: { slug: "central-creative" },
