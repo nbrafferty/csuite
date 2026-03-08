@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ClientsTable } from "./clients-table";
 import { ClientsGrid } from "./clients-grid";
 import { ClientDetailPanel } from "./client-detail-panel";
+import { AddClientDialog } from "./add-client-dialog";
 
 type StatusFilter = "all" | "active" | "paused" | "overdue";
 
@@ -22,6 +23,7 @@ export function ClientsView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [view, setView] = useState<"table" | "grid">("table");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
     refetchInterval: 30_000,
@@ -112,10 +114,10 @@ export function ClientsView() {
             </button>
           </div>
 
-          {/* Add Client (placeholder) */}
+          {/* Add Client */}
           <button
-            disabled
-            className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+            onClick={() => setShowAddDialog(true)}
+            className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-medium text-white hover:bg-coral-dark transition-colors"
           >
             <Plus className="h-4 w-4" />
             Add Client
@@ -142,6 +144,12 @@ export function ClientsView() {
       <ClientDetailPanel
         clientId={selectedClientId}
         onClose={() => setSelectedClientId(null)}
+      />
+
+      {/* Add client dialog */}
+      <AddClientDialog
+        open={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
       />
     </div>
   );

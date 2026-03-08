@@ -130,4 +130,58 @@ export const clientRouter = router({
         data: { notes: input.notes },
       });
     }),
+
+  create: staffProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(100),
+        contactName: z.string().min(1).max(100),
+        contactEmail: z.string().email(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Generate slug from name
+      const baseSlug = input.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      // Ensure uniqueness
+      let slug = baseSlug;
+      let attempt = 0;
+      while (await prisma.company.findUnique({ where: { slug } })) {
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
+      }
+
+      // Generate invite code
+      const inviteCode = `${slug.toUpperCase().slice(0, 10)}-INVITE-${Date.now().toString(36).toUpperCase()}`;
+
+      const company = await prisma.company.create({
+        data: {
+          name: input.name,
+          slug,
+          inviteCode,
+          status: "active",
+          phone: input.phone,
+          address: input.address,
+          users: {
+            create: {
+              name: input.contactName,
+              email: input.contactEmail,
+              passwordHash: "$2a$12$placeholder", // Placeholder — user will set password via invite
+              role: "CLIENT_ADMIN",
+              status: "INVITED",
+            },
+          },
+        },
+        include: {
+          users: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      return { id: company.id, name: company.name, slug: company.slug };
+    }),
 });
