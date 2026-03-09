@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { COLORS, PROJECT_STATUS_COLORS, type ProjectStatus } from "@/lib/tokens";
 import { trpc } from "@/lib/trpc";
 import { X, Search } from "lucide-react";
@@ -18,12 +19,16 @@ export function ProjectCreateDialog({
   preLinkedOrderId,
   preLinkedQuoteId,
 }: ProjectCreateDialogProps) {
+  const { data: session } = useSession();
+  const isStaff = (session?.user as any)?.role === "CCC_STAFF";
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ProjectStatus>("PLANNING");
   const [eventDate, setEventDate] = useState("");
   const [clientContact, setClientContact] = useState("");
   const [budget, setBudget] = useState("");
+  const [companyId, setCompanyId] = useState("");
   const [linkSearch, setLinkSearch] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>(
     preLinkedOrderId ? [preLinkedOrderId] : []
@@ -34,6 +39,9 @@ export function ProjectCreateDialog({
   const [error, setError] = useState("");
 
   const utils = trpc.useUtils();
+  const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
+    enabled: open && isStaff,
+  });
 
   const create = trpc.projects.create.useMutation({
     onSuccess: () => {
@@ -60,6 +68,7 @@ export function ProjectCreateDialog({
     setEventDate("");
     setClientContact("");
     setBudget("");
+    setCompanyId("");
     setLinkSearch("");
     setSelectedOrderIds(preLinkedOrderId ? [preLinkedOrderId] : []);
     setSelectedQuoteIds(preLinkedQuoteId ? [preLinkedQuoteId] : []);
@@ -73,6 +82,10 @@ export function ProjectCreateDialog({
       setError("Name must be at least 2 characters");
       return;
     }
+    if (isStaff && !companyId) {
+      setError("Please select a client");
+      return;
+    }
 
     create.mutate({
       name,
@@ -81,6 +94,7 @@ export function ProjectCreateDialog({
       eventDate: eventDate || undefined,
       clientContact: clientContact || undefined,
       budget: budget ? parseFloat(budget) : undefined,
+      companyId: isStaff && companyId ? companyId : undefined,
       orderIds: selectedOrderIds.length > 0 ? selectedOrderIds : undefined,
       quoteIds: selectedQuoteIds.length > 0 ? selectedQuoteIds : undefined,
     });
@@ -116,6 +130,24 @@ export function ProjectCreateDialog({
               autoFocus
             />
           </div>
+
+          {/* Client (staff only) */}
+          {isStaff && (
+            <div>
+              <label className="mb-1 block text-xs font-medium" style={{ color: COLORS.textSecondary }}>Client *</label>
+              <select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                style={{ backgroundColor: COLORS.card, borderColor: COLORS.cardBorder, color: COLORS.textPrimary }}
+              >
+                <option value="">Select a client...</option>
+                {(clients ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Description */}
           <div>
