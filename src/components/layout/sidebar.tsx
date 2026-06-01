@@ -54,11 +54,11 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-border bg-sidebar-bg">
       {/* Logo */}
-      <div className="flex h-[72px] shrink-0 items-center justify-center border-b border-surface-border px-6">
+      <div className="flex shrink-0 items-center justify-center border-b border-surface-border px-6 py-5">
         <img
           src="/central-creative-logo.svg"
           alt="Central Creative Co."
-          className="h-auto max-h-12 w-auto object-contain"
+          className="h-auto max-h-[67px] w-auto object-contain"
         />
       </div>
 
