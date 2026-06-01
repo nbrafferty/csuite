@@ -44,13 +44,15 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-bg px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-xl font-bold text-white">
-            CS
-          </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">
-            Create your account
+          <img
+            src="/central-creative-logo.svg"
+            alt="Central Creative Co."
+            className="mx-auto h-auto max-h-16 w-auto object-contain"
+          />
+          <h1 className="mt-6 font-display text-3xl tracking-display text-foreground">
+            Create Account
           </h1>
-          <p className="mt-2 text-sm text-foreground-secondary">
+          <p className="label-eyebrow mt-3 text-[0.7rem]">
             Enter your invite code to get started
           </p>
         </div>

@@ -1,50 +1,147 @@
+/* =============================================================
+   Central Creative Co. — Color & Type Foundations
+   Editorial / cinematic / high-contrast. Dark-mode-first.
+   Mirrors the CCC design-system handoff bundle (colors_and_type.css).
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Saira+Extra+Condensed:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Brand display face — ATF Poster Gothic Condensed Medium. */
+@font-face {
+  font-family: "Poster Gothic ATF";
+  src: url("/fonts/Poster_Gothic_Cond_ATF_Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Brand label face — Acumin Pro Extra Condensed Regular. */
+@font-face {
+  font-family: "Acumin Pro Extra Condensed";
+  src: url("/fonts/acumin-pro-extra-condensed-regular.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
+  /* Light mode — warm-paper CCC treatment (kept coherent; the brand's
+     home is dark, but the theme toggle stays functional). */
   :root {
-    --surface-bg: 249 250 251;
-    --surface-card: 255 255 255;
-    --surface-secondary: 243 244 246;
-    --surface-border: 229 231 235;
+    --surface-bg: 244 241 235;
+    --surface-card: 252 250 245;
+    --surface-secondary: 237 233 226;
+    --surface-border: 224 219 210;
 
-    --sidebar-bg: 255 255 255;
-    --sidebar-hover: 243 244 246;
-    --sidebar-active: 238 242 255;
-    --sidebar-text: 107 114 128;
-    --sidebar-text-active: 17 24 39;
+    --sidebar-bg: 252 250 245;
+    --sidebar-hover: 237 233 226;
+    --sidebar-active: 245 224 221;
+    --sidebar-text: 90 90 90;
+    --sidebar-text-active: 20 20 20;
 
-    --foreground: 17 24 39;
-    --foreground-secondary: 107 114 128;
-    --foreground-muted: 156 163 175;
+    --foreground: 20 20 20;
+    --foreground-secondary: 90 90 90;
+    --foreground-muted: 136 136 136;
+
+    /* Shared accent + helpers */
+    --red: 212 71 63;
+    --red-deep: 163 53 48;
+    --red-glow: rgba(212, 71, 63, 0.12);
+
+    --font-display: "Poster Gothic ATF", "Oswald", Impact, sans-serif;
+    --font-label: "Acumin Pro Extra Condensed", "Saira Extra Condensed", "Barlow Condensed", sans-serif;
+    --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+
+    --ease-ui: cubic-bezier(0.22, 1, 0.36, 1);
+    --dur-micro: 200ms;
+    --dur-std: 350ms;
+    --dur-hero: 900ms;
   }
 
+  /* Dark mode — the brand's home. Near-black blueprint, warm off-white ink. */
   .dark {
-    --surface-bg: 13 13 15;
-    --surface-card: 26 26 30;
-    --surface-secondary: 34 34 42;
-    --surface-border: 51 51 56;
+    --surface-bg: 10 10 10; /* #0a0a0a */
+    --surface-card: 29 29 29; /* #1d1d1d */
+    --surface-secondary: 38 38 38; /* #262626 */
+    --surface-border: 42 42 42; /* subtle hairline */
 
-    --sidebar-bg: 13 13 15;
-    --sidebar-hover: 26 26 30;
-    --sidebar-active: 26 26 30;
-    --sidebar-text: 153 153 161;
-    --sidebar-text-active: 255 255 255;
+    --sidebar-bg: 10 10 10;
+    --sidebar-hover: 29 29 29;
+    --sidebar-active: 29 29 29;
+    --sidebar-text: 136 136 136; /* #888 */
+    --sidebar-text-active: 240 236 230; /* #f0ece6 */
 
-    --foreground: 255 255 255;
-    --foreground-secondary: 156 163 175;
-    --foreground-muted: 107 114 128;
+    --foreground: 240 236 230; /* #f0ece6 warm off-white */
+    --foreground-secondary: 136 136 136; /* #888 */
+    --foreground-muted: 90 90 90; /* #5a5a5a */
   }
 
   body {
+    font-family: var(--font-body);
+    line-height: 1.55;
+    /* Treat the whole app like a viewfinder. */
+    cursor: crosshair;
     @apply bg-surface-bg text-foreground antialiased;
+  }
+
+  /* Display headings — Poster Gothic, uppercase, tight tracking. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+
+  ::selection {
+    background: rgb(var(--red));
+    color: #fafafa;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid rgb(var(--surface-border));
   }
 }
 
 @layer components {
   .stat-card {
-    @apply rounded-xl border border-surface-border bg-surface-card p-6;
+    @apply rounded-md border border-surface-border bg-surface-card p-6;
+  }
+
+  /* ALL CAPS, wide-tracked signage label — eyebrows, meta, dimension marks. */
+  .label-eyebrow {
+    font-family: var(--font-label);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    @apply text-foreground-secondary;
+  }
+
+  /* Editorial link affordance: underline grows from 0 → 100%, no color shift. */
+  .link-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 0;
+    height: 1px;
+    background: rgb(var(--red));
+    transition: width var(--dur-std) var(--ease-ui);
+  }
+  .link-underline:hover::after {
+    width: 100%;
   }
 }
 

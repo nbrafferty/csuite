@@ -37,14 +37,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-xl font-bold text-white">
-            CS
-          </div>
-          <h1 className="mt-4 text-2xl font-bold text-foreground">
-            Sign in to C-Suite
+          <img
+            src="/central-creative-logo.svg"
+            alt="Central Creative Co."
+            className="mx-auto h-auto max-h-16 w-auto object-contain"
+          />
+          <h1 className="mt-6 font-display text-3xl tracking-display text-foreground">
+            Sign In
           </h1>
-          <p className="mt-2 text-sm text-foreground-secondary">
-            Central Creative Co. Order Management
+          <p className="label-eyebrow mt-3 text-[0.7rem]">
+            Central Creative Co. — Order Management
           </p>
         </div>
 
