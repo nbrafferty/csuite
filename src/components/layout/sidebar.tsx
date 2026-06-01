@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -46,7 +45,6 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState(false);
   const { data: session } = useSession();
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
@@ -54,35 +52,13 @@ export function Sidebar() {
   });
 
   return (
-    <aside
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-      className={cn(
-        "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-surface-border bg-sidebar-bg transition-[width] duration-200 ease-in-out",
-        expanded ? "w-[226px]" : "w-16"
-      )}
-    >
+    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-border bg-sidebar-bg">
       {/* Logo */}
-      <div className="flex h-[72px] shrink-0 items-center justify-center border-b border-surface-border px-4">
+      <div className="flex h-[72px] shrink-0 items-center justify-center border-b border-surface-border px-6">
         <img
-          src="/ccc-logo.svg"
-          alt="C-Suite"
-          width={34}
-          height={34}
-          className={cn(
-            "shrink-0 transition-opacity duration-200",
-            expanded ? "absolute opacity-0" : "opacity-100"
-          )}
-        />
-        <img
-          src="/ccc-wordmark.svg"
-          alt="C-Suite"
-          width={150}
-          height={34}
-          className={cn(
-            "shrink-0 transition-opacity duration-200",
-            expanded ? "opacity-100" : "absolute opacity-0"
-          )}
+          src="/central-creative-logo.svg"
+          alt="Central Creative Co."
+          className="h-auto max-h-12 w-auto object-contain"
         />
       </div>
 
@@ -99,8 +75,6 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setExpanded(false)}
-              title={expanded ? undefined : item.label}
               className={cn(
                 "relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
@@ -110,22 +84,10 @@ export function Sidebar() {
             >
               <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-coral")} />
 
-              {/* Collapsed badge — small dot */}
-              {!expanded && showBadge && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-coral" />
-              )}
+              <span className="ml-3 whitespace-nowrap">{item.label}</span>
 
-              <span
-                className={cn(
-                  "ml-3 whitespace-nowrap transition-opacity duration-200",
-                  expanded ? "opacity-100" : "opacity-0"
-                )}
-              >
-                {item.label}
-              </span>
-
-              {/* Expanded badge — count */}
-              {expanded && showBadge && (
+              {/* Unread count badge */}
+              {showBadge && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-xs font-medium text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
@@ -139,18 +101,10 @@ export function Sidebar() {
       <div className="border-t border-surface-border p-2">
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          title={expanded ? undefined : "Sign Out"}
           className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-text transition-colors hover:bg-sidebar-hover hover:text-sidebar-text-active"
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          <span
-            className={cn(
-              "ml-3 whitespace-nowrap transition-opacity duration-200",
-              expanded ? "opacity-100" : "opacity-0"
-            )}
-          >
-            Sign Out
-          </span>
+          <span className="ml-3 whitespace-nowrap">Sign Out</span>
         </button>
       </div>
     </aside>
