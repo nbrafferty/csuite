@@ -25,7 +25,7 @@ const KANBAN_COLUMNS: KanbanColumnConfig[] = [
   { id: "IN_REVIEW", label: "In Review", color: "#A78BFA", bg: "rgba(167,139,250,0.12)" },
   { id: "PROOFING", label: "Proofing", color: "#818CF8", bg: "rgba(129,140,248,0.12)" },
   { id: "APPROVED", label: "Approved", color: "#34C759", bg: "rgba(52,199,89,0.12)" },
-  { id: "IN_PRODUCTION", label: "In Production", color: "#E85D5D", bg: "rgba(232,93,93,0.12)" },
+  { id: "IN_PRODUCTION", label: "In Production", color: "#da5245", bg: "rgba(218,82,69,0.12)" },
   { id: "READY", label: "Ready", color: "#2DD4BF", bg: "rgba(45,212,191,0.12)" },
   { id: "SHIPPED", label: "Shipped", color: "#5BDBEF", bg: "rgba(91,219,239,0.12)" },
   { id: "COMPLETED", label: "Completed", color: "#34C759", bg: "rgba(52,199,89,0.12)" },

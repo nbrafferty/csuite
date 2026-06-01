@@ -6,9 +6,9 @@ export const COLORS = {
   card: "#22222A",
   cardBorder: "#333338",
   cardBorderHover: "#444450",
-  coral: "#E85D5D",
-  coralDim: "rgba(232,93,93,0.12)",
-  coralBorder: "rgba(232,93,93,0.25)",
+  coral: "#da5245",
+  coralDim: "rgba(218,82,69,0.12)",
+  coralBorder: "rgba(218,82,69,0.25)",
   green: "#34C759",
   greenDim: "rgba(52,199,89,0.12)",
   yellow: "#FFD60A",
@@ -43,7 +43,7 @@ export const PROJECT_STATUS_COLORS: Record<
   { color: string; bg: string; label: string }
 > = {
   PLANNING: { color: "#5B8DEF", bg: "rgba(91,141,239,0.12)", label: "Planning" },
-  ACTIVE: { color: "#E85D5D", bg: "rgba(232,93,93,0.12)", label: "Active" },
+  ACTIVE: { color: "#da5245", bg: "rgba(218,82,69,0.12)", label: "Active" },
   COMPLETED: { color: "#34C759", bg: "rgba(52,199,89,0.12)", label: "Completed" },
   ARCHIVED: { color: "#666666", bg: "rgba(102,102,102,0.12)", label: "Archived" },
 };

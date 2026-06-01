@@ -39,7 +39,7 @@ export function ColorSwatch({
               background: opt.value,
               border:
                 value === opt.value
-                  ? "3px solid #E85D5D"
+                  ? "3px solid #da5245"
                   : "3px solid transparent",
               boxShadow:
                 opt.value === "#f5f5f5"

@@ -35,7 +35,7 @@ function hashStr(s: string) {
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   active: { label: "Active", className: "bg-green-500/20 text-[#34C759]" },
   paused: { label: "Paused", className: "bg-yellow-500/20 text-[#FFD60A]" },
-  overdue: { label: "Overdue", className: "bg-red-500/20 text-[#E85D5D]" },
+  overdue: { label: "Overdue", className: "bg-red-500/20 text-[#da5245]" },
 };
 
 type SortKey = "name" | "status";
@@ -146,7 +146,7 @@ export function ClientsTable({ clients, selectedClientId, onSelectClient }: Clie
                           "h-2 w-2 rounded-full",
                           client.status === "active" && "bg-[#34C759]",
                           client.status === "paused" && "bg-[#FFD60A]",
-                          client.status === "overdue" && "bg-[#E85D5D]"
+                          client.status === "overdue" && "bg-[#da5245]"
                         )} />
                         <span className="text-sm font-medium text-foreground">{client.name}</span>
                       </div>

@@ -18,24 +18,22 @@ const config: Config = {
         },
         // One accent. Red does all the lifting (CCC design system).
         coral: {
-          DEFAULT: "#d4473f", // primary accent
-          light: "#e0635b",
-          dark: "#a33530", // hover / pressed accent
+          DEFAULT: "#da5245",
+          light: "#e4706a",
+          dark: "#b5382e",
         },
-        // Legacy indigo `brand-*` palette re-pointed to the single red accent
-        // so any remaining usages adopt the CCC look.
         brand: {
-          50: "#fbeae9",
-          100: "#f5cecb",
-          200: "#eda9a4",
-          300: "#e4837c",
-          400: "#da5d54",
-          500: "#d4473f",
-          600: "#bd3f38",
-          700: "#a33530",
-          800: "#822a26",
-          900: "#5f1f1c",
-          950: "#3a1311",
+          50: "#fdecea",
+          100: "#f9cfc9",
+          200: "#f0a9a0",
+          300: "#e78377",
+          400: "#da5245",
+          500: "#da5245",
+          600: "#c44a3d",
+          700: "#b5382e",
+          800: "#8c2b23",
+          900: "#631e18",
+          950: "#3b1210",
         },
         sidebar: {
           bg: "rgb(var(--sidebar-bg) / <alpha-value>)",
@@ -80,7 +78,7 @@ const config: Config = {
         DEFAULT: "0 6px 20px rgba(0,0,0,0.45)",
         md: "0 6px 20px rgba(0,0,0,0.45)",
         lg: "0 14px 40px rgba(0,0,0,0.55)",
-        glow: "0 0 24px rgba(212,71,63,0.35)",
+        glow: "0 0 24px rgba(218,82,69,0.35)",
       },
       transitionTimingFunction: {
         ui: "cubic-bezier(0.22, 1, 0.36, 1)",

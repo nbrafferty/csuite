@@ -140,7 +140,7 @@ export function ProjectKanban({
       {errorToast && (
         <div
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg"
-          style={{ backgroundColor: COLORS.card, borderColor: "#E85D5D40", color: COLORS.textPrimary }}
+          style={{ backgroundColor: COLORS.card, borderColor: "#da524540", color: COLORS.textPrimary }}
         >
           <span className="text-sm">{errorToast}</span>
           <button onClick={() => setErrorToast(null)} className="text-xs" style={{ color: COLORS.textMuted }}>
