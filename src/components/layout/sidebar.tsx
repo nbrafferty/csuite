@@ -12,7 +12,7 @@ import {
   BookOpen,
   MessageSquare,
   CreditCard,
-  Package,
+
   Settings,
   Building2,
   LogOut,
@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Messages", href: "/messages", icon: MessageSquare },
   { label: "Clients", href: "/clients", icon: Building2, staffOnly: true },
-  { label: "Inventory", href: "/inventory", icon: Package },
+
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
