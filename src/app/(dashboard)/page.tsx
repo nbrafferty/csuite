@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import {
   FileText,
@@ -57,6 +58,7 @@ export default function DashboardPage() {
       icon: ShoppingCart,
       iconColor: "text-amber-400",
       iconBg: "bg-amber-400/10",
+      href: "/orders",
     },
     {
       label: "Open Quotes",
@@ -65,6 +67,7 @@ export default function DashboardPage() {
       icon: FileText,
       iconColor: "text-coral",
       iconBg: "bg-coral/10",
+      href: "/quotes",
     },
     {
       label: "Overdue Invoices",
@@ -73,6 +76,7 @@ export default function DashboardPage() {
       icon: AlertCircle,
       iconColor: data?.overdueInvoices ? "text-red-400" : "text-emerald-400",
       iconBg: data?.overdueInvoices ? "bg-red-400/10" : "bg-emerald-400/10",
+      href: "/billing",
     },
     {
       label: isStaff ? "Pending Requests" : "Completed Orders",
@@ -83,6 +87,7 @@ export default function DashboardPage() {
       icon: isStaff ? Inbox : CheckCircle,
       iconColor: isStaff ? "text-blue-400" : "text-emerald-400",
       iconBg: isStaff ? "bg-blue-400/10" : "bg-emerald-400/10",
+      href: isStaff ? "/quotes" : "/orders",
     },
   ];
 
@@ -102,13 +107,18 @@ export default function DashboardPage() {
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <div key={stat.label} className="stat-card">
+          <Link
+            key={stat.label}
+            href={stat.href}
+            className="stat-card transition-colors hover:border-coral/30 hover:bg-surface-card/80"
+          >
             <div className="flex items-center justify-between">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.iconBg}`}
               >
                 <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
               </div>
+              <ArrowUpRight className="h-4 w-4 text-foreground-muted" />
             </div>
             <div className="mt-4">
               <p className="text-2xl font-bold text-foreground">
@@ -121,7 +131,7 @@ export default function DashboardPage() {
               <p className="text-sm text-foreground-secondary">{stat.label}</p>
             </div>
             <p className="mt-1 text-xs text-foreground-muted">{stat.sub}</p>
-          </div>
+          </Link>
         ))}
       </div>
 
