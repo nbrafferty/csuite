@@ -15,6 +15,7 @@ import { projectsRouter } from "./routers/projects";
 import { dashboardRouter } from "./routers/dashboard";
 import { taskRouter } from "./routers/task";
 import { artworkRouter } from "./routers/artwork";
+import { proofRouter } from "./routers/proof";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   projects: projectsRouter,
   task: taskRouter,
   artwork: artworkRouter,
+  proof: proofRouter,
 });
 
 export type AppRouter = typeof appRouter;

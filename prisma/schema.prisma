@@ -69,12 +69,32 @@ enum PricingType {
   RULE_BASED
 }
 
-enum ProofStatus {
+enum ProofVersionStatus {
   DRAFT
   SENT
-  ANNOTATING
+  CHANGES_REQUESTED
   APPROVED
-  REVISION_REQUESTED
+  SUPERSEDED
+}
+
+enum ProofAnnotationType {
+  PIN
+  REGION
+}
+
+enum ProofAnnotationStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ProofAssetKind {
+  IMAGE
+  PDF
+}
+
+enum ProofDecision {
+  APPROVED
+  CHANGES_REQUESTED
 }
 
 enum InvoiceStatus {
@@ -161,6 +181,7 @@ model Company {
   auditLogEvents    AuditLogEvent[]
   quoteRequests     QuoteRequest[]
   projects          Project[]
+  proofs            Proof[]
   catalogProducts   CatalogProduct[]
   tasks             Task[]
 
@@ -186,9 +207,12 @@ model User {
   ordersCreated       Order[]          @relation("OrderCreator")
   paymentsRecorded    Payment[]        @relation("PaymentRecorder")
   artworkUploads      ArtworkVersion[] @relation("ArtworkUploader")
-  proofsPublished     Proof[]          @relation("ProofPublisher")
-  proofsApproved      Proof[]          @relation("ProofApprover")
-  proofAnnotations    ProofAnnotation[]
+  proofsCreated              Proof[]                  @relation("ProofCreatedBy")
+  proofVersionsPublished     ProofVersion[]           @relation("ProofPublishedBy")
+  annotationsAuthored        ProofAnnotation[]        @relation("AnnotationAuthor")
+  annotationsResolved        ProofAnnotation[]        @relation("AnnotationResolver")
+  proofComments              ProofAnnotationComment[] @relation("CommentAuthor")
+  proofApprovals             ProofApproval[]          @relation("ApprovalSigner")
   threadsCreated      MessageThread[]  @relation("ThreadCreator")
   threadsAssigned     MessageThread[]  @relation("ThreadAssignee")
   messagesSent        Message[]
@@ -311,6 +335,7 @@ model Quote {
   convertedOrder    Order?
   quoteRequest      QuoteRequest?
   artworkLinks      ArtworkQuoteLink[]
+  proofs            Proof[]
 
   @@index([companyId, status])
   @@index([createdByUserId])
@@ -679,43 +704,130 @@ model ArtworkQuoteLink {
 // ─── Proof ───────────────────────────────────────────────────────────
 
 model Proof {
-  id           String        @id @default(uuid())
-  orderId      String        @map("order_id")
-  version      Int
-  imageUrl     String?       @map("image_url")
-  pdfUrl       String?       @map("pdf_url")
-  status       ProofStatus   @default(DRAFT)
-  publishedBy  String        @map("published_by")
-  approvedBy   String?       @map("approved_by")
-  approvedAt   DateTime?     @map("approved_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  companyId        String   @map("company_id")
+  orderId          String?  @map("order_id")
+  quoteId          String?  @map("quote_id")
+  title            String
+  currentVersionId String?  @unique @map("current_version_id")
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  order        Order         @relation(fields: [orderId], references: [id])
-  publisher    User          @relation("ProofPublisher", fields: [publishedBy], references: [id])
-  approver     User?         @relation("ProofApprover", fields: [approvedBy], references: [id])
-  annotations  ProofAnnotation[]
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order          Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  quote          Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  createdBy      User           @relation("ProofCreatedBy", fields: [createdById], references: [id])
+  currentVersion ProofVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions       ProofVersion[] @relation("ProofVersions")
 
+  @@index([companyId])
   @@index([orderId])
+  @@index([quoteId])
   @@map("proofs")
 }
 
-model ProofAnnotation {
-  id        String   @id @default(uuid())
-  proofId   String   @map("proof_id")
-  authorId  String   @map("author_id")
-  pinX      Float    @map("pin_x")
-  pinY      Float    @map("pin_y")
-  body      String
-  parentId  String?  @map("parent_id")
-  createdAt DateTime @default(now()) @map("created_at")
+model ProofVersion {
+  id            String             @id @default(cuid())
+  proofId       String             @map("proof_id")
+  versionNumber Int                @map("version_number")
+  status        ProofVersionStatus @default(DRAFT)
+  notes         String?
+  publishedAt   DateTime?          @map("published_at")
+  publishedById String?            @map("published_by_id")
+  createdAt     DateTime           @default(now()) @map("created_at")
 
-  proof     Proof             @relation(fields: [proofId], references: [id])
-  author    User              @relation(fields: [authorId], references: [id])
-  parent    ProofAnnotation?  @relation("AnnotationThread", fields: [parentId], references: [id])
-  replies   ProofAnnotation[] @relation("AnnotationThread")
+  proof           Proof              @relation("ProofVersions", fields: [proofId], references: [id], onDelete: Cascade)
+  currentForProof Proof?             @relation("CurrentVersion")
+  publishedBy     User?              @relation("ProofPublishedBy", fields: [publishedById], references: [id])
+  assets          ProofAsset[]
+  annotations     ProofAnnotation[]
+  approvals       ProofApproval[]
 
+  @@unique([proofId, versionNumber])
   @@index([proofId])
+  @@map("proof_versions")
+}
+
+model ProofAsset {
+  id        String         @id @default(cuid())
+  versionId String         @map("version_id")
+  kind      ProofAssetKind @default(IMAGE)
+  s3Key     String         @map("s3_key")
+  fileName  String         @map("file_name")
+  mimeType  String         @map("mime_type")
+  width     Int?
+  height    Int?
+  pageCount Int?           @map("page_count")
+  position  Int            @default(0)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  version     ProofVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  annotations ProofAnnotation[]
+
+  @@index([versionId])
+  @@map("proof_assets")
+}
+
+model ProofAnnotation {
+  id           String                @id @default(cuid())
+  versionId    String                @map("version_id")
+  assetId      String                @map("asset_id")
+  type         ProofAnnotationType
+  page         Int                   @default(0)
+  x            Float
+  y            Float
+  w            Float?
+  h            Float?
+  seq          Int
+  status       ProofAnnotationStatus @default(OPEN)
+  authorId     String                @map("author_id")
+  resolvedById String?               @map("resolved_by_id")
+  resolvedAt   DateTime?             @map("resolved_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  version    ProofVersion             @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  asset      ProofAsset               @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  author     User                     @relation("AnnotationAuthor", fields: [authorId], references: [id])
+  resolvedBy User?                    @relation("AnnotationResolver", fields: [resolvedById], references: [id])
+  comments   ProofAnnotationComment[]
+
+  @@index([versionId])
+  @@index([assetId])
   @@map("proof_annotations")
+}
+
+model ProofAnnotationComment {
+  id           String   @id @default(cuid())
+  annotationId String   @map("annotation_id")
+  authorId     String   @map("author_id")
+  body         String
+  isInternal   Boolean  @default(false) @map("is_internal")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  annotation ProofAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  author     User            @relation("CommentAuthor", fields: [authorId], references: [id])
+
+  @@index([annotationId])
+  @@map("proof_annotation_comments")
+}
+
+model ProofApproval {
+  id         String        @id @default(cuid())
+  versionId  String        @map("version_id")
+  decision   ProofDecision
+  signedName String        @map("signed_name")
+  signedById String        @map("signed_by_id")
+  note       String?
+  ipAddress  String?       @map("ip_address")
+  userAgent  String?       @map("user_agent")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  version  ProofVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  signedBy User         @relation("ApprovalSigner", fields: [signedById], references: [id])
+
+  @@index([versionId])
+  @@map("proof_approvals")
 }
 
 // ─── Invoice & Payment ───────────────────────────────────────────────

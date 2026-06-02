@@ -113,7 +113,7 @@ export const orderRouter = router({
               },
             },
           },
-          proofs: { orderBy: { version: "desc" } },
+          proofs: { orderBy: { createdAt: "desc" } },
           internalTasks: isStaff
             ? { orderBy: { createdAt: "asc" }, include: { assignee: { select: { id: true, name: true } } } }
             : false,
