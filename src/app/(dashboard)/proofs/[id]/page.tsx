@@ -50,7 +50,7 @@ export default function ProofDetailPage() {
         <span className="text-ink-faint">/</span>
         <span className="text-sm font-medium text-white">{proof.title}</span>
       </div>
-      <ProofStudio />
+      <ProofStudio proofId={id} />
     </div>
   );
 }

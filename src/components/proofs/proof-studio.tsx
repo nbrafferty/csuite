@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { trpc } from "@/lib/trpc";
 import {
   MousePointer2,
   MapPin,
@@ -23,8 +25,14 @@ import {
   Ruler,
   AlertTriangle,
   Users,
+  Upload,
+  FileText,
+  Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ─── Types ────────────────────────────────────────────────────────────
 
 type Role = "staff" | "client";
 type AnnotationType = "pin" | "region";
@@ -69,6 +77,14 @@ type Version = {
   logo: string;
 };
 
+type FileEntry = {
+  file: File;
+  preview?: string;
+  status: "pending" | "uploading" | "done" | "error";
+};
+
+// ─── Constants ────────────────────────────────────────────────────────
+
 const STATUS_META: Record<
   VersionStatus,
   { color: string; label: string }
@@ -95,6 +111,41 @@ const STATUS_DOT: Record<VersionStatus, string> = {
   APPROVED: "bg-emerald-400",
   SUPERSEDED: "bg-ink-dim",
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function timeAgo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString();
+}
+
+function toRole(serverRole: string): Role {
+  return serverRole === "CCC_STAFF" ? "staff" : "client";
+}
+
+function getImageDimensions(
+  file: File,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────
 
 function Avatar({
   name,
@@ -268,6 +319,20 @@ function PoloProof({
   );
 }
 
+function AssetPlaceholder({ name, width, height }: { name: string; width?: number | null; height?: number | null }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-bg">
+      <ImageIcon className="h-12 w-12 text-ink-faint" />
+      <p className="max-w-[200px] truncate text-xs text-ink-muted">{name}</p>
+      {width && height && (
+        <p className="text-[10px] text-ink-faint">{width} x {height}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Seed Data (demo mode) ────────────────────────────────────────────
+
 const SEED_VERSIONS: Version[] = [
   {
     id: "v1",
@@ -371,12 +436,108 @@ const SEED_ANNOTATIONS: Annotation[] = [
   },
 ];
 
-export default function ProofStudio() {
-  const [role, setRole] = useState<Role>("client");
-  const [versions, setVersions] = useState<Version[]>(SEED_VERSIONS);
-  const [curId, setCurId] = useState("v2");
-  const [annotations, setAnnotations] =
-    useState<Annotation[]>(SEED_ANNOTATIONS);
+// ─── Main Component ───────────────────────────────────────────────────
+
+type ProofStudioProps = {
+  proofId?: string;
+};
+
+export default function ProofStudio({ proofId }: ProofStudioProps) {
+  const isLive = !!proofId;
+
+  // ── Session ───────────────────────────────────────────────────────
+  const { data: session } = useSession();
+  const sessionRole: Role = (session?.user as any)?.role === "CCC_STAFF" ? "staff" : "client";
+
+  // ── tRPC query ────────────────────────────────────────────────────
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const utils = trpc.useUtils();
+  const { data: proofData } = trpc.proof.byId.useQuery(
+    { proofId: proofId!, versionId: activeVersionId ?? undefined },
+    { enabled: isLive }
+  );
+
+  // ── tRPC mutations ────────────────────────────────────────────────
+  const createRevisionMut = trpc.proof.createRevision.useMutation();
+  const confirmAssetMut = trpc.proof.confirmAsset.useMutation();
+  const publishMut = trpc.proof.publish.useMutation();
+  const addAnnotationMut = trpc.proof.addAnnotation.useMutation();
+  const addCommentMut = trpc.proof.addComment.useMutation();
+  const setAnnotationStatusMut = trpc.proof.setAnnotationStatus.useMutation();
+  const decideMut = trpc.proof.decide.useMutation();
+
+  const refetch = () => {
+    if (proofId) utils.proof.byId.invalidate({ proofId });
+  };
+
+  // ── Map server data to local types ────────────────────────────────
+  const liveVersions = useMemo((): Version[] => {
+    if (!proofData) return [];
+    return proofData.versions.map((v: any) => ({
+      id: v.id,
+      n: v.versionNumber,
+      status: v.status as VersionStatus,
+      by: "",
+      at: "",
+      logo: "",
+    }));
+  }, [proofData]);
+
+  const liveAnnotations = useMemo((): Annotation[] => {
+    if (!proofData?.version) return [];
+    const ver = proofData.version;
+    return (ver.annotations ?? []).map((a: any) => ({
+      id: a.id,
+      versionId: ver.id,
+      type: (a.type as string).toLowerCase() as AnnotationType,
+      x: Number(a.x),
+      y: Number(a.y),
+      w: a.w != null ? Number(a.w) : undefined,
+      h: a.h != null ? Number(a.h) : undefined,
+      status: a.status as AnnotationStatus,
+      author: a.author.name ?? "Unknown",
+      role: toRole(a.author.role),
+      at: timeAgo(a.createdAt),
+      comments: (a.comments ?? []).map((c: any) => ({
+        id: c.id,
+        author: c.author.name ?? "Unknown",
+        role: toRole(c.author.role),
+        at: timeAgo(c.createdAt),
+        internal: c.isInternal,
+        body: c.body,
+      })),
+    }));
+  }, [proofData]);
+
+  const liveAssets = useMemo(() => {
+    if (!proofData?.version) return [];
+    return proofData.version.assets ?? [];
+  }, [proofData]);
+
+  const liveCurId = proofData?.version?.id ?? "";
+  const liveApproval = proofData?.version?.approvals?.[0];
+
+  // ── Demo state ────────────────────────────────────────────────────
+  const [demoRole, setDemoRole] = useState<Role>("client");
+  const [demoVersions, setDemoVersions] = useState<Version[]>(SEED_VERSIONS);
+  const [demoCurId, setDemoCurId] = useState("v2");
+  const [demoAnnotations, setDemoAnnotations] = useState<Annotation[]>(SEED_ANNOTATIONS);
+
+  // ── Resolved state (live vs demo) ─────────────────────────────────
+  const role = isLive ? sessionRole : demoRole;
+  const versions = isLive ? liveVersions : demoVersions;
+  const curId = isLive ? liveCurId : demoCurId;
+  const annotations = isLive ? liveAnnotations : demoAnnotations;
+
+  const setCurId = (id: string) => {
+    if (isLive) {
+      setActiveVersionId(id);
+    } else {
+      setDemoCurId(id);
+    }
+  };
+
+  // ── Shared UI state ───────────────────────────────────────────────
   const [tool, setTool] = useState<"select" | "pin" | "region">("select");
   const [zoom, setZoom] = useState(1);
   const [guides, setGuides] = useState(false);
@@ -398,10 +559,19 @@ export default function ProofStudio() {
   } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const cur = versions.find((v) => v.id === curId)!;
-  const prev = versions.find((v) => v.n === cur.n - 1);
-  const locked =
-    cur.status === "APPROVED" || cur.status === "SUPERSEDED";
+  // ── File upload state (live DRAFT mode) ───────────────────────────
+  const [uploadFiles, setUploadFiles] = useState<FileEntry[]>([]);
+  const [uploadDragOver, setUploadDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isCreatingRevision, setIsCreatingRevision] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Derived ───────────────────────────────────────────────────────
+  const cur = versions.find((v) => v.id === curId);
+  const curStatus = cur?.status ?? "DRAFT";
+  const prev = cur ? versions.find((v) => v.n === cur.n - 1) : undefined;
+  const locked = curStatus === "APPROVED" || curStatus === "SUPERSEDED";
 
   const visibleAnnos = useMemo(() => {
     return annotations
@@ -424,6 +594,7 @@ export default function ProofStudio() {
   const numberOf = (id: string) =>
     visibleAnnos.findIndex((a) => a.id === id) + 1;
 
+  // ── Canvas helpers ────────────────────────────────────────────────
   const toNorm = (clientX: number, clientY: number) => {
     const r = overlayRef.current!.getBoundingClientRect();
     return {
@@ -432,29 +603,49 @@ export default function ProofStudio() {
     };
   };
 
+  // ── Handlers ──────────────────────────────────────────────────────
+
   const addAnnotation = useCallback(
-    (
+    async (
       geo: { x: number; y: number; w?: number; h?: number },
       type: AnnotationType
     ) => {
-      const id = "a" + Math.random().toString(36).slice(2, 7);
-      const a: Annotation = {
-        id,
-        versionId: curId,
-        type,
-        ...geo,
-        status: "OPEN",
-        author: role === "staff" ? "CCC Admin" : "Jane Smith",
-        role,
-        at: "just now",
-        comments: [],
-      };
-      setAnnotations((p) => [...p, a]);
-      setSelected(id);
-      setTool("select");
-      setFilter("ALL");
+      if (isLive) {
+        const assetId = liveAssets[0]?.id;
+        if (!assetId || !curId) return;
+        await addAnnotationMut.mutateAsync({
+          versionId: curId,
+          assetId,
+          type: type.toUpperCase() as "PIN" | "REGION",
+          x: geo.x,
+          y: geo.y,
+          w: geo.w,
+          h: geo.h,
+          body: "(annotation placed)",
+        });
+        refetch();
+        setTool("select");
+        setFilter("ALL");
+      } else {
+        const id = "a" + Math.random().toString(36).slice(2, 7);
+        const a: Annotation = {
+          id,
+          versionId: curId,
+          type,
+          ...geo,
+          status: "OPEN",
+          author: role === "staff" ? "CCC Admin" : "Jane Smith",
+          role,
+          at: "just now",
+          comments: [],
+        };
+        setDemoAnnotations((p) => [...p, a]);
+        setSelected(id);
+        setTool("select");
+        setFilter("ALL");
+      }
     },
-    [curId, role]
+    [curId, role, isLive, liveAssets]
   );
 
   const onOverlayDown = (e: React.MouseEvent) => {
@@ -487,64 +678,193 @@ export default function ProofStudio() {
     setDragRegion(null);
   };
 
-  const postReply = (annoId: string) => {
+  const postReply = async (annoId: string) => {
     const body = (draft[annoId] || "").trim();
     if (!body) return;
-    setAnnotations((p) =>
-      p.map((a) =>
-        a.id === annoId
-          ? {
-              ...a,
-              comments: [
-                ...a.comments,
-                {
-                  id: "c" + Math.random().toString(36).slice(2, 6),
-                  author:
-                    role === "staff" ? "CCC Admin" : "Jane Smith",
-                  role,
-                  at: "just now",
-                  internal: role === "staff" ? newInternal : false,
-                  body,
-                },
-              ],
-            }
-          : a
-      )
-    );
+
+    if (isLive) {
+      await addCommentMut.mutateAsync({
+        annotationId: annoId,
+        body,
+        isInternal: role === "staff" ? newInternal : false,
+      });
+      refetch();
+    } else {
+      setDemoAnnotations((p) =>
+        p.map((a) =>
+          a.id === annoId
+            ? {
+                ...a,
+                comments: [
+                  ...a.comments,
+                  {
+                    id: "c" + Math.random().toString(36).slice(2, 6),
+                    author:
+                      role === "staff" ? "CCC Admin" : "Jane Smith",
+                    role,
+                    at: "just now",
+                    internal: role === "staff" ? newInternal : false,
+                    body,
+                  },
+                ],
+              }
+            : a
+        )
+      );
+    }
     setDraft((d) => ({ ...d, [annoId]: "" }));
     setNewInternal(false);
   };
 
-  const setStatus = (annoId: string, status: AnnotationStatus) =>
-    setAnnotations((p) =>
-      p.map((a) => (a.id === annoId ? { ...a, status } : a))
-    );
+  const setAnnotationStatus = async (annoId: string, status: AnnotationStatus) => {
+    if (isLive) {
+      await setAnnotationStatusMut.mutateAsync({
+        annotationId: annoId,
+        status,
+      });
+      refetch();
+    } else {
+      setDemoAnnotations((p) =>
+        p.map((a) => (a.id === annoId ? { ...a, status } : a))
+      );
+    }
+  };
 
-  const requestChanges = () => {
-    setVersions((p) =>
-      p.map((v) =>
-        v.id === curId
-          ? { ...v, status: "CHANGES_REQUESTED" as VersionStatus }
-          : v
-      )
-    );
+  const requestChanges = async () => {
+    if (isLive) {
+      await decideMut.mutateAsync({
+        versionId: curId,
+        decision: "CHANGES_REQUESTED",
+      });
+      refetch();
+    } else {
+      setDemoVersions((p) =>
+        p.map((v) =>
+          v.id === curId
+            ? { ...v, status: "CHANGES_REQUESTED" as VersionStatus }
+            : v
+        )
+      );
+    }
     setSelected(null);
   };
 
-  const confirmApprove = () => {
-    setVersions((p) =>
-      p.map((v) =>
-        v.id === curId
-          ? { ...v, status: "APPROVED" as VersionStatus }
-          : v
-      )
-    );
+  const confirmApprove = async () => {
+    if (isLive) {
+      await decideMut.mutateAsync({
+        versionId: curId,
+        decision: "APPROVED",
+        signedName: signName.trim(),
+      });
+      refetch();
+    } else {
+      setDemoVersions((p) =>
+        p.map((v) =>
+          v.id === curId
+            ? { ...v, status: "APPROVED" as VersionStatus }
+            : v
+        )
+      );
+    }
     setShowApprove(false);
     setSelected(null);
   };
 
-  const publishRevision = () => {
-    const nextN = Math.max(...versions.map((v) => v.n)) + 1;
+  const handleCreateRevision = async () => {
+    if (!isLive || !proofId) return;
+    setIsCreatingRevision(true);
+    try {
+      const newVersion = await createRevisionMut.mutateAsync({
+        proofId,
+        fromVersionId: curId,
+      });
+      setActiveVersionId(newVersion.id);
+      refetch();
+      setUploadFiles([]);
+    } finally {
+      setIsCreatingRevision(false);
+    }
+  };
+
+  const addUploadFiles = useCallback((incoming: FileList | File[]) => {
+    const allowed = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
+    const entries: FileEntry[] = Array.from(incoming)
+      .filter((f) => allowed.includes(f.type))
+      .map((file) => ({
+        file,
+        preview: file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined,
+        status: "pending" as const,
+      }));
+    setUploadFiles((prev) => [...prev, ...entries]);
+  }, []);
+
+  const removeUploadFile = useCallback((index: number) => {
+    setUploadFiles((prev) => {
+      const entry = prev[index];
+      if (entry?.preview) URL.revokeObjectURL(entry.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
+  const handleUploadFiles = async () => {
+    if (!isLive || !curId || uploadFiles.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const entry = uploadFiles[i];
+        setUploadFiles((prev) =>
+          prev.map((f, idx) => (idx === i ? { ...f, status: "uploading" } : f))
+        );
+
+        const kind = entry.file.type === "application/pdf" ? ("PDF" as const) : ("IMAGE" as const);
+        let width: number | undefined;
+        let height: number | undefined;
+        if (entry.file.type.startsWith("image/")) {
+          try {
+            const dims = await getImageDimensions(entry.file);
+            width = dims.width;
+            height = dims.height;
+          } catch {}
+        }
+
+        const s3Key = `proofs/${proofId}/${curId}/${entry.file.name}`;
+        await confirmAssetMut.mutateAsync({
+          versionId: curId,
+          s3Key,
+          fileName: entry.file.name,
+          mimeType: entry.file.type,
+          kind,
+          width,
+          height,
+        });
+
+        setUploadFiles((prev) =>
+          prev.map((f, idx) => (idx === i ? { ...f, status: "done" } : f))
+        );
+      }
+      refetch();
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!isLive || !curId) return;
+    setIsPublishing(true);
+    try {
+      await publishMut.mutateAsync({ versionId: curId });
+      refetch();
+      utils.proof.list.invalidate();
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Demo-only: publish revision with local state
+  const demoPublishRevision = () => {
+    const nextN = Math.max(...demoVersions.map((v) => v.n)) + 1;
     const nv: Version = {
       id: "v" + nextN,
       n: nextN,
@@ -553,26 +873,37 @@ export default function ProofStudio() {
       at: "just now",
       logo: "leftchest",
     };
-    setVersions((p) => [
+    setDemoVersions((p) => [
       ...p.map((v) =>
-        v.id === curId
+        v.id === demoCurId
           ? { ...v, status: "SUPERSEDED" as VersionStatus }
           : v
       ),
       nv,
     ]);
-    setAnnotations((p) => [
+    setDemoAnnotations((p) => [
       ...p,
-      ...annotations
-        .filter((a) => a.versionId === curId && a.status === "OPEN")
+      ...demoAnnotations
+        .filter((a) => a.versionId === demoCurId && a.status === "OPEN")
         .map((a) => ({ ...a, id: a.id + "_r", versionId: nv.id })),
     ]);
-    setCurId(nv.id);
+    setDemoCurId(nv.id);
     setCompare(false);
   };
 
   const canApprove =
-    role === "client" && cur.status !== "APPROVED" && openCount === 0;
+    role === "client" && curStatus !== "APPROVED" && openCount === 0;
+
+  // ── Loading state ─────────────────────────────────────────────────
+  if (isLive && !proofData) {
+    return (
+      <div className="flex h-[640px] items-center justify-center rounded-lg border border-surface-border bg-surface-bg">
+        <Loader2 className="h-6 w-6 animate-spin text-coral" />
+      </div>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────
 
   return (
     <div className="flex min-h-[640px] flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-bg">
@@ -580,13 +911,15 @@ export default function ProofStudio() {
       <div className="flex items-center gap-4 border-b border-surface-border bg-surface-card px-5 py-3.5">
         <div className="min-w-0 flex-1">
           <div className="label-eyebrow text-[10px]">
-            PROOF · ORD-2026-001 · ACME CORP
+            {isLive
+              ? `PROOF${proofData?.orderId ? " · " + proofData.orderId : ""}`
+              : "PROOF · ORD-2026-001 · ACME CORP"}
           </div>
           <div className="mt-1 flex items-center gap-3">
             <h2 className="text-lg font-bold tracking-tight">
-              Acme Polo — Left Chest Logo
+              {isLive ? proofData?.title : "Acme Polo — Left Chest Logo"}
             </h2>
-            <StatusPill status={cur.status} />
+            <StatusPill status={curStatus} />
           </div>
         </div>
 
@@ -596,31 +929,34 @@ export default function ProofStudio() {
             <div className="-mr-2">
               <Avatar name="CCC Admin" role="staff" size={24} />
             </div>
-            <Avatar name="Jane Smith" role="client" size={24} />
+            <Avatar name={isLive ? (session?.user as any)?.name ?? "Client" : "Jane Smith"} role="client" size={24} />
           </div>
         </div>
 
-        <div className="flex rounded-lg border border-surface-border bg-surface-card p-0.5">
-          {(["client", "staff"] as Role[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => {
-                setRole(r);
-                setSelected(null);
-              }}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-bold tracking-wide",
-                role === r
-                  ? r === "staff"
-                    ? "bg-coral text-white"
-                    : "bg-blue-500 text-white"
-                  : "text-ink-muted"
-              )}
-            >
-              {r === "staff" ? "CCC Staff" : "Client"}
-            </button>
-          ))}
-        </div>
+        {/* Role toggle — demo mode only */}
+        {!isLive && (
+          <div className="flex rounded-lg border border-surface-border bg-surface-card p-0.5">
+            {(["client", "staff"] as Role[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => {
+                  setDemoRole(r);
+                  setSelected(null);
+                }}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-bold tracking-wide",
+                  demoRole === r
+                    ? r === "staff"
+                      ? "bg-coral text-white"
+                      : "bg-blue-500 text-white"
+                    : "text-ink-muted"
+                )}
+              >
+                {r === "staff" ? "CCC Staff" : "Client"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -702,7 +1038,7 @@ export default function ProofStudio() {
                 onClick={() => setVerDropdown((d) => !d)}
                 className="flex items-center gap-1.5 rounded-md border border-surface-border bg-surface-card px-2.5 py-1.5 text-xs font-bold text-ink"
               >
-                v{cur.n}
+                v{cur?.n ?? 1}
                 <ChevronDown size={14} />
               </button>
               {verDropdown && (
@@ -794,26 +1130,50 @@ export default function ProofStudio() {
                 style={{ width: 460, height: 460 }}>
                 {compare && prev ? (
                   <>
+                    {/* Compare mode: wipe slider between versions */}
                     <div className="absolute inset-0">
-                      <PoloProof logo={prev.logo} guides={guides} />
+                      {!isLive ? (
+                        <PoloProof logo={prev.logo} guides={guides} />
+                      ) : (
+                        <AssetPlaceholder name={`v${prev.n}`} />
+                      )}
                     </div>
                     <div
                       className="absolute inset-0 overflow-hidden border-r-2 border-purple-400"
                       style={{ width: `${wipe}%` }}
                     >
                       <div style={{ width: 460, height: 460 }}>
-                        <PoloProof logo={cur.logo} guides={guides} />
+                        {!isLive ? (
+                          <PoloProof logo={cur?.logo ?? "leftchest"} guides={guides} />
+                        ) : liveAssets[0] ? (
+                          <AssetPlaceholder name={liveAssets[0].fileName} width={liveAssets[0].width} height={liveAssets[0].height} />
+                        ) : (
+                          <AssetPlaceholder name="No assets" />
+                        )}
                       </div>
                     </div>
                     <div className="absolute left-2.5 top-2 rounded bg-purple-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      v{cur.n}
+                      v{cur?.n}
                     </div>
                     <div className="absolute right-2.5 top-2 rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       v{prev.n}
                     </div>
                   </>
                 ) : (
-                  <PoloProof logo={cur.logo} guides={guides} />
+                  /* Normal mode: show current version's proof image */
+                  !isLive ? (
+                    <PoloProof logo={cur?.logo ?? "leftchest"} guides={guides} />
+                  ) : liveAssets[0] ? (
+                    <AssetPlaceholder name={liveAssets[0].fileName} width={liveAssets[0].width} height={liveAssets[0].height} />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-bg">
+                      <Upload className="h-10 w-10 text-ink-faint" />
+                      <p className="text-xs text-ink-muted">No assets uploaded yet</p>
+                      {role === "staff" && curStatus === "DRAFT" && (
+                        <p className="text-[10px] text-ink-faint">Upload files in the panel on the right</p>
+                      )}
+                    </div>
+                  )
                 )}
 
                 {!compare && (
@@ -924,7 +1284,7 @@ export default function ProofStudio() {
                   </div>
                 )}
 
-                {cur.status === "APPROVED" && (
+                {curStatus === "APPROVED" && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-black/55">
                     <div className="flex h-[54px] w-[54px] items-center justify-center rounded-full bg-emerald-500">
                       <Lock size={24} color="#0A0A0C" />
@@ -933,7 +1293,9 @@ export default function ProofStudio() {
                       APPROVED FOR PRODUCTION
                     </div>
                     <div className="text-[11px] text-ink-muted">
-                      Signed by Jane Smith
+                      {isLive && liveApproval
+                        ? `Signed by ${liveApproval.signedBy.name}`
+                        : "Signed by Jane Smith"}
                     </div>
                   </div>
                 )}
@@ -959,9 +1321,18 @@ export default function ProofStudio() {
           {/* Action panel */}
           <div className="border-b border-surface-border p-4">
             {role === "client" ? (
-              cur.status === "APPROVED" ? (
+              /* ── Client actions ─── */
+              curStatus === "APPROVED" ? (
                 <div className="flex items-center gap-2.5 text-[13px] font-bold text-emerald-400">
                   <ShieldCheck size={18} /> You approved this proof.
+                </div>
+              ) : curStatus === "SUPERSEDED" ? (
+                <div className="text-[12px] text-ink-muted">
+                  This version has been superseded by a newer revision.
+                </div>
+              ) : curStatus === "DRAFT" ? (
+                <div className="text-[12px] text-ink-muted">
+                  This version is still being prepared.
                 </div>
               ) : (
                 <>
@@ -985,7 +1356,7 @@ export default function ProofStudio() {
                       Request changes
                     </button>
                   </div>
-                  {!canApprove && (cur.status as string) !== "APPROVED" && (
+                  {!canApprove && (curStatus as string) !== "APPROVED" && openCount > 0 && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11.5px] text-yellow-400">
                       <AlertTriangle size={13} /> {openCount} open
                       comment{openCount !== 1 ? "s" : ""} must be
@@ -995,15 +1366,177 @@ export default function ProofStudio() {
                 </>
               )
             ) : (
-              <div className="flex gap-2.5">
-                <button
-                  onClick={publishRevision}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-coral py-2.5 text-[13px] font-extrabold text-white hover:bg-coral-dark"
-                >
-                  <PenLine size={15} /> Publish revision (v
-                  {Math.max(...versions.map((v) => v.n)) + 1})
-                </button>
-              </div>
+              /* ── Staff actions ─── */
+              isLive ? (
+                /* Live mode staff actions — context-dependent */
+                curStatus === "DRAFT" ? (
+                  <div className="space-y-3">
+                    <div className="text-[12px] font-bold text-ink-muted">
+                      Draft — upload proof files and publish when ready.
+                    </div>
+
+                    {/* Existing assets */}
+                    {liveAssets.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="label-eyebrow text-[10px]">UPLOADED ASSETS</div>
+                        {liveAssets.map((asset: any) => (
+                          <div key={asset.id} className="flex items-center gap-2 rounded-md border border-surface-border bg-surface-bg px-2.5 py-1.5">
+                            {asset.kind === "IMAGE" ? (
+                              <ImageIcon className="h-4 w-4 text-ink-faint" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-ink-faint" />
+                            )}
+                            <span className="flex-1 truncate text-[11px] text-white">{asset.fileName}</span>
+                            {asset.width && asset.height && (
+                              <span className="text-[10px] text-ink-faint">{asset.width}x{asset.height}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* File drop zone */}
+                    <div>
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); setUploadDragOver(true); }}
+                        onDragLeave={() => setUploadDragOver(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setUploadDragOver(false);
+                          if (e.dataTransfer.files.length) addUploadFiles(e.dataTransfer.files);
+                        }}
+                        onClick={() => uploadInputRef.current?.click()}
+                        className={cn(
+                          "flex min-h-[80px] cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed transition-colors",
+                          uploadDragOver
+                            ? "border-coral bg-coral/10"
+                            : "border-surface-border bg-surface-bg/50 hover:border-ink-faint"
+                        )}
+                      >
+                        <Upload className={cn("h-6 w-6", uploadDragOver ? "text-coral" : "text-ink-faint")} />
+                        <p className="mt-1.5 text-[11px] text-ink-muted">
+                          Drop files here or click to browse
+                        </p>
+                        <p className="text-[10px] text-ink-faint">PNG, JPG, WebP, PDF</p>
+                      </div>
+                      <input
+                        ref={uploadInputRef}
+                        type="file"
+                        multiple
+                        accept="image/png,image/jpeg,image/webp,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.length) addUploadFiles(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
+
+                    {/* Pending files list */}
+                    {uploadFiles.length > 0 && (
+                      <div className="space-y-1">
+                        {uploadFiles.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-2 rounded-md border border-surface-border bg-surface-bg px-2.5 py-1.5">
+                            {entry.preview ? (
+                              <img src={entry.preview} alt="" className="h-6 w-6 rounded object-cover" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-ink-faint" />
+                            )}
+                            <span className="flex-1 truncate text-[11px] text-white">{entry.file.name}</span>
+                            {entry.status === "uploading" ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-coral" />
+                            ) : entry.status === "done" ? (
+                              <span className="text-[10px] text-emerald-400">Done</span>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeUploadFile(i); }}
+                                className="rounded p-0.5 text-ink-faint hover:text-white"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload + Publish buttons */}
+                    <div className="flex gap-2">
+                      {uploadFiles.some((f) => f.status === "pending") && (
+                        <button
+                          onClick={handleUploadFiles}
+                          disabled={isUploading}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-coral py-2 text-[12px] font-bold text-coral hover:bg-coral/10"
+                        >
+                          {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload size={14} />}
+                          {isUploading ? "Uploading..." : "Upload files"}
+                        </button>
+                      )}
+                      <button
+                        onClick={handlePublish}
+                        disabled={isPublishing || liveAssets.length === 0}
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-[12px] font-extrabold text-white",
+                          liveAssets.length > 0 && !isPublishing
+                            ? "bg-coral hover:bg-coral-dark"
+                            : "cursor-not-allowed bg-coral/40"
+                        )}
+                      >
+                        {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send size={14} />}
+                        {isPublishing ? "Publishing..." : "Publish to client"}
+                      </button>
+                    </div>
+                  </div>
+                ) : curStatus === "SENT" ? (
+                  <div className="flex items-center gap-2.5 text-[12px] text-blue-400">
+                    <Eye size={16} />
+                    <span className="font-bold">Awaiting client review</span>
+                  </div>
+                ) : curStatus === "CHANGES_REQUESTED" ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-yellow-400">
+                      <AlertTriangle size={15} />
+                      Client has requested changes
+                    </div>
+                    <button
+                      onClick={handleCreateRevision}
+                      disabled={isCreatingRevision}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-coral py-2.5 text-[13px] font-extrabold text-white hover:bg-coral-dark"
+                    >
+                      {isCreatingRevision ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <PenLine size={15} />
+                      )}
+                      {isCreatingRevision
+                        ? "Creating..."
+                        : `Create revision (v${(cur?.n ?? 0) + 1})`}
+                    </button>
+                    <p className="text-[10px] text-ink-faint">
+                      This creates a new draft version. The current version will be marked as superseded.
+                    </p>
+                  </div>
+                ) : curStatus === "APPROVED" ? (
+                  <div className="flex items-center gap-2.5 text-[13px] font-bold text-emerald-400">
+                    <ShieldCheck size={18} /> Proof approved and locked.
+                  </div>
+                ) : (
+                  <div className="text-[12px] text-ink-muted">
+                    This version has been superseded.
+                  </div>
+                )
+              ) : (
+                /* Demo mode staff: simple "Publish revision" button */
+                <div className="flex gap-2.5">
+                  <button
+                    onClick={demoPublishRevision}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-coral py-2.5 text-[13px] font-extrabold text-white hover:bg-coral-dark"
+                  >
+                    <PenLine size={15} /> Publish revision (v
+                    {Math.max(...demoVersions.map((v) => v.n)) + 1})
+                  </button>
+                </div>
+              )
             )}
           </div>
 
@@ -1042,11 +1575,14 @@ export default function ProofStudio() {
               const num = numberOf(a.id);
               const sel = selected === a.id;
               const isResolved = a.status === "RESOLVED";
-              const col = isResolved ? "emerald" : "coral";
               const canResolve =
                 role === "staff" ||
                 a.author ===
-                  (role === "client" ? "Jane Smith" : "CCC Admin");
+                  (role === "client"
+                    ? isLive
+                      ? (session?.user as any)?.name ?? ""
+                      : "Jane Smith"
+                    : "CCC Admin");
 
               return (
                 <div
@@ -1173,7 +1709,7 @@ export default function ProofStudio() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setStatus(a.id, "RESOLVED");
+                                setAnnotationStatus(a.id, "RESOLVED");
                               }}
                               className="flex items-center gap-1.5 rounded-md border border-emerald-500 px-2.5 py-1 text-[11px] font-bold text-emerald-500 hover:bg-emerald-500/10"
                             >
@@ -1183,7 +1719,7 @@ export default function ProofStudio() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setStatus(a.id, "OPEN");
+                                setAnnotationStatus(a.id, "OPEN");
                               }}
                               className="rounded-md border border-surface-border px-2.5 py-1 text-[11px] font-bold text-ink-muted hover:text-ink"
                             >
@@ -1223,7 +1759,7 @@ export default function ProofStudio() {
             </div>
             <div className="mb-4 text-[12.5px] leading-relaxed text-ink-muted">
               This locks{" "}
-              <b className="text-ink">v{cur.n}</b> and authorizes
+              <b className="text-ink">v{cur?.n}</b> and authorizes
               Central Creative to begin production. No further edits or
               comments can be added after approval. This sign-off is
               recorded with your name and a timestamp.
@@ -1234,7 +1770,7 @@ export default function ProofStudio() {
             <input
               value={signName}
               onChange={(e) => setSignName(e.target.value)}
-              placeholder="Jane Smith"
+              placeholder={isLive ? (session?.user as any)?.name ?? "Your name" : "Jane Smith"}
               autoFocus
               className="mt-1.5 mb-3.5 w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2.5 text-base italic text-ink outline-none focus:border-coral"
             />
@@ -1258,7 +1794,7 @@ export default function ProofStudio() {
                   : "bg-surface-bg text-ink-dim cursor-not-allowed"
               )}
             >
-              Sign & approve v{cur.n}
+              Sign & approve v{cur?.n}
             </button>
           </div>
         </div>

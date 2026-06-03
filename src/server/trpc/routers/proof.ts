@@ -76,6 +76,8 @@ export const proofRouter = router({
       const proof = await prisma.proof.findUnique({
         where: { id: input.proofId },
         include: {
+          company: { select: { name: true } },
+          order: { select: { number: true } },
           versions: {
             orderBy: { versionNumber: "desc" },
             select: { id: true, versionNumber: true, status: true },
@@ -108,11 +110,11 @@ export const proofRouter = router({
           annotations: {
             orderBy: { seq: "asc" },
             include: {
-              author: { select: { id: true, name: true } },
+              author: { select: { id: true, name: true, role: true } },
               comments: {
                 orderBy: { createdAt: "asc" },
                 include: {
-                  author: { select: { id: true, name: true } },
+                  author: { select: { id: true, name: true, role: true } },
                 },
               },
             },
@@ -120,7 +122,7 @@ export const proofRouter = router({
           approvals: {
             orderBy: { createdAt: "desc" },
             include: {
-              signedBy: { select: { id: true, name: true } },
+              signedBy: { select: { id: true, name: true, role: true } },
             },
           },
         },
@@ -380,7 +382,7 @@ export const proofRouter = router({
         },
         include: {
           comments: true,
-          author: { select: { id: true, name: true } },
+          author: { select: { id: true, name: true, role: true } },
         },
       });
 
@@ -438,7 +440,7 @@ export const proofRouter = router({
           isInternal: input.isInternal ?? false,
         },
         include: {
-          author: { select: { id: true, name: true } },
+          author: { select: { id: true, name: true, role: true } },
         },
       });
     }),
