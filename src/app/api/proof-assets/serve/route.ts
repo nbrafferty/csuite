@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile, stat } from "fs/promises";
 import path from "path";
 
+export const runtime = "nodejs";
+
+export const dynamic = "force-dynamic";
+
 const UPLOAD_DIR = path.join(process.cwd(), ".uploads");
 
 const MIME_MAP: Record<string, string> = {
@@ -27,7 +31,10 @@ export async function GET(req: NextRequest) {
   try {
     await stat(filePath);
   } catch {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "not found", path: filePath, key },
+      { status: 404 },
+    );
   }
 
   const buffer = await readFile(filePath);
