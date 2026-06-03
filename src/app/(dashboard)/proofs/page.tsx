@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useSession } from "next-auth/react";
 import { Plus, FileCheck, Clock, AlertTriangle, CheckCircle, Play } from "lucide-react";
+import { CreateProofDialog } from "@/components/proofs/create-proof-dialog";
 
 const statusLabel: Record<string, string> = {
   DRAFT: "Draft",
@@ -31,8 +34,11 @@ const statusIcon: Record<string, typeof Clock> = {
 
 export default function ProofsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
+  const companyId = (session?.user as any)?.companyId ?? "";
   const { data: proofs, isLoading } = trpc.proof.list.useQuery({});
+  const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div>
@@ -45,7 +51,27 @@ export default function ProofsPage() {
             Review and approve artwork proofs
           </p>
         </div>
+        {isStaff && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 rounded-md bg-coral px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-coral-light"
+          >
+            <Plus className="h-4 w-4" />
+            New proof
+          </button>
+        )}
       </div>
+
+      <CreateProofDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(proofId) => {
+          setShowCreate(false);
+          router.push(`/proofs/${proofId}`);
+        }}
+        companyId={companyId}
+        isStaff={isStaff}
+      />
 
       {/* Example proof — interactive demo with seeded data */}
       <div className="mt-6">
