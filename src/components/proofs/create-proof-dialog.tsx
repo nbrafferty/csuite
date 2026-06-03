@@ -108,6 +108,11 @@ export function CreateProofDialog({
 
           const s3Key = `proofs/${proof.id}/${versionId}/${entry.file.name}`;
 
+          const form = new FormData();
+          form.append("file", entry.file);
+          form.append("s3Key", s3Key);
+          await fetch("/api/proof-assets/upload", { method: "POST", body: form });
+
           await confirmAsset.mutateAsync({
             versionId,
             s3Key,

@@ -319,15 +319,27 @@ function PoloProof({
   );
 }
 
-function AssetPlaceholder({ name, width, height }: { name: string; width?: number | null; height?: number | null }) {
+function assetUrl(s3Key: string): string {
+  return `/api/proof-assets/serve?key=${encodeURIComponent(s3Key)}`;
+}
+
+function ProofImage({ s3Key, alt }: { s3Key: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-bg">
+        <ImageIcon className="h-12 w-12 text-ink-faint" />
+        <p className="max-w-[200px] truncate text-xs text-ink-muted">{alt}</p>
+      </div>
+    );
+  }
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-bg">
-      <ImageIcon className="h-12 w-12 text-ink-faint" />
-      <p className="max-w-[200px] truncate text-xs text-ink-muted">{name}</p>
-      {width && height && (
-        <p className="text-[10px] text-ink-faint">{width} x {height}</p>
-      )}
-    </div>
+    <img
+      src={assetUrl(s3Key)}
+      alt={alt}
+      className="h-full w-full object-contain"
+      onError={() => setError(true)}
+    />
   );
 }
 
@@ -830,6 +842,12 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
         }
 
         const s3Key = `proofs/${proofId}/${curId}/${entry.file.name}`;
+
+        const form = new FormData();
+        form.append("file", entry.file);
+        form.append("s3Key", s3Key);
+        await fetch("/api/proof-assets/upload", { method: "POST", body: form });
+
         await confirmAssetMut.mutateAsync({
           versionId: curId,
           s3Key,
@@ -1135,7 +1153,7 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
                       {!isLive ? (
                         <PoloProof logo={prev.logo} guides={guides} />
                       ) : (
-                        <AssetPlaceholder name={`v${prev.n}`} />
+                        <div className="flex h-full w-full items-center justify-center bg-surface-bg text-xs text-ink-faint">v{prev.n}</div>
                       )}
                     </div>
                     <div
@@ -1146,9 +1164,9 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
                         {!isLive ? (
                           <PoloProof logo={cur?.logo ?? "leftchest"} guides={guides} />
                         ) : liveAssets[0] ? (
-                          <AssetPlaceholder name={liveAssets[0].fileName} width={liveAssets[0].width} height={liveAssets[0].height} />
+                          <ProofImage s3Key={liveAssets[0].s3Key} alt={liveAssets[0].fileName} />
                         ) : (
-                          <AssetPlaceholder name="No assets" />
+                          <div className="flex h-full w-full items-center justify-center bg-surface-bg text-xs text-ink-faint">No assets</div>
                         )}
                       </div>
                     </div>
@@ -1164,7 +1182,7 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
                   !isLive ? (
                     <PoloProof logo={cur?.logo ?? "leftchest"} guides={guides} />
                   ) : liveAssets[0] ? (
-                    <AssetPlaceholder name={liveAssets[0].fileName} width={liveAssets[0].width} height={liveAssets[0].height} />
+                    <ProofImage s3Key={liveAssets[0].s3Key} alt={liveAssets[0].fileName} />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-bg">
                       <Upload className="h-10 w-10 text-ink-faint" />
