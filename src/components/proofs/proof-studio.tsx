@@ -571,6 +571,16 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
   } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // ── Pending annotation (live mode: user must type before saving) ──
+  const [pendingAnno, setPendingAnno] = useState<{
+    geo: { x: number; y: number; w?: number; h?: number };
+    type: AnnotationType;
+  } | null>(null);
+  const [pendingBody, setPendingBody] = useState("");
+
+  // ── Error feedback ────────────────────────────────────────────────
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   // ── File upload state (live DRAFT mode) ───────────────────────────
   const [uploadFiles, setUploadFiles] = useState<FileEntry[]>([]);
   const [uploadDragOver, setUploadDragOver] = useState(false);
@@ -618,24 +628,14 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
   // ── Handlers ──────────────────────────────────────────────────────
 
   const addAnnotation = useCallback(
-    async (
+    (
       geo: { x: number; y: number; w?: number; h?: number },
       type: AnnotationType
     ) => {
       if (isLive) {
-        const assetId = liveAssets[0]?.id;
-        if (!assetId || !curId) return;
-        await addAnnotationMut.mutateAsync({
-          versionId: curId,
-          assetId,
-          type: type.toUpperCase() as "PIN" | "REGION",
-          x: geo.x,
-          y: geo.y,
-          w: geo.w,
-          h: geo.h,
-          body: "(annotation placed)",
-        });
-        refetch();
+        if (!liveAssets[0]?.id || !curId) return;
+        setPendingAnno({ geo, type });
+        setPendingBody("");
         setTool("select");
         setFilter("ALL");
       } else {
@@ -659,6 +659,29 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
     },
     [curId, role, isLive, liveAssets]
   );
+
+  const commitPendingAnnotation = async () => {
+    if (!pendingAnno || !pendingBody.trim() || !isLive) return;
+    const assetId = liveAssets[0]?.id;
+    if (!assetId || !curId) return;
+    try {
+      await addAnnotationMut.mutateAsync({
+        versionId: curId,
+        assetId,
+        type: pendingAnno.type.toUpperCase() as "PIN" | "REGION",
+        x: pendingAnno.geo.x,
+        y: pendingAnno.geo.y,
+        w: pendingAnno.geo.w,
+        h: pendingAnno.geo.h,
+        body: pendingBody.trim(),
+      });
+      refetch();
+    } catch (err: any) {
+      setErrorMsg(err.message ?? "Failed to add annotation");
+    }
+    setPendingAnno(null);
+    setPendingBody("");
+  };
 
   const onOverlayDown = (e: React.MouseEvent) => {
     if (locked || compare) return;
@@ -695,12 +718,17 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
     if (!body) return;
 
     if (isLive) {
-      await addCommentMut.mutateAsync({
-        annotationId: annoId,
-        body,
-        isInternal: role === "staff" ? newInternal : false,
-      });
-      refetch();
+      try {
+        await addCommentMut.mutateAsync({
+          annotationId: annoId,
+          body,
+          isInternal: role === "staff" ? newInternal : false,
+        });
+        refetch();
+      } catch (err: any) {
+        setErrorMsg(err.message ?? "Failed to post comment");
+        return;
+      }
     } else {
       setDemoAnnotations((p) =>
         p.map((a) =>
@@ -730,11 +758,16 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
 
   const setAnnotationStatus = async (annoId: string, status: AnnotationStatus) => {
     if (isLive) {
-      await setAnnotationStatusMut.mutateAsync({
-        annotationId: annoId,
-        status,
-      });
-      refetch();
+      try {
+        await setAnnotationStatusMut.mutateAsync({
+          annotationId: annoId,
+          status,
+        });
+        refetch();
+      } catch (err: any) {
+        setErrorMsg(err.message ?? "Failed to update status");
+        return;
+      }
     } else {
       setDemoAnnotations((p) =>
         p.map((a) => (a.id === annoId ? { ...a, status } : a))
@@ -744,11 +777,16 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
 
   const requestChanges = async () => {
     if (isLive) {
-      await decideMut.mutateAsync({
-        versionId: curId,
-        decision: "CHANGES_REQUESTED",
-      });
-      refetch();
+      try {
+        await decideMut.mutateAsync({
+          versionId: curId,
+          decision: "CHANGES_REQUESTED",
+        });
+        refetch();
+      } catch (err: any) {
+        setErrorMsg(err.message ?? "Failed to request changes");
+        return;
+      }
     } else {
       setDemoVersions((p) =>
         p.map((v) =>
@@ -763,12 +801,17 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
 
   const confirmApprove = async () => {
     if (isLive) {
-      await decideMut.mutateAsync({
-        versionId: curId,
-        decision: "APPROVED",
-        signedName: signName.trim(),
-      });
-      refetch();
+      try {
+        await decideMut.mutateAsync({
+          versionId: curId,
+          decision: "APPROVED",
+          signedName: signName.trim(),
+        });
+        refetch();
+      } catch (err: any) {
+        setErrorMsg(err.message ?? "Failed to approve proof");
+        return;
+      }
     } else {
       setDemoVersions((p) =>
         p.map((v) =>
@@ -779,7 +822,15 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
       );
     }
     setShowApprove(false);
+    setSignName("");
+    setSignChecked(false);
     setSelected(null);
+  };
+
+  const closeApproveModal = () => {
+    setShowApprove(false);
+    setSignName("");
+    setSignChecked(false);
   };
 
   const handleCreateRevision = async () => {
@@ -927,13 +978,45 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
   // ── Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-[640px] flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-bg">
+    <div className="relative flex min-h-[640px] flex-col overflow-hidden rounded-lg border border-surface-border bg-surface-bg">
+      {/* Error toast */}
+      {errorMsg && (
+        <div className="absolute left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-red-500/30 bg-red-950 px-4 py-2.5 shadow-lg">
+          <AlertTriangle size={14} className="text-red-400" />
+          <span className="text-xs text-red-300">{errorMsg}</span>
+          <button onClick={() => setErrorMsg(null)} className="ml-2 text-red-400 hover:text-white">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Pending annotation prompt */}
+      {pendingAnno && (
+        <div className="absolute left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-coral/30 bg-surface-card px-4 py-3 shadow-lg">
+          <MapPin size={14} className="text-coral" />
+          <input
+            value={pendingBody}
+            onChange={(e) => setPendingBody(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitPendingAnnotation(); if (e.key === "Escape") { setPendingAnno(null); setPendingBody(""); } }}
+            placeholder="Type your comment and press Enter..."
+            autoFocus
+            className="w-64 rounded-md border border-surface-border bg-surface-bg px-2.5 py-1.5 text-xs text-ink outline-none focus:border-coral"
+          />
+          <button onClick={commitPendingAnnotation} disabled={!pendingBody.trim()} className="rounded-md bg-coral px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">
+            Post
+          </button>
+          <button onClick={() => { setPendingAnno(null); setPendingBody(""); }} className="text-ink-faint hover:text-white">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4 border-b border-surface-border bg-surface-card px-5 py-3.5">
         <div className="min-w-0 flex-1">
           <div className="label-eyebrow text-[10px]">
             {isLive
-              ? `PROOF${proofData?.orderId ? " · " + proofData.orderId : ""}`
+              ? `PROOF${proofData?.order?.number ? " · " + proofData.order.number : ""}${proofData?.company?.name ? " · " + proofData.company.name.toUpperCase() : ""}`
               : "PROOF · ORD-2026-001 · ACME CORP"}
           </div>
           <div className="mt-1 flex items-center gap-3">
@@ -944,15 +1027,24 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-          <Users size={14} />
-          <div className="flex">
-            <div className="-mr-2">
-              <Avatar name="CCC Admin" role="staff" size={24} />
+        {!isLive && (
+          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+            <Users size={14} />
+            <div className="flex">
+              <div className="-mr-2">
+                <Avatar name="CCC Admin" role="staff" size={24} />
+              </div>
+              <Avatar name="Jane Smith" role="client" size={24} />
             </div>
-            <Avatar name={isLive ? (session?.user as any)?.name ?? "Client" : "Jane Smith"} role="client" size={24} />
           </div>
-        </div>
+        )}
+        {isLive && proofData?.company && (
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
+            <span className="rounded bg-surface-bg px-2 py-1 font-label text-[10px] uppercase tracking-label">
+              {proofData.company.name}
+            </span>
+          </div>
+        )}
 
         {/* Role toggle — demo mode only */}
         {!isLive && (
@@ -1074,6 +1166,13 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
                           setVerDropdown(false);
                           setCompare(false);
                           setSelected(null);
+                          setZoom(1);
+                          setFilter("OPEN");
+                          setDraft({});
+                          setNewInternal(false);
+                          setPendingAnno(null);
+                          setPendingBody("");
+                          setErrorMsg(null);
                         }}
                         className={cn(
                           "flex cursor-pointer items-center justify-between rounded-md px-2.5 py-2",
@@ -1761,11 +1860,11 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
       {showApprove && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowApprove(false)}
+          onClick={closeApproveModal}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-[420px] rounded-xl border border-surface-border bg-surface-card p-6 shadow-lg"
+            className="mx-4 w-full max-w-[420px] rounded-xl border border-surface-border bg-surface-card p-6 shadow-lg"
           >
             <div className="mb-1.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5 font-display text-base">
@@ -1775,7 +1874,7 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
               <X
                 size={18}
                 className="cursor-pointer text-ink-dim hover:text-ink"
-                onClick={() => setShowApprove(false)}
+                onClick={closeApproveModal}
               />
             </div>
             <div className="mb-4 text-[12.5px] leading-relaxed text-ink-muted">

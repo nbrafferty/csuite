@@ -162,34 +162,31 @@ export const proofRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const proof = await prisma.proof.create({
-        data: {
-          title: input.title,
-          companyId: input.companyId,
-          orderId: input.orderId,
-          quoteId: input.quoteId,
-          createdById: ctx.user.id,
-          versions: {
-            create: {
-              versionNumber: 1,
-              status: "DRAFT",
+      return prisma.$transaction(async (tx) => {
+        const proof = await tx.proof.create({
+          data: {
+            title: input.title,
+            companyId: input.companyId,
+            orderId: input.orderId,
+            quoteId: input.quoteId,
+            createdById: ctx.user.id,
+            versions: {
+              create: {
+                versionNumber: 1,
+                status: "DRAFT",
+              },
             },
           },
-        },
-        include: {
-          versions: true,
-        },
-      });
+          include: { versions: true },
+        });
 
-      // Set the currentVersionId to the newly created version
-      const firstVersion = proof.versions[0];
-      const updated = await prisma.proof.update({
-        where: { id: proof.id },
-        data: { currentVersionId: firstVersion.id },
-        include: { currentVersion: true },
+        const firstVersion = proof.versions[0];
+        return tx.proof.update({
+          where: { id: proof.id },
+          data: { currentVersionId: firstVersion.id },
+          include: { currentVersion: true },
+        });
       });
-
-      return updated;
     }),
 
   /** Record an uploaded asset for a proof version. */
@@ -283,33 +280,49 @@ export const proofRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       return prisma.$transaction(async (tx) => {
-        // Find the latest version number for this proof
+        const fromVersion = await tx.proofVersion.findUnique({
+          where: { id: input.fromVersionId },
+          select: { proofId: true, status: true },
+        });
+
+        if (!fromVersion) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+        }
+
+        if (fromVersion.proofId !== input.proofId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Version does not belong to this proof" });
+        }
+
+        if (fromVersion.status === "APPROVED") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot revise an approved version" });
+        }
+
+        if (fromVersion.status === "DRAFT" || fromVersion.status === "SUPERSEDED") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Can only revise SENT or CHANGES_REQUESTED versions" });
+        }
+
         const latestVersion = await tx.proofVersion.findFirst({
           where: { proofId: input.proofId },
           orderBy: { versionNumber: "desc" },
           select: { versionNumber: true },
         });
 
-        if (!latestVersion) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "No versions found for this proof",
-          });
-        }
-
-        // Mark the fromVersion as SUPERSEDED
         await tx.proofVersion.update({
           where: { id: input.fromVersionId },
           data: { status: "SUPERSEDED" },
         });
 
-        // Create the new DRAFT version
         const newVersion = await tx.proofVersion.create({
           data: {
             proofId: input.proofId,
-            versionNumber: latestVersion.versionNumber + 1,
+            versionNumber: (latestVersion?.versionNumber ?? 0) + 1,
             status: "DRAFT",
           },
+        });
+
+        await tx.proof.update({
+          where: { id: input.proofId },
+          data: { currentVersionId: newVersion.id },
         });
 
         return newVersion;
