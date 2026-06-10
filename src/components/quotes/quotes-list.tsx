@@ -69,10 +69,7 @@ export function QuotesList() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1
-          className="text-2xl font-bold text-white"
-          style={{ fontFamily: "Space Grotesk, sans-serif" }}
-        >
+        <h1 className="font-display text-2xl uppercase tracking-display text-white">
           {isStaff ? "Quotes" : "Your Quotes"}
         </h1>
         <p className="mt-1 text-sm text-gray-500">

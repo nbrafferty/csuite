@@ -300,10 +300,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       </button>
 
       {/* Page title */}
-      <h1
-        className="mb-6 text-2xl font-bold text-white"
-        style={{ fontFamily: "Space Grotesk, sans-serif" }}
-      >
+      <h1 className="mb-6 font-display text-2xl uppercase tracking-display text-white">
         {quoteId ? (quote?.title ?? "Edit Quote") : "New Quote"}
       </h1>
 

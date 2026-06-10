@@ -117,10 +117,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1
-              className="text-2xl font-bold text-white"
-              style={{ fontFamily: "Space Grotesk, sans-serif" }}
-            >
+            <h1 className="font-display text-2xl uppercase tracking-display text-white">
               {quote.title}
             </h1>
             <QuoteStatusBadge status={quote.status} />
