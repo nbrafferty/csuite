@@ -35,7 +35,7 @@ export default function NewQuoteRequestPage() {
         Back to quotes
       </button>
 
-      <h1 className="text-2xl font-bold text-white mb-2">
+      <h1 className="mb-2 font-display text-2xl uppercase tracking-display text-white">
         New Quote Request
       </h1>
       <p className="text-sm text-gray-400 mb-8">
