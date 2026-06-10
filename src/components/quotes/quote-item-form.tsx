@@ -99,7 +99,7 @@ export function QuoteItemForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. Bella+Canvas 3001 — Heather Navy"
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           required
         />
       </div>
@@ -114,7 +114,7 @@ export function QuoteItemForm({
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             placeholder="Optional"
-            className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           />
         </div>
         <div>
@@ -126,7 +126,7 @@ export function QuoteItemForm({
             value={color}
             onChange={(e) => setColor(e.target.value)}
             placeholder="Optional"
-            className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           />
         </div>
       </div>
@@ -143,7 +143,7 @@ export function QuoteItemForm({
             value={unitPrice}
             onChange={(e) => setUnitPrice(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
             required
           />
         </div>
@@ -158,7 +158,7 @@ export function QuoteItemForm({
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             placeholder="0"
-            className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
             required
           />
         </div>
@@ -173,7 +173,7 @@ export function QuoteItemForm({
           onChange={(e) => setDecorationNotes(e.target.value)}
           placeholder="e.g. Left chest logo, 1-color white"
           rows={2}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
         />
       </div>
 
@@ -204,7 +204,7 @@ export function QuoteItemForm({
                       [size]: e.target.value,
                     }))
                   }
-                  className="w-full rounded-md border border-[#333338] bg-[#22222A] px-2 py-1.5 text-center text-sm text-white focus:border-coral focus:outline-none"
+                  className="w-full rounded-md border border-surface-border bg-surface-secondary px-2 py-1.5 text-center text-sm text-white focus:border-coral focus:outline-none"
                 />
               </div>
             ))}
@@ -217,7 +217,7 @@ export function QuoteItemForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+          className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
         >
           Cancel
         </button>

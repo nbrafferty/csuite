@@ -120,7 +120,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                   <input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
                   />
                 </div>
                 <div>
@@ -131,7 +131,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={4}
-                    className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none resize-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none resize-none"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -146,7 +146,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                           e.target.value as "HIGH" | "MEDIUM" | "LOW"
                         )
                       }
-                      className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                      className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
                     >
                       <option value="HIGH">High</option>
                       <option value="MEDIUM">Medium</option>
@@ -161,7 +161,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                       type="date"
                       value={editDueDate}
                       onChange={(e) => setEditDueDate(e.target.value)}
-                      className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                      className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
                     />
                   </div>
                 </div>
@@ -290,7 +290,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                   {task.assignees.map((a: any) => (
                     <span
                       key={a.user.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#22222A] px-3 py-1 text-xs text-gray-300"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1 text-xs text-gray-300"
                     >
                       <span className="h-5 w-5 rounded-full bg-coral/20 text-coral flex items-center justify-center text-[10px] font-bold">
                         {a.user.name

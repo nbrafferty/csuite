@@ -224,7 +224,7 @@ export default function TasksPage() {
                   className={`mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider ${group.color}`}
                 >
                   {group.label}
-                  <span className="rounded-full bg-[#22222A] px-1.5 py-0.5 text-[10px] text-gray-500">
+                  <span className="rounded-full bg-surface-secondary px-1.5 py-0.5 text-[10px] text-gray-500">
                     {group.tasks.length}
                   </span>
                 </h3>

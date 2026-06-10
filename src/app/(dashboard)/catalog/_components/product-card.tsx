@@ -59,8 +59,8 @@ export function ProductCard({
       className={cn(
         "group relative flex cursor-pointer flex-col overflow-hidden rounded-[14px] border transition-all duration-200",
         isInQuote
-          ? "border-coral-border bg-[#22222A]"
-          : "border-surface-border bg-[#22222A] hover:border-[#444]",
+          ? "border-coral-border bg-surface-secondary"
+          : "border-surface-border bg-surface-secondary hover:border-[#444]",
         hovered && "-translate-y-[3px] shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
       )}
     >

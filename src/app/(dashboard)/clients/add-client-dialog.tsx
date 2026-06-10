@@ -57,7 +57,7 @@ export function AddClientDialog({ open, onClose }: AddClientDialogProps) {
       <div className="absolute inset-0 bg-black/60" onClick={resetAndClose} />
       <div className="relative w-full max-w-md rounded-xl border border-surface-border bg-surface-card p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Add Client</h2>
+          <h2 className="font-display text-lg uppercase tracking-display text-foreground">Add Client</h2>
           <button
             onClick={resetAndClose}
             className="rounded-md p-1 text-foreground-muted hover:text-foreground"

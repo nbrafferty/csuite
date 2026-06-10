@@ -69,7 +69,7 @@ export default function BillingPage() {
                 "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s.value
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-gray-400 hover:text-white"
+                  : "bg-surface-secondary text-gray-400 hover:text-white"
               )}
             >
               {s.label}

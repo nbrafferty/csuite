@@ -105,7 +105,7 @@ export function QuoteRequestsList() {
                 "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === f.value
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-gray-400 hover:text-white"
+                  : "bg-surface-secondary text-gray-400 hover:text-white"
               )}
             >
               {f.label}
@@ -128,10 +128,10 @@ export function QuoteRequestsList() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-[#333338] bg-[#1A1A1E]">
+      <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-card">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[#333338]">
+            <tr className="border-b border-surface-border">
               {isStaff && (
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Client
@@ -157,12 +157,12 @@ export function QuoteRequestsList() {
           <tbody>
             {isLoading &&
               Array.from({ length: 4 }).map((_, i) => (
-                <tr key={i} className="border-b border-[#333338]/50">
+                <tr key={i} className="border-b border-surface-border/50">
                   <td
                     colSpan={isStaff ? 6 : 5}
                     className="px-4 py-4"
                   >
-                    <div className="h-4 w-full animate-pulse rounded bg-[#22222A]" />
+                    <div className="h-4 w-full animate-pulse rounded bg-surface-secondary" />
                   </td>
                 </tr>
               ))}
@@ -197,8 +197,8 @@ export function QuoteRequestsList() {
                 key={req.id}
                 onClick={() => setSelectedId(req.id)}
                 className={cn(
-                  "cursor-pointer border-b border-[#333338]/50 transition-colors hover:bg-[#22222A]/50",
-                  selectedId === req.id && "bg-[#22222A]/50"
+                  "cursor-pointer border-b border-surface-border/50 transition-colors hover:bg-surface-secondary/50",
+                  selectedId === req.id && "bg-surface-secondary/50"
                 )}
               >
                 {isStaff && (
@@ -248,9 +248,9 @@ export function QuoteRequestsList() {
           />
 
           {/* Panel */}
-          <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-[#333338] bg-[#0D0D0F] shadow-xl">
+          <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-surface-border bg-surface-bg shadow-xl">
             {/* Panel header */}
-            <div className="flex items-center justify-between border-b border-[#333338] px-6 py-4">
+            <div className="flex items-center justify-between border-b border-surface-border px-6 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Quote Request
@@ -261,7 +261,7 @@ export function QuoteRequestsList() {
               </div>
               <button
                 onClick={() => setSelectedId(null)}
-                className="rounded-lg p-2 text-gray-400 hover:bg-[#22222A] hover:text-white"
+                className="rounded-lg p-2 text-gray-400 hover:bg-surface-secondary hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -283,7 +283,7 @@ export function QuoteRequestsList() {
 
                 {/* Details */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-[#333338] bg-[#1A1A1E] p-3">
+                  <div className="rounded-lg border border-surface-border bg-surface-card p-3">
                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                       <Calendar className="h-3.5 w-3.5" />
                       In-Hands Date
@@ -297,7 +297,7 @@ export function QuoteRequestsList() {
                         : "Not specified"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-[#333338] bg-[#1A1A1E] p-3">
+                  <div className="rounded-lg border border-surface-border bg-surface-card p-3">
                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                       <Package className="h-3.5 w-3.5" />
                       Products
@@ -315,7 +315,7 @@ export function QuoteRequestsList() {
                     <h4 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">
                       Description
                     </h4>
-                    <div className="rounded-lg border border-[#333338] bg-[#1A1A1E] p-4">
+                    <div className="rounded-lg border border-surface-border bg-surface-card p-4">
                       <p className="text-sm text-gray-300 whitespace-pre-wrap">
                         {selectedRequest.description}
                       </p>
@@ -333,7 +333,7 @@ export function QuoteRequestsList() {
                       {selectedRequest.catalogItems.map((item) => (
                         <div
                           key={item.id}
-                          className="rounded-lg border border-[#333338] bg-[#1A1A1E] p-3"
+                          className="rounded-lg border border-surface-border bg-surface-card p-3"
                         >
                           <div className="flex items-start justify-between">
                             <div>
@@ -392,7 +392,7 @@ export function QuoteRequestsList() {
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#333338] border-t-coral" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-border border-t-coral" />
               </div>
             )}
 
@@ -401,12 +401,12 @@ export function QuoteRequestsList() {
               isStaff &&
               selectedRequest.status !== "QUOTED" &&
               selectedRequest.status !== "CLOSED" && (
-                <div className="border-t border-[#333338] px-6 py-4 flex items-center gap-3">
+                <div className="border-t border-surface-border px-6 py-4 flex items-center gap-3">
                   {selectedRequest.status === "SUBMITTED" && (
                     <button
                       onClick={() => startReview.mutate({ id: selectedRequest.id })}
                       disabled={startReview.isPending}
-                      className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
+                      className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
                     >
                       Mark In Review
                     </button>
@@ -433,7 +433,7 @@ export function QuoteRequestsList() {
 
             {/* Client view - status messages */}
             {selectedRequest && !isStaff && (
-              <div className="border-t border-[#333338] px-6 py-4">
+              <div className="border-t border-surface-border px-6 py-4">
                 {selectedRequest.status === "SUBMITTED" && (
                   <p className="text-sm text-gray-400">
                     Your request has been submitted and is awaiting review by our team.

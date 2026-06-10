@@ -45,7 +45,7 @@ export function OrderStatusTimeline({ status }: { status: string }) {
                   "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
                   isComplete && "bg-green-500/20 text-green-400",
                   isCurrent && "bg-coral/20 text-coral ring-2 ring-coral/30",
-                  isFuture && "bg-[#22222A] text-gray-600"
+                  isFuture && "bg-surface-secondary text-gray-600"
                 )}
               >
                 {isComplete ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -65,7 +65,7 @@ export function OrderStatusTimeline({ status }: { status: string }) {
               <div
                 className={cn(
                   "mx-0.5 mb-4 h-0.5 w-4",
-                  idx < currentIdx ? "bg-green-500/30" : "bg-[#333338]"
+                  idx < currentIdx ? "bg-green-500/30" : "bg-surface-border"
                 )}
               />
             )}

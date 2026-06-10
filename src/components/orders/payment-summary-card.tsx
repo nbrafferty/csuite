@@ -28,7 +28,7 @@ export function PaymentSummaryCard({
   const outstanding = totalInvoiced - totalPaid;
 
   return (
-    <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+    <div className="rounded-xl border border-surface-border bg-surface-card p-5">
       <h3 className="mb-3 text-sm font-semibold text-white">Payment Summary</h3>
 
       <div className="space-y-2 text-sm">
@@ -58,7 +58,7 @@ export function PaymentSummaryCard({
           <span className="text-green-400">{formatCurrency(totalPaid)}</span>
         </div>
 
-        <div className="border-t border-[#333338] pt-2">
+        <div className="border-t border-surface-border pt-2">
           <div className="flex justify-between">
             <span className="text-gray-500">Outstanding</span>
             <span

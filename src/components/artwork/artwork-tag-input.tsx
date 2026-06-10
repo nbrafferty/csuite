@@ -73,7 +73,7 @@ export function ArtworkTagInput({
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             onKeyDown={handleKeyDown}
             placeholder="Add tag..."
-            className="flex-1 rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="flex-1 rounded-lg border border-surface-border bg-surface-bg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           />
           <button
             onClick={() => handleAdd(inputValue)}

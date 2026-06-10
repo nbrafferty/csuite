@@ -157,7 +157,7 @@ export function ArtworkDetailPanel({
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
                   />
                 </div>
                 <div>
@@ -168,7 +168,7 @@ export function ArtworkDetailPanel({
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none resize-none"
+                    className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none resize-none"
                   />
                 </div>
                 <div className="flex gap-2">

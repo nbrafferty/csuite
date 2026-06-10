@@ -138,7 +138,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       </div>
 
       {/* Invoice details */}
-      <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+      <div className="mb-6 rounded-xl border border-surface-border bg-surface-card p-5">
         <div className="mb-4 grid grid-cols-3 gap-4 text-sm">
           <div>
             <span className="text-gray-500">Issued</span>
@@ -167,7 +167,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         </div>
 
         {invoice.memo && (
-          <div className="mb-4 border-t border-[#333338] pt-3">
+          <div className="mb-4 border-t border-surface-border pt-3">
             <span className="text-xs text-gray-500">Memo</span>
             <p className="mt-1 text-sm text-gray-300">{invoice.memo}</p>
           </div>
@@ -175,17 +175,17 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
         {/* Line items */}
         <h3 className="mb-3 text-sm font-semibold text-white">Items</h3>
-        <div className="overflow-hidden rounded-lg border border-[#333338]">
+        <div className="overflow-hidden rounded-lg border border-surface-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#333338] bg-[#22222A] text-xs font-medium uppercase text-gray-500">
+              <tr className="border-b border-surface-border bg-surface-secondary text-xs font-medium uppercase text-gray-500">
                 <th className="px-3 py-2 text-left">Description</th>
                 <th className="px-3 py-2 text-center">Qty</th>
                 <th className="px-3 py-2 text-right">Unit Price</th>
                 <th className="px-3 py-2 text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#333338]">
+            <tbody className="divide-y divide-surface-border">
               {invoice.items?.map((item: any) => (
                 <tr key={item.id}>
                   <td className="px-3 py-2 text-gray-300">{item.description}</td>
@@ -203,7 +203,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         </div>
 
         {/* Totals */}
-        <div className="mt-4 space-y-2 border-t border-[#333338] pt-4">
+        <div className="mt-4 space-y-2 border-t border-surface-border pt-4">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Subtotal</span>
             <span className="text-white">{formatCurrency(invoiceTotal)}</span>
@@ -232,13 +232,13 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
       {/* Payment history */}
       {invoice.payments && invoice.payments.length > 0 && (
-        <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+        <div className="rounded-xl border border-surface-border bg-surface-card p-5">
           <h3 className="mb-3 text-sm font-semibold text-white">Payment History</h3>
           <div className="space-y-3">
             {invoice.payments.map((payment: any) => (
               <div
                 key={payment.id}
-                className="flex items-center justify-between rounded-lg bg-[#22222A] px-4 py-3"
+                className="flex items-center justify-between rounded-lg bg-surface-secondary px-4 py-3"
               >
                 <div>
                   <p className="text-sm font-medium text-white">
@@ -287,7 +287,7 @@ function RecordPaymentForm({
   });
 
   return (
-    <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+    <div className="mb-6 rounded-xl border border-surface-border bg-surface-card p-5">
       <h3 className="mb-4 text-sm font-semibold text-white">Record Payment</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -300,7 +300,7 @@ function RecordPaymentForm({
             required
             value={amount}
             onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-            className="w-full rounded-lg border border-[#333338] bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
           />
         </div>
         <div>
@@ -308,7 +308,7 @@ function RecordPaymentForm({
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className="w-full rounded-lg border border-[#333338] bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
           >
             {PAYMENT_METHODS.map((m) => (
               <option key={m.value} value={m.value}>
@@ -324,7 +324,7 @@ function RecordPaymentForm({
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder="Check #, wire ref, etc."
-            className="w-full rounded-lg border border-[#333338] bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           />
         </div>
         <div>
@@ -333,14 +333,14 @@ function RecordPaymentForm({
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full rounded-lg border border-[#333338] bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
           />
         </div>
       </div>
       <div className="mt-4 flex justify-end gap-2">
         <button
           onClick={onClose}
-          className="rounded-lg border border-[#333338] px-4 py-2 text-sm text-gray-400 hover:text-white"
+          className="rounded-lg border border-surface-border px-4 py-2 text-sm text-gray-400 hover:text-white"
         >
           Cancel
         </button>

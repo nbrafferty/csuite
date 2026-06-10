@@ -237,7 +237,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
       )}
 
       {/* Line items */}
-      <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+      <div className="mb-6 rounded-xl border border-surface-border bg-surface-card p-5">
         <h2 className="mb-4 text-lg font-semibold text-white">Items</h2>
 
         <div className="space-y-3">
@@ -258,7 +258,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
         </div>
 
         {/* Total */}
-        <div className="mt-4 flex items-center justify-between border-t border-[#333338] pt-4">
+        <div className="mt-4 flex items-center justify-between border-t border-surface-border pt-4">
           <span className="text-sm font-medium text-gray-400">
             Quote Total
           </span>
@@ -270,7 +270,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
 
       {/* Mockups */}
       {quote.mockupUrl && (
-        <div className="mb-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+        <div className="mb-6 rounded-xl border border-surface-border bg-surface-card p-5">
           <h2 className="mb-3 text-lg font-semibold text-white">Mockups</h2>
           <MockupUpload
             mockupUrl={quote.mockupUrl}
@@ -296,7 +296,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
         <div className="space-y-3">
           {/* Change request form */}
           {showChangeRequestForm ? (
-            <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+            <div className="rounded-xl border border-surface-border bg-surface-card p-5">
               <h3 className="mb-3 text-lg font-semibold text-white">
                 Request Changes
               </h3>
@@ -324,7 +324,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
               )}
               <button
                 onClick={() => setShowChangeRequestForm(true)}
-                className="flex-1 rounded-lg border border-[#333338] px-6 py-3 text-sm font-medium text-gray-400 hover:text-white"
+                className="flex-1 rounded-lg border border-surface-border px-6 py-3 text-sm font-medium text-gray-400 hover:text-white"
               >
                 Request Changes
               </button>
@@ -344,7 +344,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
       {/* Approve confirmation dialog */}
       {showApproveDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-[#333338] bg-[#0D0D0F] p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-surface-border bg-surface-bg p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-white">
               Approve Quote?
             </h3>
@@ -369,7 +369,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowApproveDialog(false)}
-                className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -388,7 +388,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
       {/* Decline confirmation dialog */}
       {showDeclineDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-[#333338] bg-[#0D0D0F] p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-surface-border bg-surface-bg p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-white">
               Decline Quote?
             </h3>
@@ -400,7 +400,7 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowDeclineDialog(false)}
-                className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
               >
                 Cancel
               </button>

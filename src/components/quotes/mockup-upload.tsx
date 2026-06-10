@@ -99,7 +99,7 @@ export function MockupUpload({
             src={mockupUrl}
             alt="Mockup"
             className={cn(
-              "rounded-lg border border-[#333338] object-cover",
+              "rounded-lg border border-surface-border object-cover",
               compact ? "h-20 w-20" : "h-40 w-full"
             )}
             onClick={() => setShowFullscreen(true)}
@@ -180,7 +180,7 @@ export function MockupUpload({
           "flex cursor-pointer items-center justify-center rounded-lg border border-dashed transition-colors",
           isDragging
             ? "border-coral bg-coral/5"
-            : "border-[#333338] hover:border-gray-500",
+            : "border-surface-border hover:border-gray-500",
           compact
             ? "h-20 w-20 flex-col gap-0.5"
             : "h-28 w-full flex-col gap-1.5"

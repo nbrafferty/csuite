@@ -170,7 +170,7 @@ export function CatalogContent() {
             <h1 className="text-[28px] font-extrabold uppercase tracking-tight">
               {categoryLabel ? `${categoryLabel} Catalog` : "Product Catalog"}
             </h1>
-            <div className="flex gap-0.5 rounded-lg border border-surface-border bg-[#22222A] p-1">
+            <div className="flex gap-0.5 rounded-lg border border-surface-border bg-surface-secondary p-1">
               <button className="rounded-md bg-surface-border p-1.5 text-white">
                 <LayoutGrid className="h-4 w-4" />
               </button>
@@ -196,7 +196,7 @@ export function CatalogContent() {
               "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors",
               !activeCategory
                 ? "bg-coral text-white"
-                : "bg-[#22222A] text-zinc-400 hover:text-white"
+                : "bg-surface-secondary text-zinc-400 hover:text-white"
             )}
           >
             All
@@ -214,7 +214,7 @@ export function CatalogContent() {
                 "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors",
                 activeCategory === cat.id
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-zinc-400 hover:text-white"
+                  : "bg-surface-secondary text-zinc-400 hover:text-white"
               )}
             >
               {cat.label}
@@ -230,7 +230,7 @@ export function CatalogContent() {
             placeholder="Search product catalog, SKU, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-lg border border-surface-border bg-[#22222A] pl-9 pr-4 text-[13px] text-white placeholder-zinc-600 outline-none focus:border-coral"
+            className="h-10 w-full rounded-lg border border-surface-border bg-surface-secondary pl-9 pr-4 text-[13px] text-white placeholder-zinc-600 outline-none focus:border-coral"
           />
         </div>
 
@@ -284,7 +284,7 @@ export function CatalogContent() {
               onClick={() =>
                 setVisibleCount((c) => c + PRODUCTS_PER_PAGE)
               }
-              className="rounded-[10px] border border-surface-border bg-[#22222A] px-10 py-3.5 text-sm font-semibold text-zinc-400 transition-all hover:border-zinc-500 hover:text-white"
+              className="rounded-[10px] border border-surface-border bg-surface-secondary px-10 py-3.5 text-sm font-semibold text-zinc-400 transition-all hover:border-zinc-500 hover:text-white"
             >
               Load More Products
             </button>
@@ -319,7 +319,7 @@ export function CatalogContent() {
 
       {/* Toast notifications */}
       {toast?.type === "added" && (
-        <div className="fixed bottom-7 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-coral-border bg-[#22222A] px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="fixed bottom-7 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2.5 rounded-[10px] border border-coral-border bg-surface-secondary px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           <Check className="h-4 w-4 text-coral" />
           <span className="text-[13px] font-semibold">
             Added to quote request
@@ -328,7 +328,7 @@ export function CatalogContent() {
       )}
 
       {toast?.type === "submitted" && (
-        <div className="fixed bottom-7 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-[10px] border border-emerald-500/30 bg-[#22222A] px-6 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="fixed bottom-7 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-[10px] border border-emerald-500/30 bg-surface-secondary px-6 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           <PartyPopper className="h-5 w-5 text-emerald-400" />
           <div>
             <div className="text-[13px] font-bold text-emerald-400">

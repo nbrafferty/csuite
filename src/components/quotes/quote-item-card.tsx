@@ -58,7 +58,7 @@ export function QuoteItemCard({
   return (
     <div
       className={cn(
-        "group rounded-lg border border-[#333338] bg-[#1A1A1E] p-4 transition-colors",
+        "group rounded-lg border border-surface-border bg-surface-card p-4 transition-colors",
         editable && "hover:border-[#444449]"
       )}
     >
@@ -86,7 +86,7 @@ export function QuoteItemCard({
           )}
           {/* Fallback to saved product thumbnail if no mockup */}
           {!item.mockupUrl && !editable && item.savedProduct?.thumbnailUrl && (
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-[#22222A]">
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-surface-secondary">
               <img
                 src={item.savedProduct.thumbnailUrl}
                 alt=""
@@ -131,7 +131,7 @@ export function QuoteItemCard({
               {Object.entries(sizeBreakdown).map(([size, qty]) => (
                 <span
                   key={size}
-                  className="rounded-full bg-[#22222A] px-2 py-0.5 text-xs text-gray-400"
+                  className="rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-gray-400"
                 >
                   {size}: {qty}
                 </span>
@@ -157,7 +157,7 @@ export function QuoteItemCard({
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="rounded-md p-1.5 text-gray-500 hover:bg-[#22222A] hover:text-white"
+                className="rounded-md p-1.5 text-gray-500 hover:bg-surface-secondary hover:text-white"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>

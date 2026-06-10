@@ -238,7 +238,7 @@ export function ConfiguratorDrawer({
                   <select
                     value={values[field.key] || ""}
                     onChange={(e) => set(field.key, e.target.value)}
-                    className="w-full cursor-pointer appearance-none rounded-lg border border-surface-border bg-[#22222A] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-coral"
+                    className="w-full cursor-pointer appearance-none rounded-lg border border-surface-border bg-surface-secondary px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-coral"
                   >
                     <option value="">
                       Choose {field.label.toLowerCase()}...
@@ -265,7 +265,7 @@ export function ConfiguratorDrawer({
                       set(field.key, parseInt(e.target.value) || "")
                     }
                     placeholder="Enter quantity..."
-                    className="w-full rounded-lg border border-surface-border bg-[#22222A] px-3.5 py-2.5 text-[13px] text-white placeholder-zinc-600 outline-none focus:border-coral"
+                    className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3.5 py-2.5 text-[13px] text-white placeholder-zinc-600 outline-none focus:border-coral"
                   />
                 </div>
               );
@@ -291,7 +291,7 @@ export function ConfiguratorDrawer({
                     onChange={(e) => set(field.key, e.target.value)}
                     placeholder="Pantone colors, special instructions, event details..."
                     rows={3}
-                    className="w-full resize-y rounded-lg border border-surface-border bg-[#22222A] px-3.5 py-2.5 text-[13px] leading-relaxed text-white placeholder-zinc-600 outline-none focus:border-coral"
+                    className="w-full resize-y rounded-lg border border-surface-border bg-surface-secondary px-3.5 py-2.5 text-[13px] leading-relaxed text-white placeholder-zinc-600 outline-none focus:border-coral"
                   />
                 </div>
               );

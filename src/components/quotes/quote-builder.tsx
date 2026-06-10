@@ -308,7 +308,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column — Line items (60%) */}
         <div className="flex-1 lg:w-3/5">
-          <div className="rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+          <div className="rounded-xl border border-surface-border bg-surface-card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Line Items</h2>
 
@@ -324,13 +324,13 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                   </button>
 
                   {showAddMenu && (
-                    <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-[#333338] bg-[#0D0D0F] py-1 shadow-xl">
+                    <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-surface-border bg-surface-bg py-1 shadow-xl">
                       <button
                         onClick={() => {
                           setShowCatalog(true);
                           setShowAddMenu(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-[#1A1A1E] hover:text-white"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-surface-card hover:text-white"
                       >
                         From Catalog
                       </button>
@@ -339,7 +339,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                           setShowItemForm(true);
                           setShowAddMenu(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-[#1A1A1E] hover:text-white"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-400 hover:bg-surface-card hover:text-white"
                       >
                         Ad Hoc Item
                       </button>
@@ -366,7 +366,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                 editingItemId === item.id ? (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-coral/30 bg-[#22222A] p-4"
+                    className="rounded-lg border border-coral/30 bg-surface-secondary p-4"
                   >
                     <QuoteItemForm
                       initialData={{
@@ -414,7 +414,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
 
               {/* Add item form */}
               {showItemForm && (
-                <div className="rounded-lg border border-coral/30 bg-[#22222A] p-4">
+                <div className="rounded-lg border border-coral/30 bg-surface-secondary p-4">
                   <QuoteItemForm
                     onSubmit={handleAddItem}
                     onCancel={() => setShowItemForm(false)}
@@ -426,7 +426,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
 
             {/* Total */}
             {quote && quote.items.length > 0 && (
-              <div className="mt-4 flex items-center justify-between border-t border-[#333338] pt-4">
+              <div className="mt-4 flex items-center justify-between border-t border-surface-border pt-4">
                 <span className="text-sm font-medium text-gray-400">
                   Quote Total
                 </span>
@@ -439,7 +439,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
 
           {/* Mockups */}
           {quoteId && (
-            <div className="mt-6 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+            <div className="mt-6 rounded-xl border border-surface-border bg-surface-card p-5">
               <h2 className="mb-3 text-lg font-semibold text-white">
                 Mockups
               </h2>
@@ -459,7 +459,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
 
         {/* Right column — Settings panel (40%) */}
         <div className="lg:w-2/5">
-          <div className="sticky top-24 rounded-xl border border-[#333338] bg-[#1A1A1E] p-5">
+          <div className="sticky top-24 rounded-xl border border-surface-border bg-surface-card p-5">
             <QuoteSettingsPanel
               quoteId={quoteId}
               status={quote?.status}
@@ -526,7 +526,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       {/* Send confirmation dialog */}
       {showConfirmSend && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-[#333338] bg-[#0D0D0F] p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-surface-border bg-surface-bg p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-white">
               Send Quote to Client?
             </h3>
@@ -542,7 +542,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowConfirmSend(false)}
-                className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -561,7 +561,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       {/* Convert confirmation dialog */}
       {showConfirmConvert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-[#333338] bg-[#0D0D0F] p-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-surface-border bg-surface-bg p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-white">
               Convert to Order?
             </h3>
@@ -572,7 +572,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowConfirmConvert(false)}
-                className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+                className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
               >
                 Cancel
               </button>

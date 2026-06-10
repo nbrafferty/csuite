@@ -47,7 +47,7 @@ export function PaymentTermsSummaryCard({
     }).format(n);
 
   return (
-    <div className="rounded-lg border border-[#333338] bg-[#1A1A1E] p-4">
+    <div className="rounded-lg border border-surface-border bg-surface-card p-4">
       <h4 className="mb-2 text-sm font-medium text-white">Payment Terms</h4>
       {paymentTermType === "FULL" && (
         <div className="space-y-1">

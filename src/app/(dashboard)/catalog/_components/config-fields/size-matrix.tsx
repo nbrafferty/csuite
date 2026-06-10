@@ -57,7 +57,7 @@ export function SizeMatrix({
     <div>
       <div className="mb-3 flex items-center justify-between">
         <FieldLabel label={label} noMargin />
-        <div className="flex gap-0 rounded-lg border border-surface-border bg-[#22222A] p-[3px]">
+        <div className="flex gap-0 rounded-lg border border-surface-border bg-surface-secondary p-[3px]">
           {(["total", "perSize"] as const).map((mode) => (
             <button
               key={mode}
@@ -84,12 +84,12 @@ export function SizeMatrix({
             onChange={(e) =>
               onTotalQtyChange(Math.max(1, parseInt(e.target.value) || 0))
             }
-            className="w-full rounded-lg border border-surface-border bg-[#22222A] px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-coral"
+            className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3.5 py-2.5 text-[13px] text-white outline-none focus:border-coral"
           />
         </div>
       )}
 
-      <div className="overflow-hidden rounded-[10px] border border-surface-border bg-[#22222A]">
+      <div className="overflow-hidden rounded-[10px] border border-surface-border bg-surface-secondary">
         {/* Header */}
         <div className="grid border-b border-surface-border" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
           <div className="p-2 text-center text-[9px] font-extrabold uppercase tracking-wider text-zinc-500">

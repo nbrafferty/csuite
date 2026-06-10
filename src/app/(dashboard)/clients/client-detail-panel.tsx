@@ -133,7 +133,7 @@ const RECENT_ORDERS: Record<string, Order[]> = {
 function SectionHeader({ title, viewAllHref }: { title: string; viewAllHref: string }) {
   return (
     <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
+      <h3 className="font-label text-[11px] uppercase tracking-label text-foreground">{title}</h3>
       <Link href={viewAllHref} className="text-xs text-coral hover:text-coral-light">
         View All →
       </Link>
@@ -210,7 +210,7 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                 {client.name[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-foreground">{client.name}</h2>
+                <h2 className="font-display text-lg uppercase tracking-display text-foreground">{client.name}</h2>
                 <span className={cn(
                   "mt-1 inline-block rounded-full px-2.5 py-1 text-[10px] font-medium",
                   (STATUS_BADGE[client.status] ?? STATUS_BADGE.active).className

@@ -61,7 +61,7 @@ export function OrdersView() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Orders</h1>
+          <h1 className="font-display text-2xl uppercase tracking-display text-white">Orders</h1>
           <p className="mt-1 text-sm text-gray-400">
             Manage and track your orders.
           </p>
@@ -108,7 +108,7 @@ export function OrdersView() {
                 "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === s.value
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-gray-400 hover:text-white"
+                  : "bg-surface-secondary text-gray-400 hover:text-white"
               )}
             >
               {s.label}
@@ -144,7 +144,7 @@ export function OrdersView() {
               className={cn(
                 "rounded-l-lg p-2 transition-colors",
                 view === "list"
-                  ? "bg-[#22222A] text-white"
+                  ? "bg-surface-secondary text-white"
                   : "text-gray-500 hover:text-white"
               )}
             >
@@ -156,7 +156,7 @@ export function OrdersView() {
               className={cn(
                 "rounded-r-lg p-2 transition-colors",
                 view === "kanban"
-                  ? "bg-[#22222A] text-white"
+                  ? "bg-surface-secondary text-white"
                   : "text-gray-500 hover:text-white"
               )}
             >

@@ -110,7 +110,7 @@ export function ProjectCreateDialog({
         style={{ backgroundColor: COLORS.surface, borderColor: COLORS.cardBorder }}
       >
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold" style={{ color: COLORS.textPrimary }}>New Project</h2>
+          <h2 className="font-display text-lg uppercase tracking-display text-white">New Project</h2>
           <button onClick={handleClose} className="rounded-lg p-1 transition-colors hover:bg-white/10" style={{ color: COLORS.textMuted }}>
             <X className="h-5 w-5" />
           </button>

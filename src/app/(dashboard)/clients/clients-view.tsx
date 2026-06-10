@@ -49,7 +49,7 @@ export function ClientsView() {
     <div className="relative">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Clients</h1>
+        <h1 className="font-display text-2xl uppercase tracking-display text-foreground">Clients</h1>
         <p className="mt-1 text-sm text-foreground-muted">
           Managing {totalCount} client organization{totalCount !== 1 ? "s" : ""}
         </p>

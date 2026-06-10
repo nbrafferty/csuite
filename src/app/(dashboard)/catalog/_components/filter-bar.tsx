@@ -73,7 +73,7 @@ function FilterDropdown({
           "flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3.5 py-2 text-xs font-semibold transition-all duration-150",
           isActive
             ? "border-coral-border bg-coral-dim text-coral"
-            : "border-surface-border bg-[#22222A] text-zinc-400 hover:border-zinc-500"
+            : "border-surface-border bg-surface-secondary text-zinc-400 hover:border-zinc-500"
         )}
       >
         {display}

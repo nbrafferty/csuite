@@ -140,7 +140,7 @@ export function ProjectCard({ project, variant, isAdminView }: ProjectCardProps)
       </div>
 
       {/* Name */}
-      <h3 className="mb-1 text-base font-semibold" style={{ color: COLORS.textPrimary }}>
+      <h3 className="mb-1 text-base font-medium text-white">
         {project.name}
       </h3>
 

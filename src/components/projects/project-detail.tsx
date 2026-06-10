@@ -128,7 +128,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold" style={{ color: COLORS.textPrimary }}>
+                <h1 className="font-display text-2xl uppercase tracking-display text-white">
                   {project.name}
                 </h1>
                 {project.description && (
@@ -144,7 +144,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           {/* Orders section */}
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold" style={{ color: COLORS.textPrimary }}>
+              <h2 className="font-label text-[11px] uppercase tracking-label text-white">
                 Orders ({project.orders.length})
               </h2>
               {isAdmin && !showAddOrder && (
@@ -238,7 +238,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           {/* Quotes section */}
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold" style={{ color: COLORS.textPrimary }}>
+              <h2 className="font-label text-[11px] uppercase tracking-label text-white">
                 Quotes ({project.quotes.length})
               </h2>
               {isAdmin && !showAddQuote && (

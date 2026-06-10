@@ -31,7 +31,7 @@ export function QuoteSummaryPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6">
         {items.length === 0 ? (
-          <div className="mt-2 rounded-xl border border-surface-border bg-[#22222A] px-6 py-8 text-center">
+          <div className="mt-2 rounded-xl border border-surface-border bg-surface-secondary px-6 py-8 text-center">
             <ClipboardList className="mx-auto mb-3 h-9 w-9 text-zinc-600" />
             <div className="text-[13px] leading-relaxed text-zinc-400">
               Your quote list is empty. Add items from the catalog to get
@@ -50,7 +50,7 @@ export function QuoteSummaryPanel({
                 <div
                   key={item.productId}
                   className={cn(
-                    "overflow-hidden rounded-[10px] border bg-[#22222A]",
+                    "overflow-hidden rounded-[10px] border bg-surface-secondary",
                     isConfigured
                       ? "border-emerald-500/20"
                       : "border-surface-border"

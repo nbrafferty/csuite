@@ -76,7 +76,7 @@ export function TaskCreateDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to be done?"
-              className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
               autoFocus
             />
           </div>
@@ -91,7 +91,7 @@ export function TaskCreateDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add details..."
               rows={3}
-              className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none resize-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none resize-none"
             />
           </div>
 
@@ -106,7 +106,7 @@ export function TaskCreateDialog({
                 onChange={(e) =>
                   setPriority(e.target.value as "HIGH" | "MEDIUM" | "LOW")
                 }
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
               >
                 <option value="HIGH">High</option>
                 <option value="MEDIUM">Medium</option>
@@ -121,7 +121,7 @@ export function TaskCreateDialog({
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white focus:border-coral focus:outline-none"
               />
             </div>
           </div>

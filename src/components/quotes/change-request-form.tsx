@@ -58,7 +58,7 @@ export function ChangeRequestForm({
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Describe the changes you'd like to see..."
           rows={3}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
           required
         />
       </div>
@@ -93,7 +93,7 @@ export function ChangeRequestForm({
                     }))
                   }
                   placeholder="Optional comment for this item..."
-                  className="w-full rounded-md border border-[#333338] bg-[#22222A] px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+                  className="w-full rounded-md border border-surface-border bg-surface-secondary px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
                 />
               </div>
             ))}
@@ -105,7 +105,7 @@ export function ChangeRequestForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-[#333338] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+          className="rounded-lg border border-surface-border px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
         >
           Cancel
         </button>

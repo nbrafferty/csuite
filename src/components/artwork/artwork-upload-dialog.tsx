@@ -223,7 +223,7 @@ export function ArtworkUploadDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Artwork name"
-              className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
             />
           </div>
 
@@ -236,7 +236,7 @@ export function ArtworkUploadDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description..."
               rows={2}
-              className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none resize-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none resize-none"
             />
           </div>
 
@@ -248,7 +248,7 @@ export function ArtworkUploadDialog({
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="Comma-separated tags (e.g. logo, brand, vector)"
-              className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
             />
           </div>
         </div>
@@ -337,7 +337,7 @@ export function ArtworkUploadDialog({
                 value={dropboxLink}
                 onChange={(e) => setDropboxLink(e.target.value)}
                 placeholder="https://www.dropbox.com/s/..."
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
               />
             </div>
             <div>
@@ -348,7 +348,7 @@ export function ArtworkUploadDialog({
                 value={dropboxFileName}
                 onChange={(e) => setDropboxFileName(e.target.value)}
                 placeholder="original-filename.ai"
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
               />
             </div>
 
@@ -381,7 +381,7 @@ export function ArtworkUploadDialog({
                 value={googleDriveLink}
                 onChange={(e) => setGoogleDriveLink(e.target.value)}
                 placeholder="https://drive.google.com/file/d/..."
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
               />
             </div>
             <div>
@@ -392,7 +392,7 @@ export function ArtworkUploadDialog({
                 value={googleDriveFileName}
                 onChange={(e) => setGoogleDriveFileName(e.target.value)}
                 placeholder="design-file.psd"
-                className="w-full rounded-lg border border-surface-border bg-[#0D0D0F] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+                className="w-full rounded-lg border border-surface-border bg-surface-bg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
               />
             </div>
 

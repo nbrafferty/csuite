@@ -96,7 +96,7 @@ export function QuotesList() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full rounded-lg border border-[#333338] bg-[#1A1A1E] py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
+            className="w-full rounded-lg border border-surface-border bg-surface-card py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
           />
         </div>
 
@@ -113,7 +113,7 @@ export function QuotesList() {
                 "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 statusFilter === f.value
                   ? "bg-coral text-white"
-                  : "bg-[#22222A] text-gray-400 hover:text-white"
+                  : "bg-surface-secondary text-gray-400 hover:text-white"
               )}
             >
               {f.label}
@@ -130,7 +130,7 @@ export function QuotesList() {
               setPage(1);
             }}
             className={cn(
-              "rounded-lg border border-[#333338] bg-[#1A1A1E] px-3 py-1.5 text-xs font-medium text-gray-400 outline-none",
+              "rounded-lg border border-surface-border bg-surface-card px-3 py-1.5 text-xs font-medium text-gray-400 outline-none",
               clientFilter && "border-coral text-white"
             )}
           >
@@ -158,10 +158,10 @@ export function QuotesList() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-[#333338] bg-[#1A1A1E]">
+      <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-card">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[#333338]">
+            <tr className="border-b border-surface-border">
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 Quote #
               </th>
@@ -190,9 +190,9 @@ export function QuotesList() {
           <tbody>
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-[#333338]/50">
+                <tr key={i} className="border-b border-surface-border/50">
                   <td colSpan={isStaff ? 7 : 6} className="px-4 py-4">
-                    <div className="h-4 w-full animate-pulse rounded bg-[#22222A]" />
+                    <div className="h-4 w-full animate-pulse rounded bg-surface-secondary" />
                   </td>
                 </tr>
               ))}
@@ -226,7 +226,7 @@ export function QuotesList() {
               <tr
                 key={quote.id}
                 onClick={() => router.push(`/quotes/${quote.id}`)}
-                className="cursor-pointer border-b border-[#333338]/50 transition-colors hover:bg-[#22222A]/50"
+                className="cursor-pointer border-b border-surface-border/50 transition-colors hover:bg-surface-secondary/50"
               >
                 <td className="px-4 py-3 text-sm font-mono text-gray-400">
                   {quote.number}

@@ -110,7 +110,7 @@ export function QuoteSettingsPanel({
           value={companyId}
           onChange={(e) => onCompanyIdChange(e.target.value)}
           disabled={!!quoteId || isReadOnly}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
         >
           <option value="">Select a client...</option>
           {companies.map((c) => (
@@ -132,7 +132,7 @@ export function QuoteSettingsPanel({
           onChange={(e) => onTitleChange(e.target.value)}
           disabled={isReadOnly}
           placeholder='e.g. "Summer Event Tees"'
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
         />
       </div>
 
@@ -149,7 +149,7 @@ export function QuoteSettingsPanel({
             if (e.target.value !== "NET") onNetDaysChange(null);
           }}
           disabled={isReadOnly}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
         >
           <option value="FULL">Pay in Full</option>
           <option value="DEPOSIT">Deposit</option>
@@ -173,7 +173,7 @@ export function QuoteSettingsPanel({
               }
               disabled={isReadOnly}
               placeholder="50"
-              className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
             />
           </div>
         )}
@@ -195,7 +195,7 @@ export function QuoteSettingsPanel({
               }
               disabled={isReadOnly}
               placeholder="30"
-              className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
             />
           </div>
         )}
@@ -211,7 +211,7 @@ export function QuoteSettingsPanel({
           value={expiresAt}
           onChange={(e) => onExpiresAtChange(e.target.value)}
           disabled={isReadOnly}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white focus:border-coral focus:outline-none disabled:opacity-50"
         />
         {!expiresAt && (
           <p className="mt-0.5 text-xs text-gray-600">No expiry set</p>
@@ -230,7 +230,7 @@ export function QuoteSettingsPanel({
           disabled={isReadOnly}
           placeholder="Notes visible only to staff..."
           rows={2}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
         />
       </div>
 
@@ -245,7 +245,7 @@ export function QuoteSettingsPanel({
           disabled={isReadOnly}
           placeholder="This message will be shown to the client..."
           rows={2}
-          className="w-full rounded-lg border border-[#333338] bg-[#22222A] px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-surface-border bg-surface-secondary px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none disabled:opacity-50"
         />
       </div>
 
@@ -291,13 +291,13 @@ export function QuoteSettingsPanel({
       )}
 
       {/* Action buttons */}
-      <div className="space-y-2 border-t border-[#333338] pt-4">
+      <div className="space-y-2 border-t border-surface-border pt-4">
         {(!status || status === "DRAFT") && (
           <>
             <button
               onClick={onSave}
               disabled={isSaving}
-              className="w-full rounded-lg border border-[#333338] px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50"
+              className="w-full rounded-lg border border-surface-border px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50"
             >
               {isSaving ? "Saving..." : "Save Draft"}
             </button>
@@ -316,7 +316,7 @@ export function QuoteSettingsPanel({
             <button
               onClick={onSave}
               disabled={isSaving}
-              className="w-full rounded-lg border border-[#333338] px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50"
+              className="w-full rounded-lg border border-surface-border px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50"
             >
               {isSaving ? "Saving..." : "Save Changes"}
             </button>

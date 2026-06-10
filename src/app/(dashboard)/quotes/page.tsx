@@ -23,7 +23,7 @@ export default function QuotesPage() {
   return (
     <div>
       {/* Tabs */}
-      <div className="mb-6 flex items-center gap-1 border-b border-[#333338]">
+      <div className="mb-6 flex items-center gap-1 border-b border-surface-border">
         <button
           onClick={() => setActiveTab("quotes")}
           className={cn(
@@ -54,7 +54,7 @@ export default function QuotesPage() {
                 "rounded-full px-2 py-0.5 text-[10px] font-medium",
                 activeTab === "requests"
                   ? "bg-coral/20 text-coral"
-                  : "bg-[#22222A] text-gray-500"
+                  : "bg-surface-secondary text-gray-500"
               )}
             >
               {requestCount}

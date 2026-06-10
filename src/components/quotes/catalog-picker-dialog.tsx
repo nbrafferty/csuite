@@ -39,9 +39,9 @@ export function CatalogPickerDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="mx-4 w-full max-w-lg rounded-xl border border-[#333338] bg-[#0D0D0F] shadow-2xl">
+      <div className="mx-4 w-full max-w-lg rounded-xl border border-surface-border bg-surface-bg shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#333338] px-5 py-4">
+        <div className="flex items-center justify-between border-b border-surface-border px-5 py-4">
           <h3 className="text-lg font-semibold text-white">
             Add from Catalog
           </h3>
@@ -54,7 +54,7 @@ export function CatalogPickerDialog({
         </div>
 
         {/* Search */}
-        <div className="border-b border-[#333338] px-5 py-3">
+        <div className="border-b border-surface-border px-5 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
             <input
@@ -62,7 +62,7 @@ export function CatalogPickerDialog({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products..."
-              className="w-full rounded-lg border border-[#333338] bg-[#1A1A1E] py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
+              className="w-full rounded-lg border border-surface-border bg-surface-card py-2 pl-10 pr-3 text-sm text-white placeholder-gray-500 focus:border-coral focus:outline-none"
               autoFocus
             />
           </div>
@@ -94,10 +94,10 @@ export function CatalogPickerDialog({
                 onSelect(product);
                 onClose();
               }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[#1A1A1E]"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-card"
             >
               {product.thumbnailUrl ? (
-                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-[#22222A]">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-surface-secondary">
                   <img
                     src={product.thumbnailUrl}
                     alt=""
@@ -105,7 +105,7 @@ export function CatalogPickerDialog({
                   />
                 </div>
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#22222A]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-secondary">
                   <Package className="h-5 w-5 text-gray-600" />
                 </div>
               )}
