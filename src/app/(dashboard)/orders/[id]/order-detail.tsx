@@ -17,6 +17,7 @@ import {
   AlertCircle,
   CheckSquare,
   Image,
+  Stamp,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
@@ -27,6 +28,7 @@ import { OrderBillingTab } from "./tabs/billing-tab";
 import { OrderActivityTab } from "./tabs/activity-tab";
 import { OrderTasksTab } from "./tabs/tasks-tab";
 import { OrderArtworkTab } from "./tabs/artwork-tab";
+import { OrderProofsTab } from "./tabs/proofs-tab";
 import { ProjectPicker } from "@/components/projects/project-picker";
 
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
@@ -47,6 +49,7 @@ const TABS = [
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "tasks", label: "Tasks", icon: CheckSquare },
   { id: "artwork", label: "Artwork", icon: Image },
+  { id: "proofs", label: "Proofs", icon: Stamp },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "activity", label: "Activity", icon: Clock },
 ] as const;
@@ -258,6 +261,13 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       {activeTab === "shipping" && <OrderShippingTab order={order} isStaff={isStaff} />}
       {activeTab === "tasks" && <OrderTasksTab orderId={order.id} isStaff={isStaff} />}
       {activeTab === "artwork" && <OrderArtworkTab orderId={order.id} />}
+      {activeTab === "proofs" && (
+        <OrderProofsTab
+          orderId={order.id}
+          companyId={order.companyId}
+          isStaff={isStaff}
+        />
+      )}
       {activeTab === "billing" && <OrderBillingTab order={order} isStaff={isStaff} />}
       {activeTab === "activity" && <OrderActivityTab orderId={order.id} />}
     </div>

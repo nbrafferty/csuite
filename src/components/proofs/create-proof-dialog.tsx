@@ -17,6 +17,8 @@ type CreateProofDialogProps = {
   onCreated: (proofId: string) => void;
   companyId: string;
   isStaff: boolean;
+  /** When set, the proof is linked to this order and the company selector is hidden. */
+  orderId?: string;
 };
 
 export function CreateProofDialog({
@@ -25,6 +27,7 @@ export function CreateProofDialog({
   onCreated,
   companyId,
   isStaff,
+  orderId,
 }: CreateProofDialogProps) {
   const [title, setTitle] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState(companyId);
@@ -34,7 +37,7 @@ export function CreateProofDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: companies } = trpc.clientOrg.list.useQuery(undefined, {
-    enabled: open && isStaff,
+    enabled: open && isStaff && !orderId,
   });
 
   const createProof = trpc.proof.create.useMutation();
@@ -79,7 +82,8 @@ export function CreateProofDialog({
     try {
       const proof = await createProof.mutateAsync({
         title: title.trim(),
-        companyId: selectedCompanyId,
+        companyId: orderId ? companyId : selectedCompanyId,
+        orderId,
       });
 
       const versionId = proof.currentVersion?.id;
@@ -177,8 +181,8 @@ export function CreateProofDialog({
             />
           </div>
 
-          {/* Company selector — staff only */}
-          {isStaff && companies && (
+          {/* Company selector — staff only, hidden when order context fixes the company */}
+          {isStaff && !orderId && companies && (
             <div>
               <label className="mb-1.5 block font-label text-[11px] uppercase tracking-label text-ink-muted">
                 Client
