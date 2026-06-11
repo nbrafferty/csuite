@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, AlertCircle, Send, Ban } from "lucide-react";
 import { InvoiceStatusBadge } from "@/components/orders/invoice-status-badge";
+import { StripePaymentSection } from "@/components/billing/stripe-payment-form";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("en-US", {
@@ -89,7 +90,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{invoice.number}</h1>
+            <h1 className="font-display text-2xl uppercase tracking-display text-white">{invoice.number}</h1>
             <InvoiceStatusBadge status={invoice.status} />
           </div>
           <p className="mt-1 text-sm text-gray-500">
@@ -221,6 +222,15 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         </div>
       </div>
 
+      {/* Online payment — clients pay open invoices via Stripe */}
+      {!isStaff &&
+        outstanding > 0.5 &&
+        (invoice.status === "SENT" ||
+          invoice.status === "PARTIALLY_PAID" ||
+          invoice.status === "OVERDUE") && (
+          <StripePaymentSection invoiceId={invoiceId} outstanding={outstanding} />
+        )}
+
       {/* Payment form */}
       {showPaymentForm && isStaff && (
         <RecordPaymentForm
@@ -253,7 +263,11 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                   )}
                 </div>
                 <span className="text-xs text-gray-500">
-                  by {payment.recordedBy?.name ?? "Unknown"}
+                  {payment.recordedBy?.name
+                    ? `by ${payment.recordedBy.name}`
+                    : payment.method === "STRIPE"
+                      ? "Paid online"
+                      : "by Unknown"}
                 </span>
               </div>
             ))}

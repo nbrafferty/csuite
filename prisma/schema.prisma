@@ -875,13 +875,14 @@ model Payment {
   amount                Decimal       @db.Decimal(10, 2)
   method                PaymentMethod
   reference             String?
-  recordedByUserId      String        @map("recorded_by_user_id")
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  recordedByUserId      String?       @map("recorded_by_user_id")
   notes                 String?       @db.Text
   paidAt                DateTime      @default(now()) @map("paid_at")
   createdAt             DateTime      @default(now()) @map("created_at")
 
   invoice               Invoice       @relation(fields: [invoiceId], references: [id])
-  recordedBy            User          @relation("PaymentRecorder", fields: [recordedByUserId], references: [id])
+  recordedBy            User?         @relation("PaymentRecorder", fields: [recordedByUserId], references: [id])
 
   @@index([invoiceId])
   @@map("payments")

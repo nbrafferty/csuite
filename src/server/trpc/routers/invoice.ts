@@ -3,6 +3,8 @@ import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 import { InvoiceStatus, PaymentMethod, Prisma } from "@prisma/client";
 import { generateInvoiceNumber } from "../../lib/invoice-number";
+import { getStripe, isStripeConfigured } from "../../lib/stripe";
+import { applyPayment } from "../../lib/apply-payment";
 import { TRPCError } from "@trpc/server";
 
 export const invoiceRouter = router({
@@ -200,37 +202,94 @@ export const invoiceRouter = router({
         });
       }
 
-      const payment = await prisma.payment.create({
-        data: {
-          invoiceId: input.invoiceId,
-          amount: input.amount,
-          method: input.method,
-          reference: input.reference,
-          recordedByUserId: ctx.user.id,
-          notes: input.notes,
-          paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
-        },
+      return applyPayment({
+        invoiceId: input.invoiceId,
+        amount: input.amount,
+        method: input.method,
+        reference: input.reference,
+        recordedByUserId: ctx.user.id,
+        notes: input.notes,
+        paidAt: input.paidAt ? new Date(input.paidAt) : undefined,
       });
+    }),
 
-      // Update invoice status
-      const totalPaid = previouslyPaid + input.amount;
-      let newStatus: InvoiceStatus = invoice.status;
-      if (totalPaid >= invoiceTotal - 0.01) {
-        newStatus = "PAID";
-      } else if (totalPaid > 0) {
-        newStatus = "PARTIALLY_PAID";
-      }
-
-      if (newStatus !== invoice.status) {
-        await prisma.invoice.update({
-          where: { id: input.invoiceId },
-          data: {
-            status: newStatus,
-            paidAt: newStatus === "PAID" ? new Date() : null,
-          },
+  // CREATE PAYMENT INTENT — client (or staff) starts a Stripe payment for
+  // the outstanding balance of an invoice
+  createPaymentIntent: protectedProcedure
+    .input(z.object({ invoiceId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isStripeConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Online payments are not available right now",
         });
       }
 
-      return payment;
+      const isStaff = ctx.role === "CCC_STAFF";
+      const where: Prisma.InvoiceWhereInput = { id: input.invoiceId };
+      if (!isStaff) where.companyId = ctx.companyId;
+
+      const invoice = await prisma.invoice.findFirst({
+        where,
+        include: { items: true, payments: true, company: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invoice.status === "PAID" || invoice.status === "VOID" || invoice.status === "DRAFT") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This invoice is not open for payment",
+        });
+      }
+
+      const invoiceTotal = invoice.items.reduce(
+        (sum, i) => sum + Number(i.lineTotal),
+        0
+      );
+      const previouslyPaid = invoice.payments.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0
+      );
+      const outstanding = Math.round((invoiceTotal - previouslyPaid) * 100) / 100;
+
+      if (outstanding < 0.5) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Outstanding balance is below the minimum chargeable amount",
+        });
+      }
+
+      const stripe = getStripe();
+
+      // Ensure the company has a Stripe customer
+      let stripeCustomerId = invoice.company.stripeCustomerId;
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          name: invoice.company.name,
+          metadata: { companyId: invoice.companyId },
+        });
+        stripeCustomerId = customer.id;
+        await prisma.company.update({
+          where: { id: invoice.companyId },
+          data: { stripeCustomerId },
+        });
+      }
+
+      const intent = await stripe.paymentIntents.create({
+        amount: Math.round(outstanding * 100),
+        currency: "usd",
+        customer: stripeCustomerId,
+        description: `Invoice ${invoice.number}`,
+        metadata: {
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.number,
+          companyId: invoice.companyId,
+        },
+        automatic_payment_methods: { enabled: true },
+      });
+
+      return {
+        clientSecret: intent.client_secret,
+        amount: outstanding,
+      };
     }),
 });
