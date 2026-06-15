@@ -109,6 +109,17 @@ export const invoiceRouter = router({
       const order = await prisma.order.findFirst({ where: { id: input.orderId } });
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
 
+      const existing = await prisma.invoice.findFirst({
+        where: { orderId: input.orderId, status: { not: "VOID" } },
+        select: { number: true },
+      });
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `An invoice (${existing.number}) already exists for this order`,
+        });
+      }
+
       const number = await generateInvoiceNumber(prisma);
 
       return prisma.invoice.create({

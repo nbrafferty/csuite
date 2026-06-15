@@ -47,6 +47,9 @@ export const threadRouter = router({
           messages: {
             orderBy: { createdAt: "desc" },
             take: 1,
+            ...(ctx.role !== "CCC_STAFF"
+              ? { where: { senderType: { not: "internal" } } }
+              : {}),
             select: { body: true, createdAt: true, senderType: true, authorId: true },
           },
           readStates: {
@@ -54,7 +57,13 @@ export const threadRouter = router({
             select: { lastReadAt: true },
             take: 1,
           },
-          _count: { select: { messages: true } },
+          _count: {
+            select: {
+              messages: ctx.role !== "CCC_STAFF"
+                ? { where: { senderType: { not: "internal" } } }
+                : true,
+            },
+          },
         },
       });
 
