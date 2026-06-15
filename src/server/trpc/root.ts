@@ -16,12 +16,14 @@ import { dashboardRouter } from "./routers/dashboard";
 import { taskRouter } from "./routers/task";
 import { artworkRouter } from "./routers/artwork";
 import { proofRouter } from "./routers/proof";
+import { userRouter } from "./routers/user";
 
 export const appRouter = router({
   dashboard: dashboardRouter,
   auth: authRouter,
   company: companyRouter,
   clientOrg: clientRouter,
+  user: userRouter,
   order: orderRouter,
   invoice: invoiceRouter,
   shipment: shipmentRouter,
