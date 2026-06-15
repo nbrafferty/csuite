@@ -11,9 +11,16 @@ export const messageRouter = router({
         limit: z.number().min(1).max(200).default(100),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const whereClause: any = { threadId: input.threadId };
+
+      // Hide internal notes from non-staff users
+      if (ctx.role !== "CCC_STAFF") {
+        whereClause.senderType = { not: "internal" };
+      }
+
       const messages = await prisma.message.findMany({
-        where: { threadId: input.threadId },
+        where: whereClause,
         take: input.limit + 1,
         cursor: input.cursor ? { id: input.cursor } : undefined,
         orderBy: { createdAt: "asc" },

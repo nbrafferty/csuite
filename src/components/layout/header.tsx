@@ -50,6 +50,8 @@ const ROLE_LABELS: Record<string, string> = {
   CLIENT_USER: "User",
 };
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 export function Header() {
   const { data: session } = useSession();
   const { theme, toggleTheme } = useTheme();
@@ -59,6 +61,7 @@ export function Header() {
   const currentEmail = session?.user?.email;
 
   async function handleSwitchUser(email: string) {
+    if (!IS_DEV) return;
     if (email === currentEmail || switching) return;
     setSwitching(true);
     try {
@@ -100,12 +103,12 @@ export function Header() {
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-coral" />
         </button>
 
-        {/* User avatar area with dev switcher */}
+        {/* User avatar area (dev switcher only renders outside production) */}
         {session?.user && (
           <div className="relative">
             <button
-              onClick={() => setSwitcherOpen(!switcherOpen)}
-              className="flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-surface-card"
+              onClick={IS_DEV ? () => setSwitcherOpen(!switcherOpen) : undefined}
+              className={`flex items-center gap-3 rounded-lg p-1.5 transition-colors ${IS_DEV ? "hover:bg-surface-card cursor-pointer" : "cursor-default"}`}
             >
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">
@@ -122,11 +125,11 @@ export function Header() {
                   .join("")
                   .slice(0, 2)}
               </div>
-              <ChevronDown className="h-4 w-4 text-foreground-secondary" />
+              {IS_DEV && <ChevronDown className="h-4 w-4 text-foreground-secondary" />}
             </button>
 
-            {/* Dev user switcher dropdown */}
-            {switcherOpen && (
+            {/* Dev user switcher dropdown — only available outside production */}
+            {IS_DEV && switcherOpen && (
               <>
                 {/* Overlay to close dropdown on outside click */}
                 <div
