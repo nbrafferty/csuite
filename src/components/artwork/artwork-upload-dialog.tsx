@@ -24,6 +24,8 @@ export function ArtworkUploadDialog({
   const [tags, setTags] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dropbox fields
@@ -61,6 +63,7 @@ export function ArtworkUploadDialog({
   });
 
   const isPending =
+    uploading ||
     getUploadUrl.isPending ||
     createNative.isPending ||
     createFromDropbox.isPending ||
@@ -71,6 +74,7 @@ export function ArtworkUploadDialog({
     setDescription("");
     setTags("");
     setSelectedFile(null);
+    setUploadError("");
     setDropboxLink("");
     setDropboxFileName("");
     setGoogleDriveLink("");
@@ -89,6 +93,7 @@ export function ArtworkUploadDialog({
   async function handleUploadSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedFile || !name.trim()) return;
+    setUploadError("");
 
     const tagList = tags
       .split(",")
@@ -96,26 +101,40 @@ export function ArtworkUploadDialog({
       .filter(Boolean);
     const orderIds = defaultOrderId ? [defaultOrderId] : [];
 
-    // Get presigned URL
-    const { s3Key, publicUrl } = await getUploadUrl.mutateAsync({
-      fileName: selectedFile.name,
-      contentType: selectedFile.type || "application/octet-stream",
-    });
+    try {
+      // Allocate a storage key, then upload the file bytes
+      const { uploadUrl, s3Key } = await getUploadUrl.mutateAsync({
+        fileName: selectedFile.name,
+        contentType: selectedFile.type || "application/octet-stream",
+      });
 
-    // In production, would PUT to presigned URL here
-    // For MVP, skip actual S3 upload and use the public URL
+      setUploading(true);
+      const form = new FormData();
+      form.append("file", selectedFile);
+      form.append("key", s3Key);
+      const uploadRes = await fetch(uploadUrl, { method: "POST", body: form });
+      if (!uploadRes.ok) {
+        const data = await uploadRes.json().catch(() => ({}));
+        throw new Error(data.error ?? "File upload failed");
+      }
+      const { url } = await uploadRes.json();
 
-    createNative.mutate({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      fileName: selectedFile.name,
-      fileSize: selectedFile.size,
-      mimeType: selectedFile.type || "application/octet-stream",
-      s3Key,
-      fileUrl: publicUrl,
-      tags: tagList,
-      orderIds,
-    });
+      createNative.mutate({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        mimeType: selectedFile.type || "application/octet-stream",
+        s3Key,
+        fileUrl: url,
+        tags: tagList,
+        orderIds,
+      });
+    } catch (err: any) {
+      setUploadError(err.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function handleDropboxSubmit(e: React.FormEvent) {
@@ -415,9 +434,10 @@ export function ArtworkUploadDialog({
           </form>
         )}
 
-        {(createNative.isError || createFromDropbox.isError || createFromGoogleDrive.isError) && (
+        {(uploadError || createNative.isError || createFromDropbox.isError || createFromGoogleDrive.isError) && (
           <p className="mt-3 text-xs text-red-400">
-            {createNative.error?.message ||
+            {uploadError ||
+              createNative.error?.message ||
               createFromDropbox.error?.message ||
               createFromGoogleDrive.error?.message}
           </p>

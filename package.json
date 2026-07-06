@@ -6,7 +6,7 @@
     "dev": "[ -f .env ] || cp .env.example .env && docker compose up -d --wait && npx prisma generate && npx prisma db push && npm run db:seed && next dev",
     "dev:next": "next dev",
     "build": "prisma generate && next build",
-    "start": "npx prisma db push --force-reset && npm run db:seed && next start",
+    "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -16,6 +16,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1080.0",
     "@dnd-kit/abstract": "^0.3.2",
     "@dnd-kit/dom": "^0.3.2",
     "@dnd-kit/helpers": "^0.3.2",

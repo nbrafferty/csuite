@@ -320,7 +320,7 @@ function PoloProof({
 }
 
 function assetUrl(s3Key: string): string {
-  return `/api/proof-assets/serve?key=${encodeURIComponent(s3Key)}`;
+  return `/api/files/serve?key=${encodeURIComponent(s3Key)}`;
 }
 
 function ProofImage({ s3Key, alt }: { s3Key: string; alt: string }) {
@@ -897,7 +897,7 @@ export default function ProofStudio({ proofId }: ProofStudioProps) {
         const form = new FormData();
         form.append("file", entry.file);
         form.append("s3Key", s3Key);
-        const uploadRes = await fetch("/api/proof-assets/upload", { method: "POST", body: form });
+        const uploadRes = await fetch("/api/files/upload", { method: "POST", body: form });
         if (!uploadRes.ok) {
           console.error("Upload failed:", await uploadRes.text());
         }

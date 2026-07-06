@@ -454,13 +454,13 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                     <option value="overdue">Overdue</option>
                   </select>
                 </div>
-                <button
-                  disabled
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-secondary px-4 py-2.5 text-sm text-foreground-secondary opacity-50 cursor-not-allowed"
+                <Link
+                  href={`/orders?client=${clientId}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-secondary px-4 py-2.5 text-sm text-foreground-secondary transition-colors hover:bg-foreground/[0.03] hover:text-foreground"
                 >
                   <ShoppingCart className="h-4 w-4" />
                   View Orders
-                </button>
+                </Link>
                 <Link
                   href="/messages"
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-secondary px-4 py-2.5 text-sm text-foreground-secondary transition-colors hover:bg-foreground/[0.03] hover:text-foreground"

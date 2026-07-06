@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -33,12 +33,13 @@ const ORDER_STATUSES = [
 
 export function OrdersView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const [view, setView] = useState<"list" | "kanban">("list");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState(searchParams.get("client") ?? "");
 
   const { data: clients } = trpc.clientOrg.list.useQuery(undefined, {
     enabled: isStaff,

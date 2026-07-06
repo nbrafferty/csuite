@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { useSession } from "next-auth/react";
-import { Plus, FileCheck, Clock, AlertTriangle, CheckCircle, Play } from "lucide-react";
+import { Plus, FileCheck, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { CreateProofDialog } from "@/components/proofs/create-proof-dialog";
 
 const statusLabel: Record<string, string> = {
@@ -72,34 +72,6 @@ export default function ProofsPage() {
         companyId={companyId}
         isStaff={isStaff}
       />
-
-      {/* Example proof — interactive demo with seeded data */}
-      <div className="mt-6">
-        <Link
-          href="/proofs/demo"
-          className="group flex items-center justify-between rounded-md border border-dashed border-coral/30 bg-coral/5 px-5 py-4 transition-colors hover:border-coral/50 hover:bg-coral/10"
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-medium text-white group-hover:text-coral-light">
-                Acme Corp Polo — Spring 2025
-              </p>
-              <span className="rounded bg-coral/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-coral">
-                Example
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs text-ink-faint">
-              2 versions · Interactive demo with annotations, comments, and approval flow
-            </p>
-          </div>
-          <div className="ml-4 flex items-center gap-2">
-            <Play className="h-4 w-4 text-coral" />
-            <span className="text-xs font-medium text-coral">
-              Try it
-            </span>
-          </div>
-        </Link>
-      </div>
 
       {isLoading ? (
         <div className="mt-8 space-y-3">

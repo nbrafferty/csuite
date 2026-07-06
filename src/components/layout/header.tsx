@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
-import { Bell, Search, Sun, Moon, ChevronDown } from "lucide-react";
+import { Sun, Moon, ChevronDown } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+
+// Demo-environment user switcher. Only rendered when NEXT_PUBLIC_DEMO_MODE
+// is "true" at build time — these accounts exist only in seeded demo data.
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 const DEV_USERS = [
   {
@@ -74,18 +78,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-surface-border bg-surface-bg/80 px-6 backdrop-blur-sm">
-      {/* Search */}
-      <div className="relative max-w-md flex-1">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-        <input
-          type="text"
-          placeholder="Search orders, products, invoices..."
-          className="h-10 w-full rounded-lg border border-surface-border bg-surface-card pl-10 pr-4 text-sm text-foreground placeholder-foreground-muted outline-none focus:border-coral focus:ring-1 focus:ring-coral"
-        />
-      </div>
-
-      {/* Right side */}
+    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-end border-b border-surface-border bg-surface-bg/80 px-6 backdrop-blur-sm">
       <div className="flex items-center gap-4">
         <button
           onClick={toggleTheme}
@@ -95,17 +88,12 @@ export function Header() {
           {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
 
-        <button className="relative rounded-lg p-2 text-foreground-secondary transition-colors hover:bg-surface-card hover:text-foreground">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-coral" />
-        </button>
-
-        {/* User avatar area with dev switcher */}
+        {/* User identity — opens the demo user switcher in demo mode only */}
         {session?.user && (
           <div className="relative">
             <button
-              onClick={() => setSwitcherOpen(!switcherOpen)}
-              className="flex items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-surface-card"
+              onClick={() => DEMO_MODE && setSwitcherOpen(!switcherOpen)}
+              className={`flex items-center gap-3 rounded-lg p-1.5 transition-colors ${DEMO_MODE ? "hover:bg-surface-card" : "cursor-default"}`}
             >
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">
@@ -122,11 +110,11 @@ export function Header() {
                   .join("")
                   .slice(0, 2)}
               </div>
-              <ChevronDown className="h-4 w-4 text-foreground-secondary" />
+              {DEMO_MODE && <ChevronDown className="h-4 w-4 text-foreground-secondary" />}
             </button>
 
-            {/* Dev user switcher dropdown */}
-            {switcherOpen && (
+            {/* Demo user switcher dropdown */}
+            {DEMO_MODE && switcherOpen && (
               <>
                 {/* Overlay to close dropdown on outside click */}
                 <div
@@ -138,7 +126,7 @@ export function Header() {
                   {/* Header */}
                   <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3">
                     <span className="rounded bg-coral px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                      DEV
+                      DEMO
                     </span>
                     <span className="text-xs font-medium text-foreground-secondary">
                       Switch User

@@ -1,7 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { OrdersView } from "./orders-view";
 
 export default function OrdersPage() {
-  return <OrdersView />;
+  return (
+    <Suspense>
+      <OrdersView />
+    </Suspense>
+  );
 }

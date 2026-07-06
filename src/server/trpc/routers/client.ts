@@ -2,42 +2,63 @@ import { z } from "zod";
 import { router, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 
-// Hardcoded order counts and revenue until Orders feature is built
-const CLIENT_METRICS: Record<string, { activeOrders: number; revenue: number }> = {
-  "acme-corp": { activeOrders: 3, revenue: 24750 },
-  "globex-corp": { activeOrders: 2, revenue: 18200 },
-  "bloom-studio": { activeOrders: 4, revenue: 31400 },
-  "novatech-industries": { activeOrders: 0, revenue: 8500 },
-  "redline-events": { activeOrders: 1, revenue: 6200 },
-  "greenfield-co": { activeOrders: 2, revenue: 14800 },
-};
+// Statuses that count toward "active orders" (in-flight work)
+const ACTIVE_ORDER_STATUSES = [
+  "SUBMITTED",
+  "IN_REVIEW",
+  "PROOFING",
+  "APPROVED",
+  "IN_PRODUCTION",
+  "READY",
+  "SHIPPED",
+] as const;
 
 export const clientRouter = router({
   list: staffProcedure.query(async () => {
-    const companies = await prisma.company.findMany({
-      where: {
-        slug: { not: "central-creative" },
-      },
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
+    const [companies, activeCounts, revenueSums] = await Promise.all([
+      prisma.company.findMany({
+        where: {
+          slug: { not: "central-creative" },
+        },
+        include: {
+          users: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+            orderBy: { createdAt: "asc" },
           },
-          orderBy: { createdAt: "asc" },
+          _count: {
+            select: { users: true },
+          },
         },
-        _count: {
-          select: { users: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.order.groupBy({
+        by: ["companyId"],
+        where: { status: { in: [...ACTIVE_ORDER_STATUSES] } },
+        _count: { id: true },
+      }),
+      prisma.order.groupBy({
+        by: ["companyId"],
+        where: { status: { not: "CANCELLED" } },
+        _sum: { totalAmount: true },
+      }),
+    ]);
+
+    const activeByCompany = new Map(activeCounts.map((r) => [r.companyId, r._count.id]));
+    const revenueByCompany = new Map(
+      revenueSums.map((r) => [r.companyId, Number(r._sum.totalAmount ?? 0)])
+    );
 
     return companies.map((c) => {
       const primaryContact = c.users.find((u) => u.role === "CLIENT_ADMIN") ?? c.users[0];
-      const metrics = CLIENT_METRICS[c.slug] ?? { activeOrders: 0, revenue: 0 };
+      const metrics = {
+        activeOrders: activeByCompany.get(c.id) ?? 0,
+        revenue: revenueByCompany.get(c.id) ?? 0,
+      };
       return {
         id: c.id,
         name: c.name,
@@ -80,7 +101,19 @@ export const clientRouter = router({
 
       if (!company) return null;
 
-      const metrics = CLIENT_METRICS[company.slug] ?? { activeOrders: 0, revenue: 0 };
+      const [activeOrders, revenueAgg] = await Promise.all([
+        prisma.order.count({
+          where: { companyId: company.id, status: { in: [...ACTIVE_ORDER_STATUSES] } },
+        }),
+        prisma.order.aggregate({
+          where: { companyId: company.id, status: { not: "CANCELLED" } },
+          _sum: { totalAmount: true },
+        }),
+      ]);
+      const metrics = {
+        activeOrders,
+        revenue: Number(revenueAgg._sum.totalAmount ?? 0),
+      };
       const primaryContact = company.users.find((u) => u.role === "CLIENT_ADMIN") ?? company.users[0];
 
       return {

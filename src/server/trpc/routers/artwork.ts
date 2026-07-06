@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db/prisma";
-import { buildS3Key, getPresignedUploadUrl, getPublicUrl } from "@/server/lib/s3";
+import { buildS3Key, getPublicUrl } from "@/server/lib/s3";
 
 const ARTWORK_INCLUDE = {
   versions: {
@@ -208,7 +208,8 @@ export const artworkRouter = router({
     return tags.map((t: any) => t.tag);
   }),
 
-  // GET UPLOAD URL — presigned S3 URL
+  // GET UPLOAD URL — allocates a storage key; the client then POSTs the
+  // file to /api/files/upload with this key.
   getUploadUrl: protectedProcedure
     .input(
       z.object({
@@ -223,10 +224,9 @@ export const artworkRouter = router({
       const versionNumber = input.versionNumber ?? 1;
       const tenantId = ctx.companyId ?? "global";
       const s3Key = buildS3Key(tenantId, artworkId, versionNumber, input.fileName);
-      const uploadUrl = await getPresignedUploadUrl(s3Key, input.contentType);
       const publicUrl = getPublicUrl(s3Key);
 
-      return { uploadUrl, s3Key, publicUrl };
+      return { uploadUrl: "/api/files/upload", s3Key, publicUrl };
     }),
 
   // CREATE NATIVE — after S3 upload completes
