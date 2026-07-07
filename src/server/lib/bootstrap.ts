@@ -11,7 +11,12 @@ import { prisma } from "@/server/db/prisma";
  */
 export async function bootstrap() {
   const staffCount = await prisma.user.count({ where: { role: "CCC_STAFF" } });
-  if (staffCount > 0) return;
+  if (staffCount > 0) {
+    console.log(
+      `[bootstrap] Skipping — ${staffCount} staff user(s) already exist. To re-run, the database must have no CCC_STAFF users.`
+    );
+    return;
+  }
 
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
