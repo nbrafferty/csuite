@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, inviteEmail, appBaseUrl } from "@/server/lib/email";
 
 // Statuses that count toward "active orders" (in-flight work)
 const ACTIVE_ORDER_STATUSES = [
@@ -214,6 +215,14 @@ export const clientRouter = router({
           users: { select: { id: true, name: true, email: true } },
         },
       });
+
+      // Invite the primary contact (soft-fails if email isn't configured)
+      const template = inviteEmail({
+        companyName: company.name,
+        inviteCode: company.inviteCode,
+        registerUrl: `${appBaseUrl()}/register`,
+      });
+      await sendEmail({ to: input.contactEmail, ...template });
 
       return { id: company.id, name: company.name, slug: company.slug };
     }),

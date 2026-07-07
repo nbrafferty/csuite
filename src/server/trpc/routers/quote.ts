@@ -6,6 +6,7 @@ import { generateOrderNumber } from "../../lib/order-number";
 import { generateInvoiceNumber } from "../../lib/invoice-number";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, quoteSentEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
 
 // ─── Input Schemas ───
 
@@ -415,7 +416,7 @@ export const quoteRouter = router({
         });
       }
 
-      return prisma.quote.update({
+      const updated = await prisma.quote.update({
         where: { id: input.id },
         data: {
           status: "SENT",
@@ -423,6 +424,19 @@ export const quoteRouter = router({
           clientMessage: input.clientMessage ?? quote.clientMessage,
         },
       });
+
+      // Notify the client's admins (soft-fails if email isn't configured)
+      const recipients = await clientAdminEmails(updated.companyId);
+      if (recipients.length > 0) {
+        const template = quoteSentEmail({
+          quoteNumber: updated.number,
+          quoteTitle: updated.title,
+          quoteUrl: `${appBaseUrl()}/quotes/${updated.id}`,
+        });
+        await sendEmail({ to: recipients, ...template });
+      }
+
+      return updated;
     }),
 
   // APPROVE — Client Admin only, transitions SENT → APPROVED
