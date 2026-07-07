@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { TRPCProvider } from "@/lib/trpc/provider";
+import "@/styles/globals.css";
+import "@/server/auth/types";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "CSuite - Admin Portal",
-  description: "Central Creative Staff Portal",
+  title: "C-Suite | Central Creative Co.",
+  description: "Multi-tenant client order management portal",
 };
 
 export default function RootLayout({
@@ -13,9 +14,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body style={{ background: "#0D0D0F", color: "#FFFFFF", margin: 0 }}>
-        <TRPCProvider>{children}</TRPCProvider>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.remove('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="font-sans">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

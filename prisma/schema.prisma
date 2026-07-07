@@ -3,73 +3,1078 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────
+
+enum UserRole {
+  CLIENT_ADMIN
+  CLIENT_USER
+  CCC_STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum QuoteRequestStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  QUOTED
+  CLOSED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  CHANGES_REQUESTED
+  APPROVED
+  DECLINED
+  EXPIRED
+  CONVERTED
+}
+
+enum OrderStatus {
+  SUBMITTED
+  IN_REVIEW
+  PROOFING
+  APPROVED
+  IN_PRODUCTION
+  READY
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderSource {
+  QUOTE
+  MANUAL
+}
+
+enum ContentType {
+  APPAREL
+  COMMERCIAL_PRINTING
+  SIGNAGE
+  PROMO_ITEM
+  OTHER
+}
+
+enum PricingType {
+  FLAT
+  TIERED
+  RULE_BASED
+}
+
+enum ProofVersionStatus {
+  DRAFT
+  SENT
+  CHANGES_REQUESTED
+  APPROVED
+  SUPERSEDED
+}
+
+enum ProofAnnotationType {
+  PIN
+  REGION
+}
+
+enum ProofAnnotationStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ProofAssetKind {
+  IMAGE
+  PDF
+}
+
+enum ProofDecision {
+  APPROVED
+  CHANGES_REQUESTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum PaymentMethod {
+  STRIPE
+  CHECK
+  WIRE
+  CASH
+  OTHER
+}
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  ACKNOWLEDGED
+  FULFILLED
+}
+
+enum SupplierSource {
+  SS_ACTIVEWEAR
+  SANMAR
+  MANUAL
+}
+
+enum LedgerReason {
+  SYNC
+  MANUAL
+  ORDER_RESERVED
+  ORDER_FULFILLED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+}
+
+enum PaymentTermType {
+  FULL
+  DEPOSIT
+  NET
+}
+
+// ─── Models ──────────────────────────────────────────────────────────
+
+model Company {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  inviteCode        String   @unique @map("invite_code")
+  status            String   @default("active")
+  logoUrl           String?  @map("logo_url")
+  phone             String?
+  address           String?
+  notes             String?
+  stripeCustomerId  String?  @unique @map("stripe_customer_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  users             User[]
+  locations         Location[]
+  orders            Order[]
+  quotes            Quote[]
+  savedProducts     SavedProduct[]
+  artworkAssets     ArtworkAsset[]
+  invoices          Invoice[]
+  messageThreads    MessageThread[]
+  inventoryItems    InventoryItem[]
+  auditLogEvents    AuditLogEvent[]
+  quoteRequests     QuoteRequest[]
+  projects          Project[]
+  proofs            Proof[]
+  catalogProducts   CatalogProduct[]
+  tasks             Task[]
+
+  @@map("companies")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      String   // "ccc_staff" | "client_admin" | "client_user"
-  avatarUrl String?
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String     @id @default(uuid())
+  companyId     String     @map("company_id")
+  email         String     @unique
+  passwordHash  String     @map("password_hash")
+  name          String
+  role          UserRole
+  status        UserStatus @default(INVITED)
+  avatarUrl     String?    @map("avatar_url")
+  invitedBy     String?    @map("invited_by")
+  createdAt     DateTime   @default(now()) @map("created_at")
 
-  assignedThreads Thread[]  @relation("ThreadAssignee")
-  messages        Message[]
+  company       Company    @relation(fields: [companyId], references: [id])
+  inviter       User?      @relation("UserInvites", fields: [invitedBy], references: [id])
+  invitees      User[]     @relation("UserInvites")
+
+  ordersCreated       Order[]          @relation("OrderCreator")
+  paymentsRecorded    Payment[]        @relation("PaymentRecorder")
+  artworkUploads      ArtworkVersion[] @relation("ArtworkUploader")
+  proofsCreated              Proof[]                  @relation("ProofCreatedBy")
+  proofVersionsPublished     ProofVersion[]           @relation("ProofPublishedBy")
+  annotationsAuthored        ProofAnnotation[]        @relation("AnnotationAuthor")
+  annotationsResolved        ProofAnnotation[]        @relation("AnnotationResolver")
+  proofComments              ProofAnnotationComment[] @relation("CommentAuthor")
+  proofApprovals             ProofApproval[]          @relation("ApprovalSigner")
+  threadsCreated      MessageThread[]  @relation("ThreadCreator")
+  threadsAssigned     MessageThread[]  @relation("ThreadAssignee")
+  messagesSent        Message[]
+  threadReadStates    ThreadReadState[]
+  ledgerEntries       InventoryLedgerEntry[]
+  auditLogEvents      AuditLogEvent[]
+  artworkCreated      ArtworkAsset[]   @relation("ArtworkCreator")
+  savedProductsCreated SavedProduct[]  @relation("SavedProductCreator")
+  quoteRequestsCreated QuoteRequest[]  @relation("QuoteRequestCreator")
+  quotesCreated       Quote[]          @relation("QuoteCreator")
+  changeRequests      QuoteChangeRequest[]
+  internalTasksAssigned InternalTask[] @relation("TaskAssignee")
+  projectsCreated     Project[]        @relation("ProjectCreator")
+  createdTasks        Task[]           @relation("TaskCreator")
+  taskAssignments     TaskAssignee[]   @relation("TaskAssignments")
+
+  @@index([companyId])
+  @@index([companyId, role])
+  @@map("users")
 }
 
-model Tenant {
+model Location {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  label         String
+  addressLine1  String   @map("address_line1")
+  addressLine2  String?  @map("address_line2")
+  city          String
+  state         String
+  zip           String
+  country       String   @default("US")
+  contactName   String?  @map("contact_name")
+  contactPhone  String?  @map("contact_phone")
+  isDefault     Boolean  @default(false) @map("is_default")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  company        Company         @relation(fields: [companyId], references: [id])
+  shipments      Shipment[]
+  inventoryItems InventoryItem[]
+
+  @@index([companyId])
+  @@map("locations")
+}
+
+// ─── Quote Request ───────────────────────────────────────────────────
+
+model QuoteRequest {
+  id              String             @id @default(uuid())
+  companyId       String             @map("company_id")
+  createdById     String             @map("created_by_id")
+  status          QuoteRequestStatus @default(DRAFT)
+  title           String
+  description     String?
+  inHandsDate     DateTime?          @map("in_hands_date")
+  attachments     Json?              // Array of {url, filename, size}
+  quoteId         String?            @unique @map("quote_id")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  company         Company            @relation(fields: [companyId], references: [id])
+  creator         User               @relation("QuoteRequestCreator", fields: [createdById], references: [id])
+  quote           Quote?             @relation(fields: [quoteId], references: [id])
+  catalogItems    QuoteRequestItem[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("quote_requests")
+}
+
+model QuoteRequestItem {
+  id               String       @id @default(uuid())
+  quoteRequestId   String       @map("quote_request_id")
+  catalogProductId String?      @map("catalog_product_id")
+  description      String?
+  quantity         Int?
+  notes            String?
+
+  quoteRequest     QuoteRequest   @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  catalogProduct   CatalogProduct? @relation(fields: [catalogProductId], references: [id])
+
+  @@index([quoteRequestId])
+  @@map("quote_request_items")
+}
+
+// ─── Quote ───────────────────────────────────────────────────────────
+
+model Quote {
+  id                String          @id @default(cuid())
+  number            String          @unique
+  companyId         String          @map("company_id")
+  projectId         String?         @map("project_id")
+  createdByUserId   String          @map("created_by_user_id")
+  title             String
+  status            QuoteStatus     @default(DRAFT)
+
+  paymentTermType   PaymentTermType @default(FULL) @map("payment_term_type")
+  depositPercent    Int?            @map("deposit_percent")
+  netDays           Int?            @map("net_days")
+
+  expiresAt         DateTime?       @map("expires_at")
+  notes             String?         @db.Text
+  clientMessage     String?         @db.Text @map("client_message")
+  mockupUrl         String?         @db.Text @map("mockup_url")
+
+  convertedAt       DateTime?       @map("converted_at")
+
+  items             QuoteItem[]
+  changeRequests    QuoteChangeRequest[]
+
+  sentAt            DateTime?       @map("sent_at")
+  approvedAt        DateTime?       @map("approved_at")
+  approvedByUserId  String?         @map("approved_by_user_id")
+  declinedAt        DateTime?       @map("declined_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  company           Company         @relation(fields: [companyId], references: [id])
+  project           Project?        @relation(fields: [projectId], references: [id])
+  createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
+  convertedOrder    Order?
+  quoteRequest      QuoteRequest?
+  artworkLinks      ArtworkQuoteLink[]
+  proofs            Proof[]
+
+  @@index([companyId, status])
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([number])
+  @@index([projectId])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id                String        @id @default(cuid())
+  quoteId           String        @map("quote_id")
+  quote             Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  sortOrder         Int           @default(0) @map("sort_order")
+
+  savedProductId    String?       @map("saved_product_id")
+  savedProduct      SavedProduct? @relation(fields: [savedProductId], references: [id])
+
+  description       String
+  sku               String?
+  color             String?
+  unitPrice         Decimal       @map("unit_price") @db.Decimal(10, 2)
+  quantity          Int
+  decorationNotes   String?       @db.Text @map("decoration_notes")
+  mockupUrl         String?       @db.Text @map("mockup_url")
+  sizeBreakdown     Json?         @map("size_breakdown")
+  lineTotal         Decimal       @map("line_total") @db.Decimal(10, 2)
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model QuoteChangeRequest {
+  id                String        @id @default(cuid())
+  quoteId           String        @map("quote_id")
+  quote             Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  userId            String        @map("user_id")
+  user              User          @relation(fields: [userId], references: [id])
+  message           String        @db.Text
+  itemComments      Json          @default("[]") @map("item_comments")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@index([quoteId])
+  @@map("quote_change_requests")
+}
+
+// ─── Order ───────────────────────────────────────────────────────────
+
+model Order {
+  id                String        @id @default(uuid())
+  number            String        @unique
+  companyId         String        @map("company_id")
+  createdByUserId   String        @map("created_by_user_id")
+  projectId         String?       @map("project_id")
+  quoteId           String?       @unique @map("quote_id")
+
+  title             String
+  status            OrderStatus   @default(SUBMITTED)
+  source            OrderSource   @default(MANUAL)
+
+  paymentTermType   PaymentTermType @default(FULL) @map("payment_term_type")
+  depositPercent    Int?            @map("deposit_percent")
+  netDays           Int?            @map("net_days")
+
+  inHandsDate       DateTime?     @map("in_hands_date")
+  poNumber          String?       @map("po_number")
+  internalNotes     String?       @db.Text @map("internal_notes")
+  clientNotes       String?       @db.Text @map("client_notes")
+
+  totalAmount       Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  company           Company       @relation(fields: [companyId], references: [id])
+  createdBy         User          @relation("OrderCreator", fields: [createdByUserId], references: [id])
+  project           Project?      @relation(fields: [projectId], references: [id])
+  quote             Quote?        @relation(fields: [quoteId], references: [id])
+
+  items             OrderItem[]
+  artworkLinks      OrderArtworkLink[]
+  invoices          Invoice[]
+  shipments         Shipment[]
+  proofs            Proof[]
+  threads           MessageThread[]
+  internalTasks     InternalTask[]
+  purchaseOrders    PurchaseOrder[]
+  tasks             Task[]
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([projectId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String          @id @default(uuid())
+  orderId           String          @map("order_id")
+  sortOrder         Int             @default(0) @map("sort_order")
+  description       String
+  sku               String?
+  color             String?
+  unitPrice         Decimal         @default(0) @map("unit_price") @db.Decimal(10, 2)
+  quantity          Int             @default(1)
+  lineTotal         Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
+  sizeBreakdown     Json?           @map("size_breakdown")
+  decorationNotes   String?         @db.Text @map("decoration_notes")
+  vendorId          String?         @map("vendor_id")
+  costPerUnit       Decimal?        @map("cost_per_unit") @db.Decimal(10, 2)
+  notes             String?         @db.Text
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderArtworkLink {
+  id             String       @id @default(uuid())
+  orderId        String       @map("order_id")
+  artworkAssetId String       @map("artwork_asset_id")
+  linkedByUserId String?      @map("linked_by_user_id")
+  label          String?
+  notes          String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  artworkAsset   ArtworkAsset @relation(fields: [artworkAssetId], references: [id])
+
+  @@unique([orderId, artworkAssetId])
+  @@index([orderId])
+  @@index([artworkAssetId])
+  @@map("order_artwork_links")
+}
+
+// ─── Vendor ──────────────────────────────────────────────────────────
+
+model Vendor {
+  id            String   @id @default(uuid())
+  name          String
+  contactName   String?  @map("contact_name")
+  email         String?
+  phone         String?
+  website       String?
+  address       String?
+  categories    String[] @default([])
+  tags          String[] @default([])
+  notes         String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  orderItems      OrderItem[]
+  catalogProducts CatalogProduct[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@map("vendors")
+}
+
+// ─── Catalog Product ─────────────────────────────────────────────────
+
+model CatalogProduct {
+  id            String      @id @default(uuid())
+  companyId     String?     @map("company_id")
+  name          String
+  sku           String?
+  contentType   ContentType @default(OTHER) @map("content_type")
+  basePrice     Decimal     @default(0) @map("base_price") @db.Decimal(10, 2)
+  pricingType   PricingType @default(FLAT) @map("pricing_type")
+  pricingRules  Json?       @map("pricing_rules")
+  description   String?
+  images        String[]    @default([])
+  options       Json?       // {sizes, colors, materials, etc.}
+  vendorId      String?     @map("vendor_id")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  company           Company?          @relation(fields: [companyId], references: [id])
+  vendor            Vendor?           @relation(fields: [vendorId], references: [id])
+  quoteRequestItems QuoteRequestItem[]
+
+  @@index([contentType])
+  @@map("catalog_products")
+}
+
+model SavedProduct {
+  id                   String   @id @default(uuid())
+  companyId            String   @map("company_id")
+  name                 String
+  sku                  String?
+  color                String?
+  decorationPreset     Json?    @map("decoration_preset")
+  defaultSizeTemplate  Json?    @map("default_size_template")
+  thumbnailUrl         String?  @map("thumbnail_url")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  company              Company     @relation(fields: [companyId], references: [id])
+  creator              User        @relation("SavedProductCreator", fields: [createdBy], references: [id])
+  quoteItems           QuoteItem[]
+
+  @@index([companyId])
+  @@map("saved_products")
+}
+
+// ─── Shipment ────────────────────────────────────────────────────────
+
+model Shipment {
+  id                  String         @id @default(uuid())
+  orderId             String         @map("order_id")
+  locationId          String?        @map("location_id")
+  addressName         String?        @map("address_name")
+  addressLine1        String?        @map("address_line1")
+  addressLine2        String?        @map("address_line2")
+  addressCity         String?        @map("address_city")
+  addressState        String?        @map("address_state")
+  addressZip          String?        @map("address_zip")
+  carrier             String?
+  trackingNumber      String?        @map("tracking_number")
+  trackingUrl         String?        @map("tracking_url")
+  contents            String?        @db.Text
+  status              ShipmentStatus @default(PENDING)
+  shippedAt           DateTime?      @map("shipped_at")
+  deliveredAt         DateTime?      @map("delivered_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  order               Order          @relation(fields: [orderId], references: [id])
+  location            Location?      @relation(fields: [locationId], references: [id])
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+// ─── Purchase Order ──────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  displayId   String              @unique @map("display_id")
+  orderId     String              @map("order_id")
+  vendorId    String              @map("vendor_id")
+  status      PurchaseOrderStatus @default(DRAFT)
+  notes       String?
+  pdfUrl      String?             @map("pdf_url")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  order       Order               @relation(fields: [orderId], references: [id])
+  vendor      Vendor              @relation(fields: [vendorId], references: [id])
+
+  @@index([orderId])
+  @@index([vendorId])
+  @@map("purchase_orders")
+}
+
+// ─── Internal Task ───────────────────────────────────────────────────
+
+model InternalTask {
+  id          String    @id @default(uuid())
+  orderId     String    @map("order_id")
+  title       String
+  assigneeId  String?   @map("assignee_id")
+  dueDate     DateTime? @map("due_date")
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  order       Order     @relation(fields: [orderId], references: [id])
+  assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@index([orderId])
+  @@map("internal_tasks")
+}
+
+// ─── Artwork ─────────────────────────────────────────────────────────
+
+model ArtworkAsset {
+  id             String           @id @default(uuid())
+  companyId      String           @map("company_id")
+  name           String           @default("")
+  description    String?          @db.Text
+  filename       String
+  fileType       String?          @map("file_type")
+  currentVersion Int              @default(1) @map("current_version")
+  createdBy      String           @map("created_by")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at")
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  creator        User             @relation("ArtworkCreator", fields: [createdBy], references: [id])
+  versions       ArtworkVersion[]
+  tags           ArtworkTag[]
+  orderArtworkLinks OrderArtworkLink[]
+  quoteArtworkLinks ArtworkQuoteLink[]
+
+  @@index([companyId])
+  @@map("artwork_assets")
+}
+
+model ArtworkVersion {
+  id            String       @id @default(uuid())
+  artworkId     String       @map("artwork_id")
+  versionNumber Int          @map("version_number")
+  fileName      String       @map("file_name")
+  fileUrl       String       @map("file_url")
+  fileSize      Int          @map("file_size")
+  mimeType      String       @map("mime_type")
+  uploadedBy    String       @map("uploaded_by")
+  notes         String?      @db.Text
+  sourceType    String       @default("NATIVE") @map("source_type")
+  s3Key         String?      @map("s3_key")
+  dropboxLink   String?      @map("dropbox_link")
+  dropboxPath   String?      @map("dropbox_path")
+  googleDriveFileId   String? @map("google_drive_file_id")
+  googleDriveLink     String? @map("google_drive_link")
+  thumbnailUrl  String?      @map("thumbnail_url")
+  sourceAvailable Boolean    @default(true) @map("source_available")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  artwork       ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  uploader      User         @relation("ArtworkUploader", fields: [uploadedBy], references: [id])
+
+  @@unique([artworkId, versionNumber])
+  @@index([artworkId])
+  @@map("artwork_versions")
+}
+
+model ArtworkTag {
+  id          String       @id @default(uuid())
+  artworkId   String       @map("artwork_id")
+  tag         String
+
+  artwork     ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, tag])
+  @@index([tag])
+  @@index([artworkId])
+  @@map("artwork_tags")
+}
+
+model ArtworkQuoteLink {
+  id             String       @id @default(uuid())
+  artworkId      String       @map("artwork_id")
+  quoteId        String       @map("quote_id")
+  linkedByUserId String?      @map("linked_by_user_id")
+  notes          String?
+  linkedAt       DateTime     @default(now()) @map("linked_at")
+
+  artwork        ArtworkAsset @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  quote          Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, quoteId])
+  @@index([artworkId])
+  @@index([quoteId])
+  @@map("artwork_quote_links")
+}
+
+// ─── Proof ───────────────────────────────────────────────────────────
+
+model Proof {
   id               String   @id @default(cuid())
-  companyName      String
-  primaryContact   String
-  billingStatus    String   @default("good") // "good" | "overdue" | "suspended"
-  activeOrderCount Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  companyId        String   @map("company_id")
+  orderId          String?  @map("order_id")
+  quoteId          String?  @map("quote_id")
+  title            String
+  currentVersionId String?  @unique @map("current_version_id")
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  users   User[]
-  threads Thread[]
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order          Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  quote          Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  createdBy      User           @relation("ProofCreatedBy", fields: [createdById], references: [id])
+  currentVersion ProofVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions       ProofVersion[] @relation("ProofVersions")
+
+  @@index([companyId])
+  @@index([orderId])
+  @@index([quoteId])
+  @@map("proofs")
 }
 
-model Thread {
-  id         String   @id @default(cuid())
-  subject    String
-  orderId    String
-  orderTitle String
-  status     String   @default("open") // "open" | "waiting_client" | "waiting_staff" | "resolved"
-  tenantId   String
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
-  assigneeId String?
-  assignee   User?    @relation("ThreadAssignee", fields: [assigneeId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model ProofVersion {
+  id            String             @id @default(cuid())
+  proofId       String             @map("proof_id")
+  versionNumber Int                @map("version_number")
+  status        ProofVersionStatus @default(DRAFT)
+  notes         String?
+  publishedAt   DateTime?          @map("published_at")
+  publishedById String?            @map("published_by_id")
+  createdAt     DateTime           @default(now()) @map("created_at")
 
-  messages  Message[]
-  readState ThreadReadState[]
+  proof           Proof              @relation("ProofVersions", fields: [proofId], references: [id], onDelete: Cascade)
+  currentForProof Proof?             @relation("CurrentVersion")
+  publishedBy     User?              @relation("ProofPublishedBy", fields: [publishedById], references: [id])
+  assets          ProofAsset[]
+  annotations     ProofAnnotation[]
+  approvals       ProofApproval[]
+
+  @@unique([proofId, versionNumber])
+  @@index([proofId])
+  @@map("proof_versions")
+}
+
+model ProofAsset {
+  id        String         @id @default(cuid())
+  versionId String         @map("version_id")
+  kind      ProofAssetKind @default(IMAGE)
+  s3Key     String         @map("s3_key")
+  fileName  String         @map("file_name")
+  mimeType  String         @map("mime_type")
+  width     Int?
+  height    Int?
+  pageCount Int?           @map("page_count")
+  position  Int            @default(0)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  version     ProofVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  annotations ProofAnnotation[]
+
+  @@index([versionId])
+  @@map("proof_assets")
+}
+
+model ProofAnnotation {
+  id           String                @id @default(cuid())
+  versionId    String                @map("version_id")
+  assetId      String                @map("asset_id")
+  type         ProofAnnotationType
+  page         Int                   @default(0)
+  x            Float
+  y            Float
+  w            Float?
+  h            Float?
+  seq          Int
+  status       ProofAnnotationStatus @default(OPEN)
+  authorId     String                @map("author_id")
+  resolvedById String?               @map("resolved_by_id")
+  resolvedAt   DateTime?             @map("resolved_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  version    ProofVersion             @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  asset      ProofAsset               @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  author     User                     @relation("AnnotationAuthor", fields: [authorId], references: [id])
+  resolvedBy User?                    @relation("AnnotationResolver", fields: [resolvedById], references: [id])
+  comments   ProofAnnotationComment[]
+
+  @@index([versionId])
+  @@index([assetId])
+  @@map("proof_annotations")
+}
+
+model ProofAnnotationComment {
+  id           String   @id @default(cuid())
+  annotationId String   @map("annotation_id")
+  authorId     String   @map("author_id")
+  body         String
+  isInternal   Boolean  @default(false) @map("is_internal")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  annotation ProofAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  author     User            @relation("CommentAuthor", fields: [authorId], references: [id])
+
+  @@index([annotationId])
+  @@map("proof_annotation_comments")
+}
+
+model ProofApproval {
+  id         String        @id @default(cuid())
+  versionId  String        @map("version_id")
+  decision   ProofDecision
+  signedName String        @map("signed_name")
+  signedById String        @map("signed_by_id")
+  note       String?
+  ipAddress  String?       @map("ip_address")
+  userAgent  String?       @map("user_agent")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  version  ProofVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  signedBy User         @relation("ApprovalSigner", fields: [signedById], references: [id])
+
+  @@index([versionId])
+  @@map("proof_approvals")
+}
+
+// ─── Invoice & Payment ───────────────────────────────────────────────
+
+model Invoice {
+  id               String        @id @default(uuid())
+  number           String        @unique
+  orderId          String        @map("order_id")
+  companyId        String        @map("company_id")
+  status           InvoiceStatus @default(DRAFT)
+  issuedAt         DateTime?     @map("issued_at")
+  dueDate          DateTime?     @map("due_date")
+  paidAt           DateTime?     @map("paid_at")
+  memo             String?       @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  order            Order         @relation(fields: [orderId], references: [id])
+  company          Company       @relation(fields: [companyId], references: [id])
+  items            InvoiceItem[]
+  payments         Payment[]
+
+  @@index([companyId])
+  @@index([orderId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id            String   @id @default(uuid())
+  invoiceId     String   @map("invoice_id")
+  description   String
+  quantity      Int      @default(1)
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(10, 2)
+  lineTotal     Decimal  @map("line_total") @db.Decimal(10, 2)
+
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  invoiceId             String        @map("invoice_id")
+  amount                Decimal       @db.Decimal(10, 2)
+  method                PaymentMethod
+  reference             String?
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  recordedByUserId      String?       @map("recorded_by_user_id")
+  notes                 String?       @db.Text
+  paidAt                DateTime      @default(now()) @map("paid_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  invoice               Invoice       @relation(fields: [invoiceId], references: [id])
+  recordedBy            User?         @relation("PaymentRecorder", fields: [recordedByUserId], references: [id])
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+// ─── Messaging ───────────────────────────────────────────────────────
+
+model MessageThread {
+  id         String    @id @default(uuid())
+  companyId  String    @map("company_id")
+  orderId    String?   @map("order_id")
+  orderTitle String?   @map("order_title")
+  subject    String
+  status     String    @default("open")
+  createdBy  String    @map("created_by")
+  assigneeId String?   @map("assignee_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  company    Company   @relation(fields: [companyId], references: [id])
+  order      Order?    @relation(fields: [orderId], references: [id])
+  creator    User      @relation("ThreadCreator", fields: [createdBy], references: [id])
+  assignee   User?     @relation("ThreadAssignee", fields: [assigneeId], references: [id])
+  messages   Message[]
+  readStates ThreadReadState[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("message_threads")
 }
 
 model Message {
-  id          String   @id @default(cuid())
-  threadId    String
-  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  senderId    String
-  sender      User     @relation(fields: [senderId], references: [id])
-  senderType  String   // "client" | "staff" | "internal"
-  text        String
-  attachments String   @default("[]") // JSON array of attachment URLs
-  createdAt   DateTime @default(now())
+  id             String        @id @default(uuid())
+  threadId       String        @map("thread_id")
+  authorId       String        @map("author_id")
+  body           String
+  senderType     String        @default("client")  @map("sender_type")
+  attachmentUrls Json?         @map("attachment_urls")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  thread         MessageThread @relation(fields: [threadId], references: [id])
+  author         User          @relation(fields: [authorId], references: [id])
+
+  @@index([threadId])
+  @@map("messages")
 }
 
 model ThreadReadState {
-  id        String   @id @default(cuid())
-  threadId  String
-  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  userId    String
-  readAt    DateTime @default(now())
+  id        String        @id @default(uuid())
+  threadId  String        @map("thread_id")
+  userId    String        @map("user_id")
+  lastReadAt DateTime     @default(now()) @map("last_read_at")
+
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+  user      User          @relation(fields: [userId], references: [id])
 
   @@unique([threadId, userId])
+  @@map("thread_read_states")
+}
+
+// ─── Inventory ───────────────────────────────────────────────────────
+
+model InventoryItem {
+  id            String         @id @default(uuid())
+  companyId     String         @map("company_id")
+  sku           String
+  productName   String         @map("product_name")
+  locationId    String         @map("location_id")
+  onHand        Int            @default(0) @map("on_hand")
+  reserved      Int            @default(0)
+  available     Int            @default(0)
+  supplier      SupplierSource
+  lastSyncedAt  DateTime?      @map("last_synced_at")
+
+  company       Company        @relation(fields: [companyId], references: [id])
+  location      Location       @relation(fields: [locationId], references: [id])
+  ledgerEntries InventoryLedgerEntry[]
+
+  @@index([companyId])
+  @@index([companyId, sku])
+  @@map("inventory_items")
+}
+
+model InventoryLedgerEntry {
+  id              String        @id @default(uuid())
+  inventoryItemId String        @map("inventory_item_id")
+  adjustment      Int
+  reason          LedgerReason
+  performedBy     String        @map("performed_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  performer       User          @relation(fields: [performedBy], references: [id])
+
+  @@index([inventoryItemId])
+  @@map("inventory_ledger_entries")
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────
+
+model AuditLogEvent {
+  id         String      @id @default(uuid())
+  companyId  String      @map("company_id")
+  userId     String      @map("user_id")
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  action     AuditAction
+  changes    Json?
+  ipAddress  String?     @map("ip_address")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, entityType])
+  @@map("audit_log_events")
+}
+
+// ─── Project ─────────────────────────────────────────────────────────
+
+model Project {
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
+  name            String
+  description     String?
+  status          String    @default("PLANNING") // PLANNING | ACTIVE | COMPLETED | ARCHIVED
+  eventDate       DateTime? @map("event_date")
+  clientContact   String?   @map("client_contact")
+  budget          Float?
+  logoUrl         String?   @map("logo_url")
+  createdById     String    @map("created_by_id")
+  archivedAt      DateTime? @map("archived_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company   Company @relation(fields: [companyId], references: [id])
+  createdBy User    @relation("ProjectCreator", fields: [createdById], references: [id])
+  orders    Order[]
+  quotes    Quote[]
+
+  @@index([companyId, status])
+  @@index([companyId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+// ─── Task ───────────────────────────────────────────────────────────
+
+model Task {
+  id                String    @id @default(cuid())
+  orderId           String?   @map("order_id")
+  tenantId          String?   @map("tenant_id")
+  title             String
+  description       String?   @db.Text
+  status            String    @default("TODO")       // TODO | IN_PROGRESS | DONE
+  priority          String    @default("MEDIUM")     // HIGH | MEDIUM | LOW
+  sortOrder         Int       @default(0) @map("sort_order")
+  dueDate           DateTime? @map("due_date")
+  visibility        String    @default("INTERNAL")   // INTERNAL | EXTERNAL
+  archivedAt        DateTime? @map("archived_at")
+  createdByUserId   String    @map("created_by_user_id")
+  completedAt       DateTime? @map("completed_at")
+  completedByUserId String?   @map("completed_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  order             Order?    @relation(fields: [orderId], references: [id])
+  tenant            Company?  @relation(fields: [tenantId], references: [id])
+  createdBy         User      @relation("TaskCreator", fields: [createdByUserId], references: [id])
+  assignees         TaskAssignee[]
+
+  @@index([orderId])
+  @@index([tenantId, visibility])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdByUserId])
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  id         String   @id @default(cuid())
+  taskId     String   @map("task_id")
+  userId     String   @map("user_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation("TaskAssignments", fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignees")
 }

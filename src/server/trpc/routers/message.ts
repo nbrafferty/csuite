@@ -1,150 +1,66 @@
 import { z } from "zod";
-import { router, publicProcedure } from "@/lib/trpc/init";
-import { prisma } from "@/lib/db";
+import { router, protectedProcedure } from "../trpc";
+import { prisma } from "@/server/db/prisma";
 
 export const messageRouter = router({
-  list: publicProcedure
-    .input(z.object({ threadId: z.string() }))
-    .query(async ({ input, ctx }) => {
-      const thread = await prisma.thread.findUniqueOrThrow({
-        where: { id: input.threadId },
-      });
-
-      // Check access
-      if (ctx.userRole !== "ccc_staff" && thread.tenantId !== ctx.tenantId) {
-        throw new Error("Access denied");
-      }
-
-      const where: Record<string, unknown> = { threadId: input.threadId };
-
-      // Filter internal notes for non-staff users
-      if (ctx.userRole !== "ccc_staff") {
-        where.senderType = { not: "internal" };
-      }
-
-      const messages = await prisma.message.findMany({
-        where,
-        include: { sender: true },
-        orderBy: { createdAt: "asc" },
-      });
-
-      return messages.map((msg) => ({
-        id: msg.id,
-        sender: msg.sender.name,
-        senderId: msg.senderId,
-        senderType: msg.senderType,
-        avatar: msg.sender.name
-          .split(" ")
-          .map((w) => w[0])
-          .join(""),
-        time: msg.createdAt.toISOString(),
-        text: msg.text,
-        attachments: JSON.parse(msg.attachments) as string[],
-      }));
-    }),
-
-  send: publicProcedure
+  list: protectedProcedure
     .input(
       z.object({
-        threadId: z.string(),
-        type: z.enum(["reply", "internal"]),
-        text: z.string().min(1),
-        attachments: z.array(z.string()).optional(),
+        threadId: z.string().uuid(),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(200).default(100),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      // Determine senderType
-      let senderType: string;
-      if (input.type === "internal") {
-        if (ctx.userRole !== "ccc_staff") {
-          throw new Error("Only staff can send internal notes");
-        }
-        senderType = "internal";
-      } else {
-        senderType = ctx.userRole === "ccc_staff" ? "staff" : "client";
-      }
-
-      const thread = await prisma.thread.findUniqueOrThrow({
-        where: { id: input.threadId },
+    .query(async ({ input }) => {
+      const messages = await prisma.message.findMany({
+        where: { threadId: input.threadId },
+        take: input.limit + 1,
+        cursor: input.cursor ? { id: input.cursor } : undefined,
+        orderBy: { createdAt: "asc" },
+        include: {
+          author: { select: { id: true, name: true, role: true, avatarUrl: true } },
+        },
       });
 
-      // Auto-update thread status based on the state machine
-      let newStatus = thread.status;
-      if (input.type !== "internal") {
-        if (senderType === "staff") {
-          if (thread.status !== "resolved") {
-            newStatus = "waiting_client";
-          }
-        } else {
-          if (thread.status !== "resolved") {
-            newStatus = "waiting_staff";
-          }
-        }
-        if (thread.status === "resolved") {
-          newStatus = "open";
-        }
+      let nextCursor: string | undefined;
+      if (messages.length > input.limit) {
+        const nextItem = messages.pop();
+        nextCursor = nextItem?.id;
       }
 
-      const [message] = await prisma.$transaction([
-        prisma.message.create({
-          data: {
-            threadId: input.threadId,
-            senderId: ctx.userId,
-            senderType,
-            text: input.text,
-            attachments: JSON.stringify(input.attachments ?? []),
-          },
-          include: { sender: true },
-        }),
-        prisma.thread.update({
-          where: { id: input.threadId },
-          data: {
-            status: newStatus,
-            updatedAt: new Date(),
-          },
-        }),
-      ]);
-
-      return {
-        id: message.id,
-        sender: message.sender.name,
-        senderId: message.senderId,
-        senderType: message.senderType,
-        avatar: message.sender.name
-          .split(" ")
-          .map((w) => w[0])
-          .join(""),
-        time: message.createdAt.toISOString(),
-        text: message.text,
-        attachments: JSON.parse(message.attachments) as string[],
-      };
+      return { messages, nextCursor };
     }),
 
-  getParticipants: publicProcedure
-    .input(z.object({ threadId: z.string() }))
-    .query(async ({ input, ctx }) => {
-      const where: Record<string, unknown> = { threadId: input.threadId };
+  send: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.string().uuid(),
+        body: z.string().min(1).max(10000),
+        senderType: z.enum(["client", "staff", "internal"]).default("client"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const senderType =
+        ctx.role === "CCC_STAFF" ? input.senderType : "client";
 
-      // Non-staff don't see internal-only participants
-      if (ctx.userRole !== "ccc_staff") {
-        where.senderType = { not: "internal" };
-      }
-
-      const messages = await prisma.message.findMany({
-        where,
-        select: {
-          senderId: true,
-          senderType: true,
-          sender: { select: { id: true, name: true, role: true } },
+      const message = await prisma.message.create({
+        data: {
+          threadId: input.threadId,
+          authorId: ctx.user.id as string,
+          body: input.body,
+          senderType,
         },
-        distinct: ["senderId"],
+        include: {
+          author: { select: { id: true, name: true, role: true, avatarUrl: true } },
+        },
       });
 
-      return messages.map((m) => ({
-        id: m.sender.id,
-        name: m.sender.name,
-        role: m.sender.role === "ccc_staff" ? "CCC Staff" : "Client Admin",
-        type: m.senderType === "client" ? "client" : "staff",
-      }));
+      // Touch the thread's updatedAt
+      await prisma.messageThread.update({
+        where: { id: input.threadId },
+        data: { updatedAt: new Date() },
+      });
+
+      return message;
     }),
 });
