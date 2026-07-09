@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Search, MoreHorizontal, Eye, EyeOff, CheckCheck } from "lucide-react";
+import { Search, MoreHorizontal, Eye, EyeOff, CheckCheck, SquarePen } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const AVATAR_GRADIENTS = [
@@ -70,6 +70,7 @@ interface ThreadListProps {
   onMarkRead: (id: string) => void;
   onMarkUnread: (id: string) => void;
   onMarkAllRead: () => void;
+  onNewMessage: () => void;
 }
 
 export function ThreadList({
@@ -83,6 +84,7 @@ export function ThreadList({
   onMarkRead,
   onMarkUnread,
   onMarkAllRead,
+  onNewMessage,
 }: ThreadListProps) {
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -103,17 +105,26 @@ export function ThreadList({
   const unreadCount = threads.filter((t) => t.isUnread).length;
   return (
     <div className="flex h-full flex-col border-r border-surface-border" style={{ width: 380 }}>
-      {/* Search */}
+      {/* Search + compose */}
       <div className="border-b border-surface-border p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-          <input
-            type="text"
-            placeholder="Search threads..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-surface-border bg-surface-bg py-2 pl-10 pr-3 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+            <input
+              type="text"
+              placeholder="Search threads..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full rounded-lg border border-surface-border bg-surface-bg py-2 pl-10 pr-3 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={onNewMessage}
+            title="New message"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-coral text-white transition-colors hover:bg-coral-dark"
+          >
+            <SquarePen className="h-4 w-4" />
+          </button>
         </div>
       </div>
 

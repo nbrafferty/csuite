@@ -267,6 +267,37 @@ export const proofRouter = router({
         }),
       ]);
 
+      // Auto-create a client-visible review task (once per proof — a
+      // republished revision reuses the still-open task if there is one)
+      const proof = await prisma.proof.findUnique({
+        where: { id: version.proofId },
+        select: { id: true, title: true, companyId: true, orderId: true },
+      });
+      if (proof) {
+        const taskTitle = `Review proof: ${proof.title}`;
+        const openTask = await prisma.task.findFirst({
+          where: {
+            title: taskTitle,
+            tenantId: proof.companyId,
+            status: { not: "DONE" },
+            archivedAt: null,
+          },
+        });
+        if (!openTask) {
+          await prisma.task.create({
+            data: {
+              title: taskTitle,
+              description: `A proof is ready for your review and approval: /proofs/${proof.id}`,
+              orderId: proof.orderId,
+              tenantId: proof.companyId,
+              priority: "HIGH",
+              visibility: "EXTERNAL",
+              createdByUserId: ctx.user.id as string,
+            },
+          });
+        }
+      }
+
       return updatedVersion;
     }),
 
@@ -589,7 +620,45 @@ export const proofRouter = router({
           },
         });
 
+        // Close the auto-created review task — the client has acted
+        const proof = await tx.proof.findUnique({
+          where: { id: version.proofId },
+          select: { title: true, companyId: true },
+        });
+        if (proof) {
+          await tx.task.updateMany({
+            where: {
+              title: `Review proof: ${proof.title}`,
+              tenantId: proof.companyId,
+              status: { not: "DONE" },
+              archivedAt: null,
+            },
+            data: {
+              status: "DONE",
+              completedAt: new Date(),
+              completedByUserId: ctx.user.id,
+            },
+          });
+        }
+
         return approval;
       });
     }),
+
+  /** Count of proofs needing the caller's attention (for the sidebar badge).
+   *  Clients: proofs awaiting their review (current version SENT).
+   *  Staff: proofs where the client requested changes (needs a revision). */
+  pendingCount: protectedProcedure.query(async ({ ctx }) => {
+    if (isStaff(ctx.role)) {
+      return prisma.proof.count({
+        where: { currentVersion: { status: "CHANGES_REQUESTED" } },
+      });
+    }
+    return prisma.proof.count({
+      where: {
+        companyId: ctx.companyId,
+        currentVersion: { status: "SENT" },
+      },
+    });
+  }),
 });

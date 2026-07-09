@@ -99,6 +99,7 @@ export const orderRouter = router({
             orderBy: { createdAt: "desc" },
             include: {
               items: true,
+              payments: { select: { id: true, amount: true, paidAt: true } },
               _count: { select: { payments: true } },
             },
           },

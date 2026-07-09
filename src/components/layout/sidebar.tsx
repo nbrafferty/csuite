@@ -52,6 +52,9 @@ export function Sidebar() {
   const { data: unreadCount } = trpc.thread.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
+  const { data: proofCount } = trpc.proof.pendingCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-surface-border bg-sidebar-bg">
@@ -70,8 +73,13 @@ export function Sidebar() {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
-          const showBadge =
-            item.href === "/messages" && !!unreadCount && unreadCount > 0;
+          const badgeCount =
+            item.href === "/messages"
+              ? unreadCount ?? 0
+              : item.href === "/proofs"
+                ? proofCount ?? 0
+                : 0;
+          const showBadge = badgeCount > 0;
 
           return (
             <Link
@@ -88,10 +96,10 @@ export function Sidebar() {
 
               <span className="ml-3 whitespace-nowrap">{item.label}</span>
 
-              {/* Unread count badge */}
+              {/* Attention count badge (unread messages / pending proofs) */}
               {showBadge && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1.5 text-xs font-medium text-white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
+                  {badgeCount > 99 ? "99+" : badgeCount}
                 </span>
               )}
             </Link>
