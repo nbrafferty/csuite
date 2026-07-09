@@ -47,6 +47,9 @@ const appearance = {
 type StripePaymentSectionProps = {
   invoiceId: string;
   outstanding: number;
+  /** Pay a specific staff-issued request (e.g. a 50% deposit) */
+  paymentRequestId?: string;
+  label?: string;
 };
 
 /**
@@ -56,6 +59,8 @@ type StripePaymentSectionProps = {
 export function StripePaymentSection({
   invoiceId,
   outstanding,
+  paymentRequestId,
+  label,
 }: StripePaymentSectionProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [amount, setAmount] = useState(outstanding);
@@ -96,15 +101,18 @@ export function StripePaymentSection({
     <div className="mb-6 rounded-lg border border-surface-border bg-surface-card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium text-white">Pay Online</h3>
+          <h3 className="text-sm font-medium text-white">
+            {label ?? "Pay Online"}
+          </h3>
           <p className="mt-0.5 text-xs text-gray-500">
-            Pay the outstanding balance of {formatCurrency(outstanding)} by
-            card or bank
+            {paymentRequestId
+              ? `Pay the requested ${formatCurrency(outstanding)} by card or bank`
+              : `Pay the outstanding balance of ${formatCurrency(outstanding)} by card or bank`}
           </p>
         </div>
         {!clientSecret && (
           <button
-            onClick={() => createIntent.mutate({ invoiceId })}
+            onClick={() => createIntent.mutate({ invoiceId, paymentRequestId })}
             disabled={createIntent.isPending}
             className="flex items-center gap-2 rounded-lg bg-coral px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-coral-dark disabled:opacity-50"
           >

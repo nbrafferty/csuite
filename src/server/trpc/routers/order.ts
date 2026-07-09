@@ -120,6 +120,10 @@ export const orderRouter = router({
             include: {
               items: true,
               payments: { select: { id: true, amount: true, paidAt: true } },
+              paymentRequests: {
+                where: { status: "OPEN" },
+                orderBy: { createdAt: "desc" },
+              },
               _count: { select: { payments: true } },
             },
           },

@@ -231,6 +231,7 @@ model User {
   taskAssignments     TaskAssignee[]   @relation("TaskAssignments")
   passwordResetTokens PasswordResetToken[]
   clientProductsCreated ClientProduct[] @relation("ClientProductCreator")
+  paymentRequestsMade   PaymentRequest[] @relation("PaymentRequester")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -983,6 +984,7 @@ model Invoice {
   company          Company       @relation(fields: [companyId], references: [id])
   items            InvoiceItem[]
   payments         Payment[]
+  paymentRequests  PaymentRequest[]
 
   @@index([companyId])
   @@index([orderId])
@@ -1001,6 +1003,27 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+// A staff-issued request for a specific amount on an invoice (e.g. a 50%
+// deposit). Stripe or manual payments settle it; the client pays exactly
+// the requested amount.
+model PaymentRequest {
+  id                String    @id @default(uuid())
+  invoiceId         String    @map("invoice_id")
+  amount            Decimal   @db.Decimal(10, 2)
+  percentOfTotal    Int?      @map("percent_of_total")
+  note              String?   @db.Text
+  status            String    @default("OPEN") // OPEN | PAID | CANCELED
+  requestedByUserId String    @map("requested_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  paidAt            DateTime? @map("paid_at")
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestedBy User    @relation("PaymentRequester", fields: [requestedByUserId], references: [id])
+
+  @@index([invoiceId, status])
+  @@map("payment_requests")
 }
 
 model Payment {

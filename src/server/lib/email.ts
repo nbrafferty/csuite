@@ -164,6 +164,38 @@ export function quoteSentEmail(opts: {
   };
 }
 
+export function paymentRequestEmail(opts: {
+  invoiceNumber: string;
+  amountDue: string;
+  note?: string | null;
+  invoiceUrl: string;
+}) {
+  return {
+    subject: `Deposit due: ${opts.amountDue} on invoice ${opts.invoiceNumber}`,
+    html: layout(
+      "Payment requested",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;">A payment of <strong>${opts.amountDue}</strong> is due on invoice <strong>${opts.invoiceNumber}</strong>.${opts.note ? ` ${opts.note}` : ""} You can pay online in the portal.</p>
+       ${button(opts.invoiceUrl, "Pay Now")}`
+    ),
+  };
+}
+
+export function paymentReceivedEmail(opts: {
+  companyName: string;
+  invoiceNumber: string;
+  amount: string;
+  invoiceUrl: string;
+}) {
+  return {
+    subject: `Payment received: ${opts.amount} from ${opts.companyName}`,
+    html: layout(
+      "Payment received",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.companyName}</strong> paid <strong>${opts.amount}</strong> on invoice <strong>${opts.invoiceNumber}</strong>.</p>
+       ${button(opts.invoiceUrl, "View Invoice")}`
+    ),
+  };
+}
+
 export function invoiceSentEmail(opts: {
   invoiceNumber: string;
   amountDue: string;

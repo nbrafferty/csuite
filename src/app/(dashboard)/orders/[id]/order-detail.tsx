@@ -247,7 +247,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         if (!payable) return null;
         const total = (payable.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0);
         const paid = (payable.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
-        const outstanding = total - paid;
+        // An open payment request (e.g. 50% deposit) gates production on
+        // exactly the requested amount rather than the full balance
+        const openRequest = (payable.paymentRequests ?? [])[0];
+        const outstanding = openRequest ? Number(openRequest.amount) : total - paid;
         return (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-coral/40 bg-coral/10 px-4 py-3">
             <div className="flex items-center gap-3">
