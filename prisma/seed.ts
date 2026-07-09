@@ -24,6 +24,8 @@ async function main() {
   await prisma.proofAsset.deleteMany();
   await prisma.proofVersion.deleteMany();
   await prisma.proof.deleteMany();
+  await prisma.clientProductImprint.deleteMany();
+  await prisma.clientProduct.deleteMany();
   await prisma.artworkVersion.deleteMany();
   await prisma.artworkTag.deleteMany();
   await prisma.orderArtworkLink.deleteMany();

@@ -586,6 +586,7 @@ export const orderRouter = router({
                 sizeBreakdown: sizes ?? undefined,
                 decorationNotes: item.decorationNotes,
                 lineTotal: Number(item.unitPrice) * qty,
+                clientProductId: item.clientProductId,
                 imprints: {
                   create: item.imprints.map((imp) => ({
                     method: imp.method,

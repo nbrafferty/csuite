@@ -14,6 +14,7 @@ import { messageRouter } from "./routers/message";
 import { projectsRouter } from "./routers/projects";
 import { dashboardRouter } from "./routers/dashboard";
 import { taskRouter } from "./routers/task";
+import { clientProductRouter } from "./routers/client-product";
 import { artworkRouter } from "./routers/artwork";
 import { proofRouter } from "./routers/proof";
 import { userRouter } from "./routers/user";
@@ -35,6 +36,7 @@ export const appRouter = router({
   message: messageRouter,
   projects: projectsRouter,
   task: taskRouter,
+  clientProduct: clientProductRouter,
   artwork: artworkRouter,
   proof: proofRouter,
 });

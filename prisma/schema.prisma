@@ -183,6 +183,7 @@ model Company {
   projects          Project[]
   proofs            Proof[]
   catalogProducts   CatalogProduct[]
+  clientProducts    ClientProduct[]
   tasks             Task[]
 
   @@map("companies")
@@ -229,6 +230,7 @@ model User {
   createdTasks        Task[]           @relation("TaskCreator")
   taskAssignments     TaskAssignee[]   @relation("TaskAssignments")
   passwordResetTokens PasswordResetToken[]
+  clientProductsCreated ClientProduct[] @relation("ClientProductCreator")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -384,10 +386,12 @@ model QuoteItem {
   sizeBreakdown     Json?         @map("size_breakdown")
   lineTotal         Decimal       @map("line_total") @db.Decimal(10, 2)
 
+  clientProductId   String?       @map("client_product_id")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   imprints          Imprint[]
+  clientProduct     ClientProduct? @relation(fields: [clientProductId], references: [id])
 
   @@index([quoteId])
   @@map("quote_items")
@@ -443,6 +447,7 @@ model Order {
   items             OrderItem[]
   fees              FeeLine[]
   reorderQuotes     Quote[]       @relation("ReorderSource")
+  sourcedProducts   ClientProduct[] @relation("ProductSourceOrder")
   artworkLinks      OrderArtworkLink[]
   invoices          Invoice[]
   shipments         Shipment[]
@@ -478,11 +483,15 @@ model OrderItem {
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
+  clientProductId   String?         @map("client_product_id")
+
   order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
   imprints          Imprint[]
+  clientProduct     ClientProduct?  @relation(fields: [clientProductId], references: [id])
 
   @@index([orderId])
+  @@index([clientProductId])
   @@map("order_items")
 }
 
@@ -529,6 +538,57 @@ model FeeLine {
   @@index([quoteId])
   @@index([orderId])
   @@map("fee_lines")
+}
+
+// Per-client product library: a saved, fully-specced product with pinned
+// approved artwork that the client can reorder self-serve.
+model ClientProduct {
+  id                 String   @id @default(uuid())
+  companyId          String   @map("company_id")
+  name               String
+  blankBrand         String?  @map("blank_brand") // e.g. Gildan
+  blankStyle         String?  @map("blank_style") // e.g. 5000
+  itemNumber         String?  @map("item_number")
+  color              String?
+  category           String?
+  defaultUnitPrice   Decimal  @default(0) @map("default_unit_price") @db.Decimal(10, 2)
+  defaultSizeCurve   Json?    @map("default_size_curve")
+  status             String   @default("ACTIVE") // ACTIVE | RETIRED
+  createdFromOrderId String?  @map("created_from_order_id")
+  createdByUserId    String   @map("created_by_user_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  company          Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdFromOrder Order?                 @relation("ProductSourceOrder", fields: [createdFromOrderId], references: [id])
+  createdBy        User                   @relation("ClientProductCreator", fields: [createdByUserId], references: [id])
+  imprints         ClientProductImprint[]
+  quoteItems       QuoteItem[]
+  orderItems       OrderItem[]
+
+  @@index([companyId, status])
+  @@map("client_products")
+}
+
+// Imprint spec pinned to a ClientProduct. Artwork is required here —
+// a My Product reorder must reference approved art.
+model ClientProductImprint {
+  id              String       @id @default(uuid())
+  clientProductId String       @map("client_product_id")
+  method          String       @default("SCREEN_PRINT")
+  colorCount      Int?         @map("color_count")
+  placement       String?
+  widthIn         Float?       @map("width_in")
+  heightIn        Float?       @map("height_in")
+  artworkAssetId  String       @map("artwork_asset_id")
+  notes           String?      @db.Text
+  sortOrder       Int          @default(0) @map("sort_order")
+
+  clientProduct   ClientProduct @relation(fields: [clientProductId], references: [id], onDelete: Cascade)
+  artworkAsset    ArtworkAsset  @relation("ProductImprintArt", fields: [artworkAssetId], references: [id])
+
+  @@index([clientProductId])
+  @@map("client_product_imprints")
 }
 
 model OrderArtworkLink {
@@ -711,6 +771,7 @@ model ArtworkAsset {
   orderArtworkLinks OrderArtworkLink[]
   quoteArtworkLinks ArtworkQuoteLink[]
   imprints          Imprint[]
+  productImprints   ClientProductImprint[] @relation("ProductImprintArt")
 
   @@index([companyId])
   @@map("artwork_assets")

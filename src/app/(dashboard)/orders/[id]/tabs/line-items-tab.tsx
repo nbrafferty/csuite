@@ -3,13 +3,19 @@
 import { Fragment, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, BookmarkPlus } from "lucide-react";
 
 export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boolean }) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showAddForm, setShowAddForm] = useState(false);
 
   const utils = trpc.useUtils();
+  const promoteMutation = trpc.clientProduct.promoteFromLineItem.useMutation({
+    onSuccess: (product) => {
+      alert(`Saved "${product.name}" to the client's My Products.`);
+    },
+    onError: (err) => alert(err.message),
+  });
   const deleteMutation = trpc.order.removeItem.useMutation({
     onSuccess: () => utils.order.get.invalidate({ id: order.id }),
   });
@@ -130,16 +136,26 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                       )}
                       {isStaff && (
                         <td className="px-3 py-3">
-                          <button
-                            onClick={() => {
-                              if (confirm("Remove this line item?")) {
-                                deleteMutation.mutate({ id: item.id });
-                              }
-                            }}
-                            className="text-gray-600 hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => promoteMutation.mutate({ orderItemId: item.id })}
+                              disabled={promoteMutation.isPending}
+                              title="Save as My Product"
+                              className="text-gray-600 hover:text-coral transition-colors disabled:opacity-50"
+                            >
+                              <BookmarkPlus className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm("Remove this line item?")) {
+                                  deleteMutation.mutate({ id: item.id });
+                                }
+                              }}
+                              className="text-gray-600 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>

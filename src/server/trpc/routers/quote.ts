@@ -826,6 +826,7 @@ export const quoteRouter = router({
                 sizeBreakdown: item.sizeBreakdown ?? undefined,
                 decorationNotes: item.decorationNotes,
                 lineTotal: item.lineTotal,
+                clientProductId: item.clientProductId,
                 imprints: {
                   create: item.imprints.map((imp) => ({
                     method: imp.method,

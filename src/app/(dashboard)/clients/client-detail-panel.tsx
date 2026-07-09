@@ -362,6 +362,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
               <InviteUserForm companyId={client.id} />
             </div>
 
+            {/* My Products (staff view) */}
+            <div className="border-b border-surface-border p-6">
+              <h3 className="mb-3 font-label text-[11px] uppercase tracking-label text-foreground">
+                My Products
+              </h3>
+              <ClientProductsSection companyId={client.id} />
+            </div>
+
             {/* Internal Notes */}
             <div className="border-b border-surface-border p-6">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Internal Notes</h3>
@@ -511,5 +519,66 @@ function InviteUserForm({ companyId }: { companyId: string }) {
         </button>
       </div>
     </form>
+  );
+}
+
+
+function ClientProductsSection({ companyId }: { companyId: string }) {
+  const utils = trpc.useUtils();
+  const { data: products } = trpc.clientProduct.list.useQuery({
+    companyId,
+    includeRetired: true,
+  });
+  const setStatus = trpc.clientProduct.setStatus.useMutation({
+    onSuccess: () => utils.clientProduct.list.invalidate(),
+  });
+
+  if (!products || products.length === 0) {
+    return (
+      <p className="text-sm text-foreground-muted">
+        No saved products. Use the bookmark icon on an order line item to
+        save one for this client.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {products.map((p: any) => (
+        <div
+          key={p.id}
+          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm text-foreground">
+              {p.name}
+              {p.status === "RETIRED" && (
+                <span className="ml-2 rounded-full bg-gray-500/20 px-1.5 py-0.5 text-[10px] font-medium text-foreground-muted">
+                  Retired
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-foreground-muted">
+              ${Number(p.defaultUnitPrice).toFixed(2)}/ea
+              {p.stats.lastOrdered
+                ? ` · last ordered ${formatDistanceToNow(new Date(p.stats.lastOrdered), { addSuffix: true })}`
+                : ""}
+            </p>
+          </div>
+          <button
+            onClick={() =>
+              setStatus.mutate({
+                id: p.id,
+                status: p.status === "ACTIVE" ? "RETIRED" : "ACTIVE",
+              })
+            }
+            disabled={setStatus.isPending}
+            className="shrink-0 rounded-md border border-surface-border px-2 py-1 text-xs font-medium text-foreground-secondary transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            {p.status === "ACTIVE" ? "Retire" : "Reactivate"}
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
