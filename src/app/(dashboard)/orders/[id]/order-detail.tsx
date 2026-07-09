@@ -222,6 +222,45 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </div>
       </div>
 
+      {/* Payment required banner */}
+      {(() => {
+        const PRE_PRODUCTION = ["SUBMITTED", "IN_REVIEW", "PROOFING", "APPROVED"];
+        if (!PRE_PRODUCTION.includes(order.status)) return null;
+        const payable = ((order as any).invoices ?? []).find((inv: any) => {
+          if (!["SENT", "PARTIALLY_PAID", "OVERDUE"].includes(inv.status)) return false;
+          const total = (inv.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0);
+          const paid = (inv.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+          return total - paid > 0.5;
+        });
+        if (!payable) return null;
+        const total = (payable.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0);
+        const paid = (payable.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+        const outstanding = total - paid;
+        return (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-coral/40 bg-coral/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 shrink-0 text-coral" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Payment required before production
+                </p>
+                <p className="text-xs text-foreground-secondary">
+                  {isStaff
+                    ? `Awaiting client payment of ${outstanding.toLocaleString("en-US", { style: "currency", currency: "USD" })} on invoice ${payable.number}.`
+                    : `${outstanding.toLocaleString("en-US", { style: "currency", currency: "USD" })} is due on invoice ${payable.number}. This order enters production once payment is received.`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(`/billing/${payable.id}`)}
+              className="rounded-lg bg-coral px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-coral-dark"
+            >
+              {isStaff ? "View Invoice" : "Pay Invoice"}
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Project section */}
       <div className="mb-6">
         <ProjectPicker

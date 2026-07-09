@@ -5,12 +5,14 @@ import { trpc } from "@/lib/trpc";
 import { ThreadList } from "./thread-list";
 import { ChatPanel } from "./chat-panel";
 import { ContextSidebar } from "./context-sidebar";
+import { NewThreadDialog } from "./new-thread-dialog";
 import { MessageSquare } from "lucide-react";
 
 type StatusFilter = "all" | "unread" | "open" | "waiting_on_client" | "waiting_on_ccc" | "resolved";
 
 export function MessagesView() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -199,6 +201,7 @@ export function MessagesView() {
           adjustUnreadCount(unreadDelta);
           markAllRead.mutate();
         }}
+        onNewMessage={() => setComposeOpen(true)}
       />
 
       {/* Center — Chat Panel */}
@@ -218,6 +221,13 @@ export function MessagesView() {
           </div>
         </div>
       )}
+
+      <NewThreadDialog
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        isStaff={isStaff}
+        onCreated={(threadId) => setSelectedThreadId(threadId)}
+      />
 
       {/* Right — Context Sidebar */}
       {selectedThreadId && threadDetail && (

@@ -3,6 +3,54 @@ import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 
 export const threadRouter = router({
+  create: protectedProcedure
+    .input(
+      z.object({
+        subject: z.string().trim().min(1).max(200),
+        body: z.string().trim().min(1).max(10000),
+        companyId: z.string().uuid().optional(), // staff only — clients use their own
+        orderId: z.string().uuid().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+      const companyId = isStaff && input.companyId ? input.companyId : ctx.companyId;
+      const userId = ctx.user.id as string;
+
+      let orderTitle: string | undefined;
+      if (input.orderId) {
+        const order = await prisma.order.findFirst({
+          where: { id: input.orderId, companyId },
+          select: { title: true },
+        });
+        orderTitle = order?.title;
+      }
+
+      const thread = await prisma.messageThread.create({
+        data: {
+          companyId,
+          subject: input.subject,
+          orderId: input.orderId,
+          orderTitle,
+          status: "open",
+          createdBy: userId,
+          messages: {
+            create: {
+              authorId: userId,
+              body: input.body,
+              senderType: isStaff ? "staff" : "client",
+            },
+          },
+          // Creator has read their own message
+          readStates: {
+            create: { userId, lastReadAt: new Date() },
+          },
+        },
+      });
+
+      return thread;
+    }),
+
   list: protectedProcedure
     .input(
       z.object({

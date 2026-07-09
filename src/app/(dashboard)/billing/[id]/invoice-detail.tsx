@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, AlertCircle, Send, Ban } from "lucide-react";
 import { InvoiceStatusBadge } from "@/components/orders/invoice-status-badge";
-import { StripePaymentSection } from "@/components/billing/stripe-payment-form";
+import { StripePaymentSection, isStripeEnabled } from "@/components/billing/stripe-payment-form";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("en-US", {
@@ -227,9 +227,19 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         outstanding > 0.5 &&
         (invoice.status === "SENT" ||
           invoice.status === "PARTIALLY_PAID" ||
-          invoice.status === "OVERDUE") && (
+          invoice.status === "OVERDUE") &&
+        (isStripeEnabled() ? (
           <StripePaymentSection invoiceId={invoiceId} outstanding={outstanding} />
-        )}
+        ) : (
+          <div className="mt-6 rounded-lg border border-surface-border bg-surface-card p-5">
+            <h3 className="text-sm font-semibold text-white">Ready to pay?</h3>
+            <p className="mt-1 text-sm text-gray-400">
+              Online card payment isn&apos;t available yet. Please contact Central
+              Creative to arrange payment by check, wire, or card — or send us a
+              message from the Messages page.
+            </p>
+          </div>
+        ))}
 
       {/* Payment form */}
       {showPaymentForm && isStaff && (
