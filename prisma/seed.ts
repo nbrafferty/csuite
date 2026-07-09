@@ -18,6 +18,9 @@ async function main() {
 
   // Clean up all seeded data to prevent duplicates on re-run.
   await prisma.auditLogEvent.deleteMany();
+  await prisma.automationRun.deleteMany();
+  await prisma.automationRule.deleteMany();
+  await prisma.paymentRequest.deleteMany();
   await prisma.proofAnnotationComment.deleteMany();
   await prisma.proofApproval.deleteMany();
   await prisma.proofAnnotation.deleteMany();

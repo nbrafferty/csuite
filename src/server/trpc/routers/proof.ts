@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { emitEvent } from "@/server/lib/automation";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -600,7 +601,7 @@ export const proofRouter = router({
         }
       }
 
-      return prisma.$transaction(async (tx) => {
+      const approvalResult = await prisma.$transaction(async (tx) => {
         // Create ProofApproval record
         const approval = await tx.proofApproval.create({
           data: {
@@ -643,6 +644,32 @@ export const proofRouter = router({
 
         return approval;
       });
+
+      // When an approval completes the set — every proof on the order has
+      // an APPROVED current version — fire the PROOF_APPROVED automation.
+      if (input.decision === "APPROVED") {
+        const proofRecord = await prisma.proof.findUnique({
+          where: { id: version.proofId },
+          select: { orderId: true },
+        });
+        if (proofRecord?.orderId) {
+          const outstanding = await prisma.proof.count({
+            where: {
+              orderId: proofRecord.orderId,
+              currentVersion: { status: { not: "APPROVED" } },
+            },
+          });
+          if (outstanding === 0) {
+            await emitEvent({
+              type: "PROOF_APPROVED",
+              orderId: proofRecord.orderId,
+              actorUserId: ctx.user.id as string,
+            });
+          }
+        }
+      }
+
+      return approvalResult;
     }),
 
   /** Count of proofs needing the caller's attention (for the sidebar badge).

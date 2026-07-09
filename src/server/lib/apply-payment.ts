@@ -6,6 +6,7 @@ import {
   staffEmails,
   appBaseUrl,
 } from "@/server/lib/email";
+import { emitEvent } from "@/server/lib/automation";
 
 export type ApplyPaymentInput = {
   invoiceId: string;
@@ -92,6 +93,22 @@ export async function applyPayment(input: ApplyPaymentInput) {
     await prisma.paymentRequest.updateMany({
       where: { invoiceId: input.invoiceId, status: "OPEN" },
       data: { status: "PAID", paidAt: new Date() },
+    });
+  }
+
+  // Fire automations: deposit settled and/or invoice fully paid
+  if (input.paymentRequestId) {
+    await emitEvent({
+      type: "DEPOSIT_PAID",
+      orderId: invoice.orderId,
+      actorUserId: input.recordedByUserId,
+    });
+  }
+  if (newStatus === "PAID") {
+    await emitEvent({
+      type: "PAID_IN_FULL",
+      orderId: invoice.orderId,
+      actorUserId: input.recordedByUserId,
     });
   }
 

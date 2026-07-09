@@ -1006,6 +1006,41 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+// A toggleable automation rule: when <trigger> fires, run <action>.
+// Global (single-tenant shop), staff-editable, processed in sortOrder.
+model AutomationRule {
+  id          String   @id @default(uuid())
+  name        String
+  trigger     String   // STATUS_CHANGED | QUOTE_APPROVED | PROOF_APPROVED | PAID_IN_FULL | DEPOSIT_PAID
+  triggerParam String? @map("trigger_param") // e.g. the status value for STATUS_CHANGED
+  action      String   // SEND_CLIENT_EMAIL | CHANGE_STATUS | REQUEST_PAYMENT_PERCENT | CREATE_TASKS
+  actionParam Json?    @map("action_param")
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  runs AutomationRun[]
+
+  @@map("automation_rules")
+}
+
+// Log of each rule firing, for debugging in Settings → Automations
+model AutomationRun {
+  id         String   @id @default(uuid())
+  ruleId     String   @map("rule_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  success    Boolean
+  detail     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, createdAt])
+  @@map("automation_runs")
+}
+
 // A staff-issued request for a specific amount on an invoice (e.g. a 50%
 // deposit). Stripe or manual payments settle it; the client pays exactly
 // the requested amount.

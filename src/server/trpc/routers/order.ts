@@ -5,6 +5,7 @@ import { OrderStatus, OrderSource, PaymentTermType, Prisma } from "@prisma/clien
 import { generateOrderNumber } from "../../lib/order-number";
 import { generateQuoteNumber } from "../../lib/quote-number";
 import { sendEmail, reorderRequestEmail, staffEmails, appBaseUrl } from "@/server/lib/email";
+import { emitEvent } from "@/server/lib/automation";
 import { TRPCError } from "@trpc/server";
 
 // Valid status transitions per spec
@@ -290,6 +291,13 @@ export const orderRouter = router({
       const updated = await prisma.order.update({
         where: { id: input.id },
         data: { status: input.status },
+      });
+
+      await emitEvent({
+        type: "STATUS_CHANGED",
+        statusValue: input.status,
+        orderId: order.id,
+        actorUserId: ctx.user.id as string,
       });
 
       await prisma.auditLogEvent.create({

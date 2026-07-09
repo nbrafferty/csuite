@@ -7,6 +7,7 @@ import { generateInvoiceNumber } from "../../lib/invoice-number";
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/server/db/prisma";
 import { sendEmail, quoteSentEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
+import { emitEvent } from "@/server/lib/automation";
 
 // ─── Input Schemas ───
 
@@ -678,7 +679,7 @@ export const quoteRouter = router({
         });
       }
 
-      return prisma.quote.update({
+      const approved = await prisma.quote.update({
         where: { id: input.id },
         data: {
           status: "APPROVED",
@@ -686,6 +687,14 @@ export const quoteRouter = router({
           approvedByUserId: (user as any).id,
         },
       });
+
+      await emitEvent({
+        type: "QUOTE_APPROVED",
+        quoteId: approved.id,
+        actorUserId: (user as any).id,
+      });
+
+      return approved;
     }),
 
   // REQUEST CHANGES — Client (Admin or User), transitions SENT → CHANGES_REQUESTED
