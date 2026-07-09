@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, inviteEmail, appBaseUrl } from "@/server/lib/email";
 
 // Statuses that count toward "active orders" (in-flight work)
 const ACTIVE_ORDER_STATUSES = [
@@ -168,13 +170,49 @@ export const clientRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(100),
-        contactName: z.string().min(1).max(100),
-        contactEmail: z.string().email(),
+        contacts: z
+          .array(
+            z.object({
+              name: z.string().trim().min(1).max(120),
+              email: z.string().trim().toLowerCase().email(),
+              role: z.enum(["CLIENT_ADMIN", "CLIENT_USER"]).default("CLIENT_USER"),
+            })
+          )
+          .min(1, "At least one contact is required")
+          .max(20),
         phone: z.string().optional(),
         address: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
+      // Reject duplicate emails within the submission
+      const emails = input.contacts.map((c) => c.email);
+      if (new Set(emails).size !== emails.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Each user needs a unique email address",
+        });
+      }
+
+      // Reject emails that already belong to accounts anywhere in the system
+      const existing = await prisma.user.findMany({
+        where: { email: { in: emails } },
+        select: { email: true },
+      });
+      if (existing.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Already registered: ${existing.map((u) => u.email).join(", ")}`,
+        });
+      }
+
+      // At least one contact must be an admin — promote the first if none is
+      const hasAdmin = input.contacts.some((c) => c.role === "CLIENT_ADMIN");
+      const contacts = input.contacts.map((c, i) => ({
+        ...c,
+        role: !hasAdmin && i === 0 ? ("CLIENT_ADMIN" as const) : c.role,
+      }));
+
       // Generate slug from name
       const baseSlug = input.name
         .toLowerCase()
@@ -201,19 +239,29 @@ export const clientRouter = router({
           phone: input.phone,
           address: input.address,
           users: {
-            create: {
-              name: input.contactName,
-              email: input.contactEmail,
+            create: contacts.map((c) => ({
+              name: c.name,
+              email: c.email,
               passwordHash: "$2a$12$placeholder", // Placeholder — user will set password via invite
-              role: "CLIENT_ADMIN",
+              role: c.role,
               status: "INVITED",
-            },
+            })),
           },
         },
         include: {
           users: { select: { id: true, name: true, email: true } },
         },
       });
+
+      // Invite every contact (soft-fails if email isn't configured)
+      const template = inviteEmail({
+        companyName: company.name,
+        inviteCode: company.inviteCode,
+        registerUrl: `${appBaseUrl()}/register`,
+      });
+      for (const c of contacts) {
+        await sendEmail({ to: c.email, ...template });
+      }
 
       return { id: company.id, name: company.name, slug: company.slug };
     }),

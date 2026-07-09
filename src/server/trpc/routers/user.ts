@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, inviteEmail, appBaseUrl } from "@/server/lib/email";
 import { UserRole } from "@prisma/client";
 
 /**
@@ -65,7 +66,7 @@ export const userRouter = router({
         });
       }
 
-      return prisma.user.create({
+      const user = await prisma.user.create({
         data: {
           companyId,
           name: input.name,
@@ -78,6 +79,22 @@ export const userRouter = router({
         },
         select: { id: true, name: true, email: true, role: true, status: true },
       });
+
+      // Email the invite (soft-fails if email isn't configured)
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { name: true, inviteCode: true },
+      });
+      if (company) {
+        const template = inviteEmail({
+          companyName: company.name,
+          inviteCode: company.inviteCode,
+          registerUrl: `${appBaseUrl()}/register`,
+        });
+        await sendEmail({ to: user.email, ...template });
+      }
+
+      return user;
     }),
 
   // UPDATE ROLE

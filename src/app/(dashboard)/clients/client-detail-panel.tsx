@@ -33,102 +33,37 @@ const ROLE_BADGE: Record<string, { label: string; className: string }> = {
 };
 
 const QUOTE_REQUEST_STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  new: { label: "New", className: "bg-coral/20 text-coral animate-pulse" },
-  reviewing: { label: "Reviewing", className: "bg-yellow-500/20 text-[#FFD60A]" },
-  quoted: { label: "Quoted", className: "bg-green-500/20 text-[#34C759]" },
+  SUBMITTED: { label: "New", className: "bg-coral/20 text-coral animate-pulse" },
+  IN_REVIEW: { label: "Reviewing", className: "bg-yellow-500/20 text-[#FFD60A]" },
+  QUOTED: { label: "Quoted", className: "bg-green-500/20 text-[#34C759]" },
+  CLOSED: { label: "Closed", className: "bg-gray-500/20 text-foreground-muted" },
+  DECLINED: { label: "Declined", className: "bg-coral/20 text-coral" },
 };
 
 const QUOTE_STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  draft: { label: "Draft", className: "bg-gray-500/20 text-foreground-secondary" },
-  sent: { label: "Sent", className: "bg-blue-500/20 text-blue-400" },
-  accepted: { label: "Accepted", className: "bg-green-500/20 text-[#34C759]" },
-  declined: { label: "Declined", className: "bg-coral/20 text-coral" },
-  expired: { label: "Expired", className: "bg-gray-500/20 text-foreground-muted" },
+  DRAFT: { label: "Draft", className: "bg-gray-500/20 text-foreground-secondary" },
+  SENT: { label: "Sent", className: "bg-blue-500/20 text-blue-400" },
+  CHANGES_REQUESTED: { label: "Changes", className: "bg-yellow-500/20 text-[#FFD60A]" },
+  APPROVED: { label: "Approved", className: "bg-green-500/20 text-[#34C759]" },
+  CONVERTED: { label: "Converted", className: "bg-green-500/20 text-[#34C759]" },
+  DECLINED: { label: "Declined", className: "bg-coral/20 text-coral" },
+  EXPIRED: { label: "Expired", className: "bg-gray-500/20 text-foreground-muted" },
 };
 
 const ORDER_STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  submitted: { label: "Submitted", className: "bg-blue-500/20 text-blue-400" },
-  in_review: { label: "In Review", className: "bg-purple-500/20 text-[#A78BFA]" },
-  proofing: { label: "Proofing", className: "bg-yellow-500/20 text-[#FFD60A]" },
-  in_production: { label: "In Production", className: "bg-green-500/20 text-[#34C759]" },
-  ready: { label: "Ready", className: "bg-coral/20 text-coral" },
-  shipped: { label: "Shipped", className: "bg-gray-500/20 text-foreground-secondary" },
+  SUBMITTED: { label: "Submitted", className: "bg-blue-500/20 text-blue-400" },
+  IN_REVIEW: { label: "In Review", className: "bg-purple-500/20 text-[#A78BFA]" },
+  PROOFING: { label: "Proofing", className: "bg-yellow-500/20 text-[#FFD60A]" },
+  APPROVED: { label: "Approved", className: "bg-green-500/20 text-[#34C759]" },
+  IN_PRODUCTION: { label: "In Production", className: "bg-green-500/20 text-[#34C759]" },
+  READY: { label: "Ready", className: "bg-coral/20 text-coral" },
+  SHIPPED: { label: "Shipped", className: "bg-gray-500/20 text-foreground-secondary" },
+  COMPLETED: { label: "Completed", className: "bg-green-500/20 text-[#34C759]" },
+  CANCELLED: { label: "Cancelled", className: "bg-gray-500/20 text-foreground-muted" },
 };
 
-type QuoteRequest = { id: string; title: string; date: string; status: string };
-type Quote = { id: string; quoteId: string; title: string; amount: string; status: string; subtext: string };
-type Order = { id: string; title: string; status: string; date: string; total: string };
-
-const QUOTE_REQUESTS: Record<string, QuoteRequest[]> = {
-  "acme-corp": [
-    { id: "qr-1", title: "Custom Embroidered Jackets", date: "1 day ago", status: "new" },
-    { id: "qr-2", title: "Warehouse Team Vests", date: "5 days ago", status: "reviewing" },
-  ],
-  "globex-corp": [
-    { id: "qr-3", title: "Executive Gift Set", date: "2 days ago", status: "new" },
-  ],
-  "bloom-studio": [
-    { id: "qr-4", title: "Seasonal Window Decals", date: "3 days ago", status: "reviewing" },
-    { id: "qr-5", title: "Branded Aprons", date: "1 week ago", status: "quoted" },
-  ],
-  "redline-events": [
-    { id: "qr-6", title: "VIP Lanyards & Badges", date: "12 hours ago", status: "new" },
-    { id: "qr-7", title: "Stage Backdrop Reprint", date: "4 days ago", status: "quoted" },
-  ],
-  "greenfield-co": [
-    { id: "qr-8", title: "Compostable Mailer Bags", date: "6 days ago", status: "reviewing" },
-  ],
-};
-
-const QUOTES: Record<string, Quote[]> = {
-  "acme-corp": [
-    { id: "q-1", quoteId: "QT-2026-041", title: "Q4 Apparel Collection", amount: "$4,250.00", status: "accepted", subtext: "Accepted Jan 15, 2026" },
-    { id: "q-2", quoteId: "QT-2026-048", title: "Holiday Gift Boxes", amount: "$2,800.00", status: "sent", subtext: "Expires Mar 1, 2026" },
-  ],
-  "globex-corp": [
-    { id: "q-3", quoteId: "QT-2026-039", title: "Tech Summit Signage", amount: "$6,100.00", status: "accepted", subtext: "Accepted Jan 8, 2026" },
-    { id: "q-4", quoteId: "QT-2026-052", title: "Onboarding Kit Bundle", amount: "$3,200.00", status: "draft", subtext: "Draft" },
-  ],
-  "bloom-studio": [
-    { id: "q-5", quoteId: "QT-2026-044", title: "Spring Collection Print Run", amount: "$3,400.00", status: "accepted", subtext: "Accepted Jan 22, 2026" },
-    { id: "q-6", quoteId: "QT-2026-050", title: "Custom Packaging Redesign", amount: "$1,900.00", status: "sent", subtext: "Expires Mar 10, 2026" },
-    { id: "q-7", quoteId: "QT-2026-053", title: "Sticker Subscription Q2", amount: "$600.00", status: "expired", subtext: "Expired Feb 1, 2026" },
-  ],
-  "novatech-industries": [
-    { id: "q-8", quoteId: "QT-2026-035", title: "Annual Report Printing", amount: "$5,500.00", status: "declined", subtext: "Declined Dec 20, 2025" },
-  ],
-  "redline-events": [
-    { id: "q-9", quoteId: "QT-2026-046", title: "Festival Full Package", amount: "$12,400.00", status: "sent", subtext: "Expires Mar 15, 2026" },
-  ],
-  "greenfield-co": [
-    { id: "q-10", quoteId: "QT-2026-049", title: "Eco Product Launch Kit", amount: "$2,100.00", status: "accepted", subtext: "Accepted Feb 5, 2026" },
-    { id: "q-11", quoteId: "QT-2026-054", title: "Trade Show Bundle", amount: "$1,800.00", status: "draft", subtext: "Draft" },
-  ],
-};
-
-const RECENT_ORDERS: Record<string, Order[]> = {
-  "acme-corp": [
-    { id: "CS-9012", title: "Summer Tee Collection", status: "in_production", date: "3 days ago", total: "$4,200.00" },
-    { id: "CS-9008", title: "Event Banners Q2", status: "ready", date: "1 week ago", total: "$1,800.00" },
-    { id: "CS-8994", title: "Staff Polos Reorder", status: "shipped", date: "2 weeks ago", total: "$3,100.00" },
-  ],
-  "globex-corp": [
-    { id: "CS-9010", title: "Conference Merch Kit", status: "proofing", date: "2 days ago", total: "$6,500.00" },
-    { id: "CS-9003", title: "Onboarding Swag Bags", status: "submitted", date: "5 days ago", total: "$2,200.00" },
-  ],
-  "bloom-studio": [
-    { id: "CS-9015", title: "Spring Lookbook Prints", status: "in_production", date: "1 day ago", total: "$3,400.00" },
-    { id: "CS-9011", title: "Logo Hoodie Run", status: "proofing", date: "4 days ago", total: "$2,800.00" },
-    { id: "CS-9006", title: "Sticker Pack v3", status: "in_review", date: "6 days ago", total: "$450.00" },
-  ],
-  "redline-events": [
-    { id: "CS-9014", title: "Festival Booth Setup", status: "in_production", date: "2 days ago", total: "$8,900.00" },
-  ],
-  "greenfield-co": [
-    { id: "CS-9009", title: "Eco Tee Launch", status: "in_review", date: "4 days ago", total: "$2,100.00" },
-    { id: "CS-9004", title: "Recycled Caps Order", status: "submitted", date: "1 week ago", total: "$1,350.00" },
-  ],
-};
+const usd = (n: number) =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 function SectionHeader({ title, viewAllHref }: { title: string; viewAllHref: string }) {
   return (
@@ -149,6 +84,18 @@ interface ClientDetailPanelProps {
 export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps) {
   const { data: client } = trpc.clientOrg.get.useQuery(
     { id: clientId! },
+    { enabled: !!clientId }
+  );
+  const { data: qrData } = trpc.quoteRequest.list.useQuery(
+    { companyId: clientId!, limit: 3 },
+    { enabled: !!clientId }
+  );
+  const { data: quoteData } = trpc.quote.list.useQuery(
+    { companyId: clientId!, perPage: 3 },
+    { enabled: !!clientId }
+  );
+  const { data: orderData } = trpc.order.list.useQuery(
+    { companyId: clientId!, limit: 3 },
     { enabled: !!clientId }
   );
 
@@ -283,30 +230,31 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
 
             {/* Quote Requests */}
             <div className="border-b border-surface-border p-6">
-              <SectionHeader title="Quote Requests" viewAllHref={`/quotes/requests?client=${client.id}`} />
+              <SectionHeader title="Quote Requests" viewAllHref="/quotes" />
               {(() => {
-                const items = QUOTE_REQUESTS[client.slug] ?? [];
+                const items = qrData?.requests ?? [];
                 if (items.length === 0) {
                   return <p className="text-sm text-foreground-muted">No open quote requests</p>;
                 }
                 return (
                   <div className="space-y-2">
-                    {items.map((qr) => {
-                      const badge = QUOTE_REQUEST_STATUS_BADGE[qr.status] ?? QUOTE_REQUEST_STATUS_BADGE.new;
+                    {items.map((qr: any) => {
+                      const badge = QUOTE_REQUEST_STATUS_BADGE[qr.status] ?? QUOTE_REQUEST_STATUS_BADGE.SUBMITTED;
                       return (
-                        <Link
+                        <div
                           key={qr.id}
-                          href={`/quotes/requests/${qr.id}`}
-                          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
+                          className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5"
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm text-foreground">{qr.title}</p>
-                            <p className="text-xs text-foreground-muted">{qr.date}</p>
+                            <p className="text-xs text-foreground-muted">
+                              {formatDistanceToNow(new Date(qr.createdAt), { addSuffix: true })}
+                            </p>
                           </div>
                           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                             {badge.label}
                           </span>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>
@@ -318,14 +266,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             <div className="border-b border-surface-border p-6">
               <SectionHeader title="Quotes" viewAllHref={`/quotes?client=${client.id}`} />
               {(() => {
-                const items = QUOTES[client.slug] ?? [];
+                const items = quoteData?.quotes ?? [];
                 if (items.length === 0) {
                   return <p className="text-sm text-foreground-muted">No quotes</p>;
                 }
                 return (
                   <div className="space-y-2">
-                    {items.map((q) => {
-                      const badge = QUOTE_STATUS_BADGE[q.status] ?? QUOTE_STATUS_BADGE.draft;
+                    {items.map((q: any) => {
+                      const badge = QUOTE_STATUS_BADGE[q.status] ?? QUOTE_STATUS_BADGE.DRAFT;
                       return (
                         <Link
                           key={q.id}
@@ -333,15 +281,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                           className="flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-foreground-muted">{q.quoteId}</p>
+                            <p className="text-xs text-foreground-muted">{q.number}</p>
                             <p className="truncate text-sm text-foreground">{q.title}</p>
-                            <p className="text-xs text-foreground-muted">{q.subtext}</p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                               {badge.label}
                             </span>
-                            <span className="text-sm font-medium text-foreground">{q.amount}</span>
+                            <span className="text-sm font-medium text-foreground">{usd(q.total ?? 0)}</span>
                           </div>
                         </Link>
                       );
@@ -355,14 +302,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
             <div className="border-b border-surface-border p-6">
               <SectionHeader title="Recent Orders" viewAllHref={`/orders?client=${client.id}`} />
               {(() => {
-                const items = RECENT_ORDERS[client.slug] ?? [];
+                const items = orderData?.orders ?? [];
                 if (items.length === 0) {
                   return <p className="text-sm text-foreground-muted">No recent orders</p>;
                 }
                 return (
                   <div className="space-y-2">
-                    {items.map((order) => {
-                      const badge = ORDER_STATUS_BADGE[order.status] ?? ORDER_STATUS_BADGE.submitted;
+                    {items.map((order: any) => {
+                      const badge = ORDER_STATUS_BADGE[order.status] ?? ORDER_STATUS_BADGE.SUBMITTED;
                       return (
                         <Link
                           key={order.id}
@@ -370,14 +317,14 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                           className="flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-foreground-muted">{order.id}</p>
+                            <p className="text-xs text-foreground-muted">{order.number}</p>
                             <p className="truncate text-sm text-foreground">{order.title}</p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                               {badge.label}
                             </span>
-                            <span className="text-sm font-medium text-foreground">{order.total}</span>
+                            <span className="text-sm font-medium text-foreground">{usd(Number(order.totalAmount ?? 0))}</span>
                           </div>
                         </Link>
                       );
@@ -412,6 +359,7 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
                   );
                 })}
               </div>
+              <InviteUserForm companyId={client.id} />
             </div>
 
             {/* Internal Notes */}
@@ -474,5 +422,94 @@ export function ClientDetailPanel({ clientId, onClose }: ClientDetailPanelProps)
         )}
       </div>
     </>
+  );
+}
+
+function InviteUserForm({ companyId }: { companyId: string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"CLIENT_ADMIN" | "CLIENT_USER">("CLIENT_USER");
+  const [error, setError] = useState("");
+
+  const utils = trpc.useUtils();
+  const invite = trpc.user.invite.useMutation({
+    onSuccess: () => {
+      utils.clientOrg.get.invalidate({ id: companyId });
+      utils.clientOrg.list.invalidate();
+      setName("");
+      setEmail("");
+      setRole("CLIENT_USER");
+      setError("");
+      setOpen(false);
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full rounded-lg border border-dashed border-surface-border px-3 py-2 text-xs font-medium text-foreground-secondary transition-colors hover:border-coral/50 hover:text-coral"
+      >
+        + Invite User
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError("");
+        invite.mutate({ companyId, name: name.trim(), email: email.trim(), role });
+      }}
+      className="mt-3 space-y-2 rounded-lg border border-surface-border bg-surface-secondary p-3"
+    >
+      <input
+        type="text"
+        required
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Name"
+        className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
+      />
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="email@company.com"
+        className="w-full rounded-lg border border-surface-border bg-surface-card px-3 py-2 text-sm text-foreground placeholder-foreground-muted focus:border-coral focus:outline-none"
+      />
+      <select
+        value={role}
+        onChange={(e) => setRole(e.target.value as "CLIENT_ADMIN" | "CLIENT_USER")}
+        className="w-full rounded-lg border border-surface-border bg-surface-card px-2 py-1.5 text-xs text-foreground focus:border-coral focus:outline-none"
+      >
+        <option value="CLIENT_USER">Member — can view & collaborate</option>
+        <option value="CLIENT_ADMIN">Admin — can approve quotes & manage team</option>
+      </select>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setError("");
+          }}
+          className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground-secondary hover:text-foreground"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={invite.isPending}
+          className="rounded-lg bg-coral px-3 py-1.5 text-xs font-medium text-white hover:bg-coral-dark disabled:opacity-50"
+        >
+          {invite.isPending ? "Inviting..." : "Send Invite"}
+        </button>
+      </div>
+    </form>
   );
 }

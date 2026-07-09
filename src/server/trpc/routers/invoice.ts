@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, invoiceSentEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
 import { InvoiceStatus, PaymentMethod, Prisma } from "@prisma/client";
 import { generateInvoiceNumber } from "../../lib/invoice-number";
 import { getStripe, isStripeConfigured } from "../../lib/stripe";
@@ -141,10 +142,25 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Can only send DRAFT invoices" });
       }
 
-      return prisma.invoice.update({
+      const updated = await prisma.invoice.update({
         where: { id: input.id },
         data: { status: "SENT", issuedAt: new Date() },
+        include: { items: { select: { lineTotal: true } } },
       });
+
+      // Notify the client's admins (soft-fails if email isn't configured)
+      const recipients = await clientAdminEmails(updated.companyId);
+      if (recipients.length > 0) {
+        const total = updated.items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+        const template = invoiceSentEmail({
+          invoiceNumber: updated.number,
+          amountDue: total.toLocaleString("en-US", { style: "currency", currency: "USD" }),
+          invoiceUrl: `${appBaseUrl()}/billing/${updated.id}`,
+        });
+        await sendEmail({ to: recipients, ...template });
+      }
+
+      return updated;
     }),
 
   // VOID — staff only
