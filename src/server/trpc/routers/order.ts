@@ -159,6 +159,7 @@ export const orderRouter = router({
         depositPercent: z.number().int().min(1).max(99).optional(),
         netDays: z.number().int().min(1).optional(),
         inHandsDate: z.string().datetime().optional(),
+        productionDueDate: z.string().datetime().optional(),
         poNumber: z.string().optional(),
         internalNotes: z.string().optional(),
         clientNotes: z.string().optional(),
@@ -197,6 +198,7 @@ export const orderRouter = router({
           depositPercent: input.depositPercent,
           netDays: input.netDays,
           inHandsDate: input.inHandsDate ? new Date(input.inHandsDate) : null,
+          productionDueDate: input.productionDueDate ? new Date(input.productionDueDate) : null,
           poNumber: input.poNumber,
           internalNotes: input.internalNotes,
           clientNotes: input.clientNotes,
@@ -231,6 +233,7 @@ export const orderRouter = router({
         internalNotes: z.string().nullable().optional(),
         clientNotes: z.string().nullable().optional(),
         inHandsDate: z.string().datetime().nullable().optional(),
+        productionDueDate: z.string().datetime().nullable().optional(),
         paymentTermType: z.nativeEnum(PaymentTermType).optional(),
         depositPercent: z.number().int().min(1).max(99).nullable().optional(),
         netDays: z.number().int().min(1).nullable().optional(),
@@ -255,6 +258,8 @@ export const orderRouter = router({
       if (data.clientNotes !== undefined) updateData.clientNotes = data.clientNotes;
       if (data.inHandsDate !== undefined)
         updateData.inHandsDate = data.inHandsDate ? new Date(data.inHandsDate) : null;
+      if (data.productionDueDate !== undefined)
+        updateData.productionDueDate = data.productionDueDate ? new Date(data.productionDueDate) : null;
       if (data.paymentTermType !== undefined) updateData.paymentTermType = data.paymentTermType;
       if (data.depositPercent !== undefined) updateData.depositPercent = data.depositPercent;
       if (data.netDays !== undefined) updateData.netDays = data.netDays;
@@ -507,6 +512,59 @@ export const orderRouter = router({
     }),
 
   // ─── Activity Log ────────────────────────────────────────────────
+
+  // CALENDAR — staff-only: orders plotted on production due date
+  // (falling back to the customer in-hands date)
+  calendar: staffProcedure
+    .input(
+      z.object({
+        from: z.string().datetime(),
+        to: z.string().datetime(),
+        status: z.nativeEnum(OrderStatus).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const from = new Date(input.from);
+      const to = new Date(input.to);
+      const range = { gte: from, lte: to };
+
+      const orders = await prisma.order.findMany({
+        where: {
+          ...(input.status ? { status: input.status } : {}),
+          OR: [
+            { productionDueDate: range },
+            { AND: [{ productionDueDate: null }, { inHandsDate: range }] },
+          ],
+        },
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          status: true,
+          inHandsDate: true,
+          productionDueDate: true,
+          totalAmount: true,
+          company: { select: { id: true, name: true } },
+          invoices: {
+            select: { status: true },
+            where: { status: { not: "VOID" } },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return orders.map((o) => ({
+        id: o.id,
+        number: o.number,
+        title: o.title,
+        status: o.status,
+        companyName: o.company.name,
+        date: (o.productionDueDate ?? o.inHandsDate)!,
+        customerDate: o.inHandsDate,
+        productionDate: o.productionDueDate,
+        paid: o.invoices.length > 0 && o.invoices.every((i) => i.status === "PAID"),
+      }));
+    }),
 
   // REORDER — deep-clone an order's line-item tree into a new DRAFT quote.
   // Staff can reorder any order; clients only their own company's.

@@ -18,6 +18,7 @@ import {
   LogOut,
   CheckSquare,
   Package,
+  CalendarDays,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays, staffOnly: true },
   { label: "My Products", href: "/my-products", icon: Package, clientOnly: true },
   { label: "Quotes", href: "/quotes", icon: ClipboardList },
   { label: "Catalog", href: "/catalog", icon: BookOpen },

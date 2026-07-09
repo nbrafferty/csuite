@@ -430,7 +430,8 @@ model Order {
   depositPercent    Int?            @map("deposit_percent")
   netDays           Int?            @map("net_days")
 
-  inHandsDate       DateTime?     @map("in_hands_date")
+  inHandsDate       DateTime?     @map("in_hands_date") // customer-facing due date
+  productionDueDate DateTime?     @map("production_due_date") // internal shop deadline
   poNumber          String?       @map("po_number")
   internalNotes     String?       @db.Text @map("internal_notes")
   clientNotes       String?       @db.Text @map("client_notes")
