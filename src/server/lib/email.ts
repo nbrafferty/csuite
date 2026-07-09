@@ -60,6 +60,16 @@ export function appBaseUrl(): string {
   return (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
+/** Active CCC staff emails — the audience for inbound-work notifications. */
+export async function staffEmails(): Promise<string[]> {
+  const { prisma } = await import("@/server/db/prisma");
+  const staff = await prisma.user.findMany({
+    where: { role: "CCC_STAFF", status: "ACTIVE" },
+    select: { email: true },
+  });
+  return staff.map((s) => s.email);
+}
+
 /** Active client-admin emails for a company — the default notification audience. */
 export async function clientAdminEmails(companyId: string): Promise<string[]> {
   const { prisma } = await import("@/server/db/prisma");
@@ -120,6 +130,21 @@ export function inviteEmail(opts: {
       `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;">You've been invited to the Central Creative client portal. Create your account with this invite code:</p>
        <p style="margin:0 0 16px;font-size:20px;font-weight:700;letter-spacing:0.05em;color:#18181b;background-color:#f4f4f5;border-radius:8px;padding:12px 16px;text-align:center;">${opts.inviteCode}</p>
        ${button(opts.registerUrl, "Create Account")}`
+    ),
+  };
+}
+
+export function reorderRequestEmail(opts: {
+  companyName: string;
+  quoteTitle: string;
+  quoteUrl: string;
+}) {
+  return {
+    subject: `Reorder request from ${opts.companyName}`,
+    html: layout(
+      "New reorder request",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.companyName}</strong> submitted a reorder: <strong>${opts.quoteTitle}</strong>. The draft quote is ready for review and pricing.</p>
+       ${button(opts.quoteUrl, "Review Draft Quote")}`
     ),
   };
 }

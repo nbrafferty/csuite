@@ -3,6 +3,8 @@ import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 import { OrderStatus, OrderSource, PaymentTermType, Prisma } from "@prisma/client";
 import { generateOrderNumber } from "../../lib/order-number";
+import { generateQuoteNumber } from "../../lib/quote-number";
+import { sendEmail, reorderRequestEmail, staffEmails, appBaseUrl } from "@/server/lib/email";
 import { TRPCError } from "@trpc/server";
 
 // Valid status transitions per spec
@@ -501,6 +503,130 @@ export const orderRouter = router({
     }),
 
   // ─── Activity Log ────────────────────────────────────────────────
+
+  // REORDER — deep-clone an order's line-item tree into a new DRAFT quote.
+  // Staff can reorder any order; clients only their own company's.
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        orderId: z.string().uuid(),
+        // Optional per-item quantity/size overrides collected in the
+        // confirmation dialog (keyed by the source order item id).
+        overrides: z
+          .array(
+            z.object({
+              itemId: z.string(),
+              quantity: z.number().int().positive().optional(),
+              sizeBreakdown: z
+                .record(z.string(), z.number().int().nonnegative())
+                .optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+
+      const order = await prisma.order.findUnique({
+        where: { id: input.orderId },
+        include: {
+          items: { orderBy: { sortOrder: "asc" }, include: { imprints: true } },
+          fees: { orderBy: { sortOrder: "asc" } },
+          company: { select: { name: true } },
+        },
+      });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isStaff && order.companyId !== ctx.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (order.items.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This order has no line items to reorder",
+        });
+      }
+
+      const overrideMap = new Map(
+        (input.overrides ?? []).map((o) => [o.itemId, o])
+      );
+
+      const number = await generateQuoteNumber(prisma as any);
+      const quote = await prisma.quote.create({
+        data: {
+          number,
+          companyId: order.companyId,
+          createdByUserId: ctx.user.id as string,
+          title: `REORDER: ${order.title}`,
+          status: "DRAFT",
+          sourceOrderId: order.id,
+          paymentTermType: order.paymentTermType,
+          depositPercent: order.depositPercent,
+          netDays: order.netDays,
+          items: {
+            create: order.items.map((item, idx) => {
+              const ov = overrideMap.get(item.id);
+              const sizes =
+                ov?.sizeBreakdown ??
+                (item.sizeBreakdown as Record<string, number> | null) ??
+                undefined;
+              const sizeSum = sizes
+                ? Object.values(sizes).reduce((a, b) => a + b, 0)
+                : 0;
+              const qty = sizeSum > 0 ? sizeSum : ov?.quantity ?? item.quantity;
+              return {
+                sortOrder: idx,
+                description: item.description,
+                sku: item.sku,
+                itemNumber: item.itemNumber,
+                color: item.color,
+                category: item.category,
+                unitPrice: item.unitPrice,
+                quantity: qty,
+                sizeBreakdown: sizes ?? undefined,
+                decorationNotes: item.decorationNotes,
+                lineTotal: Number(item.unitPrice) * qty,
+                imprints: {
+                  create: item.imprints.map((imp) => ({
+                    method: imp.method,
+                    colorCount: imp.colorCount,
+                    placement: imp.placement,
+                    widthIn: imp.widthIn,
+                    heightIn: imp.heightIn,
+                    artworkAssetId: imp.artworkAssetId,
+                    notes: imp.notes,
+                    sortOrder: imp.sortOrder,
+                  })),
+                },
+              };
+            }),
+          },
+          fees: {
+            create: order.fees.map((f) => ({
+              description: f.description,
+              quantity: f.quantity,
+              unitAmount: f.unitAmount,
+              sortOrder: f.sortOrder,
+            })),
+          },
+        },
+      });
+
+      // Client-submitted reorders land in the staff queue — notify staff
+      if (!isStaff) {
+        const recipients = await staffEmails();
+        if (recipients.length > 0) {
+          const template = reorderRequestEmail({
+            companyName: order.company.name,
+            quoteTitle: quote.title,
+            quoteUrl: `${appBaseUrl()}/quotes/${quote.id}`,
+          });
+          await sendEmail({ to: recipients, ...template });
+        }
+      }
+
+      return { id: quote.id, number: quote.number, title: quote.title };
+    }),
 
   activity: protectedProcedure
     .input(z.object({ orderId: z.string().uuid() }))

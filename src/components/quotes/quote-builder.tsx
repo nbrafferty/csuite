@@ -307,9 +307,24 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
       </button>
 
       {/* Page title */}
-      <h1 className="mb-6 font-display text-2xl uppercase tracking-display text-white">
-        {quoteId ? (quote?.title ?? "Edit Quote") : "New Quote"}
-      </h1>
+      <div className="mb-6">
+        <h1 className="flex items-center gap-3 font-display text-2xl uppercase tracking-display text-white">
+          {quoteId ? (quote?.title ?? "Edit Quote") : "New Quote"}
+          {(quote as any)?.sourceOrder && (
+            <span className="rounded-full bg-coral/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-coral">
+              Reorder
+            </span>
+          )}
+        </h1>
+        {(quote as any)?.sourceOrder && (
+          <a
+            href={`/orders/${(quote as any).sourceOrder.id}`}
+            className="mt-1 inline-block text-sm text-coral hover:text-coral-light"
+          >
+            Cloned from order {(quote as any).sourceOrder.number} — {(quote as any).sourceOrder.title}
+          </a>
+        )}
+      </div>
 
       {/* Two-column layout */}
       <div className="flex flex-col gap-6 lg:flex-row">

@@ -189,6 +189,9 @@ export const quoteRouter = router({
           convertedOrder: {
             select: { id: true, number: true },
           },
+          sourceOrder: {
+            select: { id: true, number: true, title: true },
+          },
           project: {
             select: { id: true, name: true, status: true, logoUrl: true },
           },
@@ -462,6 +465,79 @@ export const quoteRouter = router({
       }
 
       return prisma.quoteItem.delete({ where: { id: input.itemId } });
+    }),
+
+  // REORDER — clone this quote's full line-item tree into a new DRAFT quote
+  reorder: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = (ctx.user as any).role === "CCC_STAFF";
+      const quote = await prisma.quote.findUnique({
+        where: { id: input.id },
+        include: {
+          items: { orderBy: { sortOrder: "asc" }, include: { imprints: true } },
+          fees: { orderBy: { sortOrder: "asc" } },
+          convertedOrder: { select: { id: true } },
+        },
+      });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isStaff && quote.companyId !== (ctx.user as any).companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const number = await generateQuoteNumber(prisma as any);
+      const clone = await prisma.quote.create({
+        data: {
+          number,
+          companyId: quote.companyId,
+          createdByUserId: (ctx.user as any).id,
+          title: quote.title.startsWith("REORDER: ")
+            ? quote.title
+            : `REORDER: ${quote.title}`,
+          status: "DRAFT",
+          sourceOrderId: quote.convertedOrder?.id ?? quote.sourceOrderId,
+          paymentTermType: quote.paymentTermType,
+          depositPercent: quote.depositPercent,
+          netDays: quote.netDays,
+          items: {
+            create: quote.items.map((item, idx) => ({
+              sortOrder: idx,
+              description: item.description,
+              sku: item.sku,
+              itemNumber: item.itemNumber,
+              color: item.color,
+              category: item.category,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              sizeBreakdown: item.sizeBreakdown ?? undefined,
+              decorationNotes: item.decorationNotes,
+              lineTotal: item.lineTotal,
+              imprints: {
+                create: item.imprints.map((imp) => ({
+                  method: imp.method,
+                  colorCount: imp.colorCount,
+                  placement: imp.placement,
+                  widthIn: imp.widthIn,
+                  heightIn: imp.heightIn,
+                  artworkAssetId: imp.artworkAssetId,
+                  notes: imp.notes,
+                  sortOrder: imp.sortOrder,
+                })),
+              },
+            })),
+          },
+          fees: {
+            create: quote.fees.map((f) => ({
+              description: f.description,
+              quantity: f.quantity,
+              unitAmount: f.unitAmount,
+              sortOrder: f.sortOrder,
+            })),
+          },
+        },
+      });
+
+      return { id: clone.id, number: clone.number, title: clone.title };
     }),
 
   // ADD FEE — Staff only (e.g. "XXL Upcharge x18 @ $2.00")

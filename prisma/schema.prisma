@@ -333,6 +333,7 @@ model Quote {
   mockupUrl         String?         @db.Text @map("mockup_url")
 
   convertedAt       DateTime?       @map("converted_at")
+  sourceOrderId     String?         @map("source_order_id") // set when this quote is a reorder of an existing order
 
   items             QuoteItem[]
   fees              FeeLine[]
@@ -348,6 +349,7 @@ model Quote {
   company           Company         @relation(fields: [companyId], references: [id])
   project           Project?        @relation(fields: [projectId], references: [id])
   createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
+  sourceOrder       Order?          @relation("ReorderSource", fields: [sourceOrderId], references: [id])
   convertedOrder    Order?
   quoteRequest      QuoteRequest?
   artworkLinks      ArtworkQuoteLink[]
@@ -440,6 +442,7 @@ model Order {
 
   items             OrderItem[]
   fees              FeeLine[]
+  reorderQuotes     Quote[]       @relation("ReorderSource")
   artworkLinks      OrderArtworkLink[]
   invoices          Invoice[]
   shipments         Shipment[]

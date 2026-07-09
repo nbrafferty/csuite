@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { ReorderDialog } from "@/components/orders/reorder-dialog";
 
 type Order = {
   id: string;
@@ -27,6 +30,7 @@ export function OrdersTable({
   isStaff: boolean;
 }) {
   const router = useRouter();
+  const [reorderOrderId, setReorderOrderId] = useState<string | null>(null);
 
   if (orders.length === 0) {
     return (
@@ -51,6 +55,7 @@ export function OrdersTable({
             <th className="px-4 py-3">Items</th>
             <th className="px-4 py-3 text-right">Total</th>
             <th className="px-4 py-3">Created</th>
+            <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-border">
@@ -93,10 +98,32 @@ export function OrdersTable({
                   addSuffix: true,
                 })}
               </td>
+              <td className="px-4 py-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setReorderOrderId(order.id);
+                  }}
+                  title="Reorder"
+                  className="flex items-center gap-1 rounded-md border border-surface-border px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:border-coral/40 hover:text-coral"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reorder
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {reorderOrderId && (
+        <ReorderDialog
+          open={!!reorderOrderId}
+          onClose={() => setReorderOrderId(null)}
+          orderId={reorderOrderId}
+          isStaff={isStaff}
+        />
+      )}
     </div>
   );
 }

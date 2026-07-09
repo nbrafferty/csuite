@@ -18,8 +18,10 @@ import {
   CheckSquare,
   Image,
   Stamp,
+  RotateCcw,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { ReorderDialog } from "@/components/orders/reorder-dialog";
 import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
 import { OrderOverviewTab } from "./tabs/overview-tab";
 import { OrderLineItemsTab } from "./tabs/line-items-tab";
@@ -62,6 +64,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showReorder, setShowReorder] = useState(false);
 
   const { data: order, isLoading } = trpc.order.get.useQuery(
     { id: orderId },
@@ -154,6 +157,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </div>
 
           {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowReorder(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-coral/40 bg-coral/10 px-4 py-2 text-sm font-medium text-coral transition-colors hover:bg-coral/20"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reorder
+            </button>
           {isStaff && (
             <div className="flex items-center gap-2">
               {nextAction && (
@@ -214,6 +225,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Status Timeline */}
@@ -309,6 +321,13 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       )}
       {activeTab === "billing" && <OrderBillingTab order={order} isStaff={isStaff} />}
       {activeTab === "activity" && <OrderActivityTab orderId={order.id} />}
+
+      <ReorderDialog
+        open={showReorder}
+        onClose={() => setShowReorder(false)}
+        orderId={order.id}
+        isStaff={isStaff}
+      />
     </div>
   );
 }

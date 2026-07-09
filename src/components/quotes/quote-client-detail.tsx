@@ -129,6 +129,17 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
             {quote.sentAt
               ? format(new Date(quote.sentAt), "MMM d, yyyy")
               : "—"}
+            {(quote as any).sourceOrder && (
+              <>
+                {" · "}
+                <a
+                  href={`/orders/${(quote as any).sourceOrder.id}`}
+                  className="text-coral hover:text-coral-light"
+                >
+                  Reorder of {(quote as any).sourceOrder.number}
+                </a>
+              </>
+            )}
           </p>
         </div>
       </div>

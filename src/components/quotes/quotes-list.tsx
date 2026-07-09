@@ -244,7 +244,14 @@ export function QuotesList() {
                   </td>
                 )}
                 <td className="px-4 py-3 text-sm text-white">
-                  {quote.title}
+                  <span className="inline-flex items-center gap-2">
+                    {quote.title}
+                    {(quote as any).sourceOrderId && (
+                      <span className="rounded-full bg-coral/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-coral">
+                        Reorder
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-center text-sm text-gray-400">
                   {quote.itemCount}
