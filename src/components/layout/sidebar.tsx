@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Package,
   CalendarDays,
+  Receipt,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { label: "Proofs", href: "/proofs", icon: Stamp },
   { label: "Tasks", href: "/tasks", icon: CheckSquare },
   { label: "Billing", href: "/billing", icon: CreditCard },
+  { label: "Expenses", href: "/expenses", icon: Receipt, staffOnly: true },
   { label: "Messages", href: "/messages", icon: MessageSquare },
   { label: "Clients", href: "/clients", icon: Building2, staffOnly: true },
 

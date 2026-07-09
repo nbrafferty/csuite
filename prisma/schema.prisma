@@ -184,6 +184,7 @@ model Company {
   proofs            Proof[]
   catalogProducts   CatalogProduct[]
   clientProducts    ClientProduct[]
+  expenses          Expense[]
   tasks             Task[]
 
   @@map("companies")
@@ -232,6 +233,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   clientProductsCreated ClientProduct[] @relation("ClientProductCreator")
   paymentRequestsMade   PaymentRequest[] @relation("PaymentRequester")
+  expensesCreated       Expense[]        @relation("ExpenseCreator")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -450,6 +452,7 @@ model Order {
   fees              FeeLine[]
   reorderQuotes     Quote[]       @relation("ReorderSource")
   sourcedProducts   ClientProduct[] @relation("ProductSourceOrder")
+  expenses          Expense[]
   artworkLinks      OrderArtworkLink[]
   invoices          Invoice[]
   shipments         Shipment[]
@@ -1006,6 +1009,28 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+// Per-order (or unattached shop) cost entry for profitability tracking.
+// Staff-only — never exposed to client roles.
+model Expense {
+  id              String   @id @default(uuid())
+  orderId         String?  @map("order_id")
+  companyId       String?  @map("company_id")
+  description     String
+  category        String   @default("OTHER") // BLANKS | SUPPLIES | LABOR | SHIPPING | OUTSOURCE | OTHER
+  amount          Decimal  @db.Decimal(10, 2)
+  incurredAt      DateTime @default(now()) @map("incurred_at")
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy User     @relation("ExpenseCreator", fields: [createdByUserId], references: [id])
+
+  @@index([orderId])
+  @@index([incurredAt])
+  @@map("expenses")
+}
+
 // A toggleable automation rule: when <trigger> fires, run <action>.
 // Global (single-tenant shop), staff-editable, processed in sortOrder.
 model AutomationRule {
@@ -1114,6 +1139,7 @@ model Message {
   body           String
   senderType     String        @default("client")  @map("sender_type")
   attachmentUrls Json?         @map("attachment_urls")
+  via        String?  // null = portal, "email" = inbound email reply
   createdAt      DateTime      @default(now()) @map("created_at")
 
   thread         MessageThread @relation(fields: [threadId], references: [id])

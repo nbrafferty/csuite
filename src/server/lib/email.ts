@@ -15,6 +15,7 @@ export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
   html: string;
+  replyTo?: string;
 }): Promise<{ sent: boolean }> {
   const to = Array.isArray(opts.to) ? opts.to : [opts.to];
 
@@ -39,6 +40,7 @@ export async function sendEmail(opts: {
         to,
         subject: opts.subject,
         html: opts.html,
+        ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
       }),
     });
 
@@ -160,6 +162,22 @@ export function quoteSentEmail(opts: {
       "You have a new quote",
       `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.quoteNumber}</strong> — ${opts.quoteTitle} is ready for your review. You can approve it or request changes right from the portal.</p>
        ${button(opts.quoteUrl, "Review Quote")}`
+    ),
+  };
+}
+
+export function threadMessageEmail(opts: {
+  subject: string;
+  body: string;
+  threadUrl: string;
+}) {
+  return {
+    subject: `New message: ${opts.subject}`,
+    html: layout(
+      opts.subject,
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;white-space:pre-wrap;">${opts.body}</p>
+       ${button(opts.threadUrl, "Reply in Portal")}
+       <p style="margin:16px 0 0;font-size:12px;color:#71717a;">Or just reply to this email — your response will land in the conversation.</p>`
     ),
   };
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
+import { sendEmail, threadMessageEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
 
 export const messageRouter = router({
   list: protectedProcedure
@@ -60,6 +61,33 @@ export const messageRouter = router({
         where: { id: input.threadId },
         data: { updatedAt: new Date() },
       });
+
+      // Staff replies email the client's admins. When a reply domain is
+      // configured, replies to that email land straight back in the thread.
+      if (senderType === "staff") {
+        const thread = await prisma.messageThread.findUnique({
+          where: { id: input.threadId },
+          select: { companyId: true, subject: true },
+        });
+        if (thread) {
+          const recipients = await clientAdminEmails(thread.companyId);
+          if (recipients.length > 0) {
+            const replyDomain = process.env.EMAIL_REPLY_DOMAIN;
+            const template = threadMessageEmail({
+              subject: thread.subject,
+              body: input.body,
+              threadUrl: `${appBaseUrl()}/messages`,
+            });
+            await sendEmail({
+              to: recipients,
+              ...template,
+              replyTo: replyDomain
+                ? `thread+${input.threadId}@${replyDomain}`
+                : undefined,
+            });
+          }
+        }
+      }
 
       return message;
     }),

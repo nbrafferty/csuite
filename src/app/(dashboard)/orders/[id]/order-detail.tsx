@@ -19,6 +19,7 @@ import {
   Image,
   Stamp,
   RotateCcw,
+  DollarSign,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { ReorderDialog } from "@/components/orders/reorder-dialog";
@@ -31,6 +32,7 @@ import { OrderActivityTab } from "./tabs/activity-tab";
 import { OrderTasksTab } from "./tabs/tasks-tab";
 import { OrderArtworkTab } from "./tabs/artwork-tab";
 import { OrderProofsTab } from "./tabs/proofs-tab";
+import { OrderExpensesTab } from "./tabs/expenses-tab";
 import { ProjectPicker } from "@/components/projects/project-picker";
 
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
@@ -53,6 +55,7 @@ const TABS = [
   { id: "artwork", label: "Artwork", icon: Image },
   { id: "proofs", label: "Proofs", icon: Stamp },
   { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "expenses", label: "Expenses", icon: DollarSign, staffOnly: true },
   { id: "activity", label: "Activity", icon: Clock },
 ] as const;
 
@@ -292,7 +295,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
       {/* Tabs */}
       <div className="mb-6 flex border-b border-surface-border">
-        {TABS.map((tab) => (
+        {TABS.filter((tab: any) => !tab.staffOnly || isStaff).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -323,6 +326,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         />
       )}
       {activeTab === "billing" && <OrderBillingTab order={order} isStaff={isStaff} />}
+      {activeTab === "expenses" && isStaff && <OrderExpensesTab orderId={order.id} />}
       {activeTab === "activity" && <OrderActivityTab orderId={order.id} />}
 
       <ReorderDialog
