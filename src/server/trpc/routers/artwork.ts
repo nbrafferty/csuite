@@ -56,6 +56,7 @@ export const artworkRouter = router({
           sourceType: z.string().optional(),
           orderId: z.string().optional(),
           quoteId: z.string().optional(),
+          companyId: z.string().optional(), // staff only
           search: z.string().optional(),
           page: z.number().int().default(1),
           perPage: z.number().int().default(50),
@@ -70,6 +71,7 @@ export const artworkRouter = router({
         sourceType,
         orderId,
         quoteId,
+        companyId,
         search,
         page = 1,
         perPage = 50,
@@ -79,6 +81,8 @@ export const artworkRouter = router({
 
       if (!isStaff) {
         where.companyId = ctx.companyId;
+      } else if (companyId) {
+        where.companyId = companyId;
       }
 
       if (tag) {

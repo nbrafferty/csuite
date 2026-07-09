@@ -335,6 +335,7 @@ model Quote {
   convertedAt       DateTime?       @map("converted_at")
 
   items             QuoteItem[]
+  fees              FeeLine[]
   changeRequests    QuoteChangeRequest[]
 
   sentAt            DateTime?       @map("sent_at")
@@ -371,7 +372,9 @@ model QuoteItem {
 
   description       String
   sku               String?
+  itemNumber        String?       @map("item_number")
   color             String?
+  category          String?       // e.g. Screen Printing, Embroidery, Signage
   unitPrice         Decimal       @map("unit_price") @db.Decimal(10, 2)
   quantity          Int
   decorationNotes   String?       @db.Text @map("decoration_notes")
@@ -381,6 +384,8 @@ model QuoteItem {
 
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  imprints          Imprint[]
 
   @@index([quoteId])
   @@map("quote_items")
@@ -434,6 +439,7 @@ model Order {
   quote             Quote?        @relation(fields: [quoteId], references: [id])
 
   items             OrderItem[]
+  fees              FeeLine[]
   artworkLinks      OrderArtworkLink[]
   invoices          Invoice[]
   shipments         Shipment[]
@@ -460,6 +466,8 @@ model OrderItem {
   quantity          Int             @default(1)
   lineTotal         Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
   sizeBreakdown     Json?           @map("size_breakdown")
+  itemNumber        String?         @map("item_number")
+  category          String?         // e.g. Screen Printing, Embroidery, Signage
   decorationNotes   String?         @db.Text @map("decoration_notes")
   vendorId          String?         @map("vendor_id")
   costPerUnit       Decimal?        @map("cost_per_unit") @db.Decimal(10, 2)
@@ -469,9 +477,55 @@ model OrderItem {
 
   order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+  imprints          Imprint[]
 
   @@index([orderId])
   @@map("order_items")
+}
+
+// Production imprint spec on a line item (method, placement, size, linked art).
+// Exactly one of quoteItemId / orderItemId is set.
+model Imprint {
+  id             String        @id @default(uuid())
+  quoteItemId    String?       @map("quote_item_id")
+  orderItemId    String?       @map("order_item_id")
+  method         String        @default("SCREEN_PRINT") // SCREEN_PRINT | EMBROIDERY | DTG | TRANSFER | OTHER
+  colorCount     Int?          @map("color_count")
+  placement      String?       // e.g. "Left chest", "Center back"
+  widthIn        Float?        @map("width_in")
+  heightIn       Float?        @map("height_in")
+  artworkAssetId String?       @map("artwork_asset_id")
+  notes          String?       @db.Text
+  sortOrder      Int           @default(0) @map("sort_order")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  quoteItem      QuoteItem?    @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+  orderItem      OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  artworkAsset   ArtworkAsset? @relation(fields: [artworkAssetId], references: [id], onDelete: SetNull)
+
+  @@index([quoteItemId])
+  @@index([orderItemId])
+  @@map("imprints")
+}
+
+// Flat fee/upcharge row on a quote or order (e.g. "XXL Upcharge x18 @ $2.00").
+// Copied into plain invoice items at invoicing time.
+model FeeLine {
+  id          String   @id @default(uuid())
+  quoteId     String?  @map("quote_id")
+  orderId     String?  @map("order_id")
+  description String
+  quantity    Int      @default(1)
+  unitAmount  Decimal  @map("unit_amount") @db.Decimal(10, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([orderId])
+  @@map("fee_lines")
 }
 
 model OrderArtworkLink {
@@ -653,6 +707,7 @@ model ArtworkAsset {
   tags           ArtworkTag[]
   orderArtworkLinks OrderArtworkLink[]
   quoteArtworkLinks ArtworkQuoteLink[]
+  imprints          Imprint[]
 
   @@index([companyId])
   @@map("artwork_assets")

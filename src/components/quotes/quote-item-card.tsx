@@ -12,9 +12,26 @@ type QuoteItemData = {
   unitPrice: number | string;
   quantity: number;
   lineTotal: number | string;
+  itemNumber?: string | null;
+  category?: string | null;
   decorationNotes?: string | null;
   mockupUrl?: string | null;
   sizeBreakdown?: Record<string, number> | null;
+  imprints?: {
+    id: string;
+    method: string;
+    colorCount?: number | null;
+    placement?: string | null;
+    widthIn?: number | null;
+    heightIn?: number | null;
+    notes?: string | null;
+    artworkAsset?: {
+      id: string;
+      name: string;
+      filename: string;
+      versions: { thumbnailUrl?: string | null; fileUrl?: string | null }[];
+    } | null;
+  }[];
   savedProduct?: {
     id: string;
     name: string;
@@ -101,8 +118,12 @@ export function QuoteItemCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-medium text-white">{item.description}</p>
-              {item.sku && (
-                <p className="mt-0.5 text-xs text-gray-500">SKU: {item.sku}</p>
+              {(item.sku || item.itemNumber) && (
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {[item.itemNumber && `#${item.itemNumber}`, item.sku && `SKU: ${item.sku}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               )}
               {item.color && (
                 <p className="mt-0.5 text-xs text-gray-500">
@@ -136,6 +157,45 @@ export function QuoteItemCard({
                   {size}: {qty}
                 </span>
               ))}
+            </div>
+          )}
+
+          {(item.imprints ?? []).length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {(item.imprints ?? []).map((imp) => {
+                const methodLabel = imp.method
+                  .replace(/_/g, " ")
+                  .toLowerCase()
+                  .replace(/\b\w/g, (c) => c.toUpperCase());
+                const dims =
+                  imp.widthIn || imp.heightIn
+                    ? ` ${imp.widthIn ?? "?"}\" × ${imp.heightIn ?? "?"}\"`
+                    : "";
+                const thumb = imp.artworkAsset?.versions?.[0]?.thumbnailUrl;
+                return (
+                  <div
+                    key={imp.id}
+                    className="flex items-center gap-2 rounded-md border border-surface-border bg-surface-secondary px-2.5 py-1.5"
+                  >
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumb}
+                        alt={imp.artworkAsset?.name ?? "artwork"}
+                        className="h-7 w-7 shrink-0 rounded object-cover"
+                      />
+                    ) : null}
+                    <p className="min-w-0 flex-1 truncate text-xs text-gray-400">
+                      <span className="font-medium text-gray-300">{methodLabel}</span>
+                      {imp.colorCount ? `, ${imp.colorCount}-color` : ""}
+                      {imp.placement ? ` — ${imp.placement}` : ""}
+                      {dims}
+                      {imp.artworkAsset ? ` · ${imp.artworkAsset.name || imp.artworkAsset.filename}` : ""}
+                      {imp.notes ? ` · ${imp.notes}` : ""}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
 

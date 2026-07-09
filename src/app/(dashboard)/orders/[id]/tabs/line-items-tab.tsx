@@ -81,7 +81,7 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                       className="bg-surface-card transition-colors hover:bg-white/[0.02]"
                     >
                       <td className="px-3 py-3">
-                        {sizeBreakdown && (
+                        {(sizeBreakdown || (item.imprints ?? []).length > 0) && (
                           <button
                             onClick={() => toggleExpand(item.id)}
                             className="text-gray-500 hover:text-white"
@@ -143,24 +143,56 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
                         </td>
                       )}
                     </tr>
-                    {isExpanded && sizeBreakdown && (
+                    {isExpanded && (sizeBreakdown || (item.imprints ?? []).length > 0) && (
                       <tr className="bg-white/[0.01]">
                         <td colSpan={isStaff ? 9 : 7} className="px-8 py-3">
-                          <div className="flex flex-wrap gap-3">
-                            {Object.entries(sizeBreakdown as Record<string, number>).map(
-                              ([size, qty]) => (
-                                <div
-                                  key={size}
-                                  className="rounded-lg bg-surface-border/30 px-3 py-1.5 text-xs"
-                                >
-                                  <span className="font-medium text-gray-300">
-                                    {size}
-                                  </span>
-                                  <span className="ml-2 text-gray-500">{qty}</span>
-                                </div>
-                              )
-                            )}
-                          </div>
+                          {sizeBreakdown && (
+                            <div className="flex flex-wrap gap-3">
+                              {Object.entries(sizeBreakdown as Record<string, number>).map(
+                                ([size, qty]) => (
+                                  <div
+                                    key={size}
+                                    className="rounded-lg bg-surface-border/30 px-3 py-1.5 text-xs"
+                                  >
+                                    <span className="font-medium text-gray-300">
+                                      {size}
+                                    </span>
+                                    <span className="ml-2 text-gray-500">{qty}</span>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                          {(item.imprints ?? []).length > 0 && (
+                            <div className="mt-2 space-y-1.5">
+                              {(item.imprints ?? []).map((imp: any) => {
+                                const methodLabel = String(imp.method)
+                                  .replace(/_/g, " ")
+                                  .toLowerCase()
+                                  .replace(/\b\w/g, (c: string) => c.toUpperCase());
+                                const thumb = imp.artworkAsset?.versions?.[0]?.thumbnailUrl;
+                                return (
+                                  <div key={imp.id} className="flex items-center gap-2 text-xs text-gray-400">
+                                    {thumb ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={thumb} alt="" className="h-6 w-6 rounded object-cover" />
+                                    ) : null}
+                                    <span>
+                                      <span className="font-medium text-gray-300">{methodLabel}</span>
+                                      {imp.colorCount ? `, ${imp.colorCount}-color` : ""}
+                                      {imp.placement ? ` — ${imp.placement}` : ""}
+                                      {imp.widthIn || imp.heightIn
+                                        ? ` ${imp.widthIn ?? "?"}\" × ${imp.heightIn ?? "?"}\"`
+                                        : ""}
+                                      {imp.artworkAsset
+                                        ? ` · ${imp.artworkAsset.name || imp.artworkAsset.filename}`
+                                        : ""}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}
@@ -169,6 +201,24 @@ export function OrderLineItemsTab({ order, isStaff }: { order: any; isStaff: boo
               })}
             </tbody>
           </table>
+
+          {/* Fee lines */}
+          {((order as any).fees ?? []).length > 0 && (
+            <div className="border-t border-surface-border">
+              {((order as any).fees ?? []).map((fee: any) => (
+                <div
+                  key={fee.id}
+                  className="flex items-center justify-between px-3 py-2 text-sm"
+                >
+                  <span className="text-gray-400">{fee.description}</span>
+                  <span className="text-gray-300">
+                    {fee.quantity} × ${Number(fee.unitAmount).toFixed(2)} = $
+                    {(Number(fee.unitAmount) * fee.quantity).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Total row */}
           <div className="flex items-center justify-between border-t border-surface-border bg-surface-card px-3 py-3">

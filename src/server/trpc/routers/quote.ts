@@ -10,19 +10,64 @@ import { sendEmail, quoteSentEmail, clientAdminEmails, appBaseUrl } from "@/serv
 
 // ─── Input Schemas ───
 
+const ImprintInput = z.object({
+  method: z
+    .enum(["SCREEN_PRINT", "EMBROIDERY", "DTG", "TRANSFER", "OTHER"])
+    .default("SCREEN_PRINT"),
+  colorCount: z.number().int().min(1).max(20).optional(),
+  placement: z.string().max(120).optional(),
+  widthIn: z.number().positive().optional(),
+  heightIn: z.number().positive().optional(),
+  artworkAssetId: z.string().optional(),
+  notes: z.string().max(2000).optional(),
+});
+
 const QuoteItemInput = z.object({
   savedProductId: z.string().optional(),
   description: z.string().min(1),
   sku: z.string().optional(),
+  itemNumber: z.string().optional(),
   color: z.string().optional(),
+  category: z.string().optional(),
   unitPrice: z.number().positive(),
   quantity: z.number().int().positive(),
   decorationNotes: z.string().optional(),
   sizeBreakdown: z
     .record(z.string(), z.number().int().nonnegative())
     .optional(),
+  imprints: z.array(ImprintInput).optional(),
   sortOrder: z.number().int().default(0),
 });
+
+// Derived quantity: when a size breakdown is present, quantity is the sum
+// of the sizes (matching what the client sees in the grid).
+function effectiveQuantity(item: { quantity: number; sizeBreakdown?: Record<string, number> }) {
+  if (item.sizeBreakdown && Object.keys(item.sizeBreakdown).length > 0) {
+    const sum = Object.values(item.sizeBreakdown).reduce((a, b) => a + b, 0);
+    if (sum > 0) return sum;
+  }
+  return item.quantity;
+}
+
+const ITEM_INCLUDE = {
+  imprints: {
+    orderBy: { sortOrder: "asc" as const },
+    include: {
+      artworkAsset: {
+        select: {
+          id: true,
+          name: true,
+          filename: true,
+          versions: {
+            orderBy: { versionNumber: "desc" as const },
+            take: 1,
+            select: { thumbnailUrl: true, fileUrl: true },
+          },
+        },
+      },
+    },
+  },
+};
 
 const PaymentTermsInput = z.object({
   paymentTermType: z.nativeEnum(PaymentTermType),
@@ -88,6 +133,7 @@ export const quoteRouter = router({
               select: { id: true, name: true },
             },
             items: { select: { lineTotal: true } },
+            fees: { select: { unitAmount: true, quantity: true } },
           },
           orderBy: { updatedAt: "desc" },
           skip: (page - 1) * perPage,
@@ -99,7 +145,9 @@ export const quoteRouter = router({
       return {
         quotes: quotes.map((q) => ({
           ...q,
-          total: q.items.reduce((sum, i) => sum + Number(i.lineTotal), 0),
+          total:
+            q.items.reduce((sum, i) => sum + Number(i.lineTotal), 0) +
+            q.fees.reduce((sum, f) => sum + Number(f.unitAmount) * f.quantity, 0),
           itemCount: q.items.length,
         })),
         total,
@@ -122,9 +170,11 @@ export const quoteRouter = router({
           createdBy: {
             select: { id: true, name: true, email: true },
           },
+          fees: { orderBy: { sortOrder: "asc" } },
           items: {
             orderBy: { sortOrder: "asc" },
             include: {
+              ...ITEM_INCLUDE,
               savedProduct: {
                 select: { id: true, name: true, thumbnailUrl: true },
               },
@@ -163,9 +213,16 @@ export const quoteRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
+      const itemsTotal = quote.items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+      const feesTotal = quote.fees.reduce(
+        (sum, f) => sum + Number(f.unitAmount) * f.quantity,
+        0
+      );
       return {
         ...quote,
-        total: quote.items.reduce((sum, i) => sum + Number(i.lineTotal), 0),
+        itemsTotal,
+        feesTotal,
+        total: itemsTotal + feesTotal,
       };
     }),
 
@@ -201,12 +258,20 @@ export const quoteRouter = router({
           clientMessage: input.clientMessage,
           items: input.items
             ? {
-                create: input.items.map((item, i) => ({
-                  ...item,
-                  sortOrder: item.sortOrder ?? i,
-                  lineTotal: item.unitPrice * item.quantity,
-                  sizeBreakdown: item.sizeBreakdown ?? undefined,
-                })),
+                create: input.items.map((item, i) => {
+                  const { imprints, ...rest } = item;
+                  const qty = effectiveQuantity(item);
+                  return {
+                    ...rest,
+                    quantity: qty,
+                    sortOrder: item.sortOrder ?? i,
+                    lineTotal: item.unitPrice * qty,
+                    sizeBreakdown: item.sizeBreakdown ?? undefined,
+                    imprints: imprints
+                      ? { create: imprints.map((imp, j) => ({ ...imp, sortOrder: j })) }
+                      : undefined,
+                  };
+                }),
               }
             : undefined,
         },
@@ -319,13 +384,20 @@ export const quoteRouter = router({
         });
       }
 
+      const { imprints, ...rest } = input.item;
+      const qty = effectiveQuantity(input.item);
       return prisma.quoteItem.create({
         data: {
           quoteId: input.quoteId,
-          ...input.item,
-          lineTotal: input.item.unitPrice * input.item.quantity,
+          ...rest,
+          quantity: qty,
+          lineTotal: input.item.unitPrice * qty,
           sizeBreakdown: input.item.sizeBreakdown ?? undefined,
+          imprints: imprints
+            ? { create: imprints.map((imp, j) => ({ ...imp, sortOrder: j })) }
+            : undefined,
         },
+        include: ITEM_INCLUDE,
       });
     }),
 
@@ -347,16 +419,32 @@ export const quoteRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST" });
       }
 
+      const { imprints, ...rest } = input.item;
       const unitPrice = input.item.unitPrice ?? Number(existing.unitPrice);
-      const quantity = input.item.quantity ?? existing.quantity;
+      const baseQty = input.item.quantity ?? existing.quantity;
+      const quantity = effectiveQuantity({
+        quantity: baseQty,
+        sizeBreakdown:
+          input.item.sizeBreakdown ??
+          (existing.sizeBreakdown as Record<string, number> | null) ??
+          undefined,
+      });
 
       return prisma.quoteItem.update({
         where: { id: input.itemId },
         data: {
-          ...input.item,
+          ...rest,
+          quantity,
           lineTotal: unitPrice * quantity,
           sizeBreakdown: input.item.sizeBreakdown ?? undefined,
+          imprints: imprints
+            ? {
+                deleteMany: {},
+                create: imprints.map((imp, j) => ({ ...imp, sortOrder: j })),
+              }
+            : undefined,
         },
+        include: ITEM_INCLUDE,
       });
     }),
 
@@ -374,6 +462,49 @@ export const quoteRouter = router({
       }
 
       return prisma.quoteItem.delete({ where: { id: input.itemId } });
+    }),
+
+  // ADD FEE — Staff only (e.g. "XXL Upcharge x18 @ $2.00")
+  addFee: staffProcedure
+    .input(
+      z.object({
+        quoteId: z.string(),
+        description: z.string().min(1).max(200),
+        quantity: z.number().int().positive().default(1),
+        unitAmount: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const quote = await prisma.quote.findUnique({ where: { id: input.quoteId } });
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(quote.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot add fees to this quote" });
+      }
+      const count = await prisma.feeLine.count({ where: { quoteId: input.quoteId } });
+      return prisma.feeLine.create({
+        data: {
+          quoteId: input.quoteId,
+          description: input.description,
+          quantity: input.quantity,
+          unitAmount: input.unitAmount,
+          sortOrder: count,
+        },
+      });
+    }),
+
+  // REMOVE FEE — Staff only
+  removeFee: staffProcedure
+    .input(z.object({ feeId: z.string() }))
+    .mutation(async ({ input }) => {
+      const fee = await prisma.feeLine.findUnique({
+        where: { id: input.feeId },
+        include: { quote: { select: { status: true } } },
+      });
+      if (!fee || !fee.quote) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!["DRAFT", "CHANGES_REQUESTED"].includes(fee.quote.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+      return prisma.feeLine.delete({ where: { id: input.feeId } });
     }),
 
   // REORDER ITEMS — Staff only
@@ -569,7 +700,7 @@ export const quoteRouter = router({
 
       const quote = await prisma.quote.findUnique({
         where: { id: input.id },
-        include: { items: true },
+        include: { items: { include: { imprints: true } }, fees: true },
       });
       if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
       if (quote.status !== "APPROVED") {
@@ -582,11 +713,13 @@ export const quoteRouter = router({
       const orderNumber = await generateOrderNumber(prisma);
       const invoiceNumber = await generateInvoiceNumber(prisma);
 
-      // Calculate total from quote items
-      const totalAmount = quote.items.reduce(
-        (sum, i) => sum + Number(i.lineTotal),
+      // Calculate total from quote items + fee lines
+      const feesTotal = quote.fees.reduce(
+        (sum, f) => sum + Number(f.unitAmount) * f.quantity,
         0
       );
+      const totalAmount =
+        quote.items.reduce((sum, i) => sum + Number(i.lineTotal), 0) + feesTotal;
 
       // Create order, auto-invoice, and update quote in a transaction
       const [order] = await prisma.$transaction(async (tx) => {
@@ -609,12 +742,34 @@ export const quoteRouter = router({
                 sortOrder: idx,
                 description: item.description,
                 sku: item.sku,
+                itemNumber: item.itemNumber,
                 color: item.color,
+                category: item.category,
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,
                 sizeBreakdown: item.sizeBreakdown ?? undefined,
                 decorationNotes: item.decorationNotes,
                 lineTotal: item.lineTotal,
+                imprints: {
+                  create: item.imprints.map((imp) => ({
+                    method: imp.method,
+                    colorCount: imp.colorCount,
+                    placement: imp.placement,
+                    widthIn: imp.widthIn,
+                    heightIn: imp.heightIn,
+                    artworkAssetId: imp.artworkAssetId,
+                    notes: imp.notes,
+                    sortOrder: imp.sortOrder,
+                  })),
+                },
+              })),
+            },
+            fees: {
+              create: quote.fees.map((f) => ({
+                description: f.description,
+                quantity: f.quantity,
+                unitAmount: f.unitAmount,
+                sortOrder: f.sortOrder,
               })),
             },
           },
@@ -635,13 +790,21 @@ export const quoteRouter = router({
             },
           ];
         } else {
-          // FULL or NET — invoice for full amount
-          invoiceItems = quote.items.map((item) => ({
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: Number(item.unitPrice),
-            lineTotal: Number(item.lineTotal),
-          }));
+          // FULL or NET — invoice for full amount (fees become plain rows)
+          invoiceItems = [
+            ...quote.items.map((item) => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: Number(item.unitPrice),
+              lineTotal: Number(item.lineTotal),
+            })),
+            ...quote.fees.map((f) => ({
+              description: f.description,
+              quantity: f.quantity,
+              unitPrice: Number(f.unitAmount),
+              lineTotal: Number(f.unitAmount) * f.quantity,
+            })),
+          ];
         }
 
         // Calculate due date for NET terms

@@ -91,9 +91,27 @@ export const orderRouter = router({
             orderBy: { sortOrder: "asc" },
             include: {
               vendor: { select: { id: true, name: true } },
+              imprints: {
+                orderBy: { sortOrder: "asc" },
+                include: {
+                  artworkAsset: {
+                    select: {
+                      id: true,
+                      name: true,
+                      filename: true,
+                      versions: {
+                        orderBy: { versionNumber: "desc" },
+                        take: 1,
+                        select: { thumbnailUrl: true, fileUrl: true },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
           quote: { select: { id: true, number: true } },
+          fees: { orderBy: { sortOrder: "asc" } },
           project: { select: { id: true, name: true, status: true, logoUrl: true } },
           invoices: {
             orderBy: { createdAt: "desc" },
@@ -498,8 +516,13 @@ export const orderRouter = router({
 
 // Helper: recalculate order totalAmount from line items
 async function recalculateOrderTotal(orderId: string) {
-  const items = await prisma.orderItem.findMany({ where: { orderId } });
-  const totalAmount = items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+  const [items, fees] = await Promise.all([
+    prisma.orderItem.findMany({ where: { orderId } }),
+    prisma.feeLine.findMany({ where: { orderId } }),
+  ]);
+  const totalAmount =
+    items.reduce((sum, i) => sum + Number(i.lineTotal), 0) +
+    fees.reduce((sum, f) => sum + Number(f.unitAmount) * f.quantity, 0);
   await prisma.order.update({
     where: { id: orderId },
     data: { totalAmount },

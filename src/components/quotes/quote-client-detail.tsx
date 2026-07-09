@@ -89,10 +89,12 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
     );
   }
 
-  const total = quote.items.reduce(
-    (sum, i) => sum + Number(i.lineTotal),
-    0
-  );
+  const total =
+    quote.items.reduce((sum, i) => sum + Number(i.lineTotal), 0) +
+    ((quote as any).fees ?? []).reduce(
+      (sum: number, f: any) => sum + Number(f.unitAmount) * f.quantity,
+      0
+    );
 
   // Check expiration
   const daysUntilExpiry = quote.expiresAt
@@ -252,10 +254,33 @@ export function QuoteClientDetail({ quoteId }: QuoteClientDetailProps) {
                   string,
                   number
                 > | null,
+                imprints: (item as any).imprints ?? [],
               }}
             />
           ))}
         </div>
+
+        {/* Fees */}
+        {((quote as any).fees ?? []).length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {((quote as any).fees ?? []).map((fee: any) => (
+              <div
+                key={fee.id}
+                className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-secondary px-3 py-2"
+              >
+                <p className="text-sm text-gray-300">{fee.description}</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500">
+                    {fee.quantity} × {formatCurrency(Number(fee.unitAmount))}
+                  </span>
+                  <span className="text-sm font-medium text-white">
+                    {formatCurrency(Number(fee.unitAmount) * fee.quantity)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Total */}
         <div className="mt-4 flex items-center justify-between border-t border-surface-border pt-4">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { QuoteItemCard } from "./quote-item-card";
 import { QuoteItemForm } from "./quote-item-form";
+import { QuoteFeesSection } from "./quote-fees-section";
 import { QuoteSettingsPanel } from "./quote-settings-panel";
 import { CatalogPickerDialog } from "./catalog-picker-dialog";
 import { MockupUpload } from "./mockup-upload";
@@ -285,8 +286,14 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
     );
   }
 
-  const quoteTotal =
+  const itemsSubtotal =
     quote?.items.reduce((sum, i) => sum + Number(i.lineTotal), 0) ?? 0;
+  const feesSubtotal =
+    (quote as any)?.fees?.reduce(
+      (sum: number, f: any) => sum + Number(f.unitAmount) * f.quantity,
+      0
+    ) ?? 0;
+  const quoteTotal = itemsSubtotal + feesSubtotal;
 
   return (
     <div>
@@ -373,17 +380,29 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                         savedProductId: item.savedProductId ?? undefined,
                         description: item.description,
                         sku: item.sku ?? undefined,
+                        itemNumber: (item as any).itemNumber ?? undefined,
                         color: item.color ?? undefined,
+                        category: (item as any).category ?? undefined,
                         unitPrice: Number(item.unitPrice),
                         quantity: item.quantity,
                         decorationNotes: item.decorationNotes ?? undefined,
                         sizeBreakdown: item.sizeBreakdown as
                           | Record<string, number>
                           | undefined,
+                        imprints: ((item as any).imprints ?? []).map((imp: any) => ({
+                          method: imp.method,
+                          colorCount: imp.colorCount ?? undefined,
+                          placement: imp.placement ?? undefined,
+                          widthIn: imp.widthIn ?? undefined,
+                          heightIn: imp.heightIn ?? undefined,
+                          artworkAssetId: imp.artworkAssetId ?? undefined,
+                          notes: imp.notes ?? undefined,
+                        })),
                         sortOrder: item.sortOrder,
                       }}
                       onSubmit={(data) => handleUpdateItem(item.id, data)}
                       onCancel={() => setEditingItemId(null)}
+                      companyId={quote?.companyId}
                     />
                   </div>
                 ) : (
@@ -397,6 +416,7 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                         string,
                         number
                       > | null,
+                      imprints: (item as any).imprints ?? [],
                     }}
                     editable={isEditable}
                     onEdit={() => setEditingItemId(item.id)}
@@ -419,10 +439,20 @@ export function QuoteBuilder({ quoteId }: QuoteBuilderProps) {
                     onSubmit={handleAddItem}
                     onCancel={() => setShowItemForm(false)}
                     sortOrder={quote?.items.length ?? 0}
+                    companyId={quote?.companyId}
                   />
                 </div>
               )}
             </div>
+
+            {/* Fees / upcharges */}
+            {quote && (
+              <QuoteFeesSection
+                quoteId={quote.id}
+                fees={(quote as any).fees ?? []}
+                editable={isEditable}
+              />
+            )}
 
             {/* Total */}
             {quote && quote.items.length > 0 && (
