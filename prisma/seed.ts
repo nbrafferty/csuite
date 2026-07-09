@@ -54,6 +54,9 @@ async function main() {
   await prisma.location.deleteMany();
   await prisma.catalogProduct.deleteMany();
   await prisma.vendor.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.company.deleteMany();
 
   // ═══════════════════════════════════════════════════════════════════
   // COMPANIES & USERS

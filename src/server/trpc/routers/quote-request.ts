@@ -9,6 +9,7 @@ export const quoteRequestRouter = router({
     .input(
       z.object({
         status: z.nativeEnum(QuoteRequestStatus).optional(),
+        companyId: z.string().uuid().optional(),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(100).default(20),
       })
@@ -17,6 +18,7 @@ export const quoteRequestRouter = router({
       const isStaff = ctx.role === "CCC_STAFF";
       const where: Prisma.QuoteRequestWhereInput = {};
       if (!isStaff) where.companyId = ctx.companyId;
+      else if (input.companyId) where.companyId = input.companyId;
       if (input.status) where.status = input.status;
 
       const requests = await prisma.quoteRequest.findMany({
