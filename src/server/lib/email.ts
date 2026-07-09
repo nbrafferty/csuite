@@ -15,6 +15,7 @@ export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
   html: string;
+  replyTo?: string;
 }): Promise<{ sent: boolean }> {
   const to = Array.isArray(opts.to) ? opts.to : [opts.to];
 
@@ -39,6 +40,7 @@ export async function sendEmail(opts: {
         to,
         subject: opts.subject,
         html: opts.html,
+        ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
       }),
     });
 
@@ -58,6 +60,16 @@ export async function sendEmail(opts: {
 /** Base URL for links in emails (AUTH_URL is already required for NextAuth). */
 export function appBaseUrl(): string {
   return (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+/** Active CCC staff emails — the audience for inbound-work notifications. */
+export async function staffEmails(): Promise<string[]> {
+  const { prisma } = await import("@/server/db/prisma");
+  const staff = await prisma.user.findMany({
+    where: { role: "CCC_STAFF", status: "ACTIVE" },
+    select: { email: true },
+  });
+  return staff.map((s) => s.email);
 }
 
 /** Active client-admin emails for a company — the default notification audience. */
@@ -124,6 +136,21 @@ export function inviteEmail(opts: {
   };
 }
 
+export function reorderRequestEmail(opts: {
+  companyName: string;
+  quoteTitle: string;
+  quoteUrl: string;
+}) {
+  return {
+    subject: `Reorder request from ${opts.companyName}`,
+    html: layout(
+      "New reorder request",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.companyName}</strong> submitted a reorder: <strong>${opts.quoteTitle}</strong>. The draft quote is ready for review and pricing.</p>
+       ${button(opts.quoteUrl, "Review Draft Quote")}`
+    ),
+  };
+}
+
 export function quoteSentEmail(opts: {
   quoteNumber: string;
   quoteTitle: string;
@@ -135,6 +162,54 @@ export function quoteSentEmail(opts: {
       "You have a new quote",
       `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.quoteNumber}</strong> — ${opts.quoteTitle} is ready for your review. You can approve it or request changes right from the portal.</p>
        ${button(opts.quoteUrl, "Review Quote")}`
+    ),
+  };
+}
+
+export function threadMessageEmail(opts: {
+  subject: string;
+  body: string;
+  threadUrl: string;
+}) {
+  return {
+    subject: `New message: ${opts.subject}`,
+    html: layout(
+      opts.subject,
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;white-space:pre-wrap;">${opts.body}</p>
+       ${button(opts.threadUrl, "Reply in Portal")}
+       <p style="margin:16px 0 0;font-size:12px;color:#71717a;">Or just reply to this email — your response will land in the conversation.</p>`
+    ),
+  };
+}
+
+export function paymentRequestEmail(opts: {
+  invoiceNumber: string;
+  amountDue: string;
+  note?: string | null;
+  invoiceUrl: string;
+}) {
+  return {
+    subject: `Deposit due: ${opts.amountDue} on invoice ${opts.invoiceNumber}`,
+    html: layout(
+      "Payment requested",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;">A payment of <strong>${opts.amountDue}</strong> is due on invoice <strong>${opts.invoiceNumber}</strong>.${opts.note ? ` ${opts.note}` : ""} You can pay online in the portal.</p>
+       ${button(opts.invoiceUrl, "Pay Now")}`
+    ),
+  };
+}
+
+export function paymentReceivedEmail(opts: {
+  companyName: string;
+  invoiceNumber: string;
+  amount: string;
+  invoiceUrl: string;
+}) {
+  return {
+    subject: `Payment received: ${opts.amount} from ${opts.companyName}`,
+    html: layout(
+      "Payment received",
+      `<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>${opts.companyName}</strong> paid <strong>${opts.amount}</strong> on invoice <strong>${opts.invoiceNumber}</strong>.</p>
+       ${button(opts.invoiceUrl, "View Invoice")}`
     ),
   };
 }

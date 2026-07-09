@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   Package,
@@ -40,7 +42,7 @@ export function OrderOverviewTab({ order, isStaff }: { order: any; isStaff: bool
             />
             {order.inHandsDate && (
               <DetailRow
-                label="In-Hands Date"
+                label="Customer Due Date"
                 value={new Date(order.inHandsDate).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
@@ -49,6 +51,7 @@ export function OrderOverviewTab({ order, isStaff }: { order: any; isStaff: bool
                 highlight={new Date(order.inHandsDate) < new Date()}
               />
             )}
+            {isStaff && <DueDatesEditor order={order} />}
             {order.poNumber && (
               <DetailRow label="PO Number" value={order.poNumber} />
             )}
@@ -189,6 +192,132 @@ function QuickStat({
       <Icon className="h-4 w-4 text-gray-500" />
       <span className="text-xs text-gray-500">{label}</span>
       <span className="ml-auto text-sm font-medium text-white">{value}</span>
+    </div>
+  );
+}
+
+
+/** Subtract N business days (skipping weekends) */
+function minusBusinessDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  let remaining = days;
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) remaining--;
+  }
+  return d;
+}
+
+const toInputDate = (d: Date | string | null | undefined) =>
+  d ? new Date(d).toISOString().slice(0, 10) : "";
+
+/** Staff-only editor for the two due dates. The production date defaults
+ *  to the customer date minus 2 business days. */
+function DueDatesEditor({ order }: { order: any }) {
+  const [editing, setEditing] = useState(false);
+  const [customerDate, setCustomerDate] = useState(toInputDate(order.inHandsDate));
+  const [productionDate, setProductionDate] = useState(
+    toInputDate(order.productionDueDate)
+  );
+
+  const utils = trpc.useUtils();
+  const update = trpc.order.update.useMutation({
+    onSuccess: () => {
+      utils.order.get.invalidate({ id: order.id });
+      setEditing(false);
+    },
+  });
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <span className="text-sm text-gray-500">Production Due</span>
+          <p className="text-sm text-gray-300">
+            {order.productionDueDate
+              ? new Date(order.productionDueDate).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "Not set"}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            // Default production = customer date − 2 business days
+            if (!productionDate && customerDate) {
+              setProductionDate(
+                toInputDate(minusBusinessDays(new Date(customerDate + "T12:00:00"), 2))
+              );
+            }
+            setEditing(true);
+          }}
+          className="rounded-md border border-surface-border px-2.5 py-1 text-xs text-gray-400 hover:text-white"
+        >
+          Edit dates
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-coral/30 bg-surface-secondary p-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-0.5 block text-xs text-gray-500">Customer due</label>
+          <input
+            type="date"
+            value={customerDate}
+            onChange={(e) => {
+              setCustomerDate(e.target.value);
+              if (e.target.value) {
+                setProductionDate(
+                  toInputDate(minusBusinessDays(new Date(e.target.value + "T12:00:00"), 2))
+                );
+              }
+            }}
+            className="w-full rounded-md border border-surface-border bg-surface-card px-2 py-1.5 text-sm text-white focus:border-coral focus:outline-none"
+            style={{ colorScheme: "dark" }}
+          />
+        </div>
+        <div>
+          <label className="mb-0.5 block text-xs text-gray-500">Production due</label>
+          <input
+            type="date"
+            value={productionDate}
+            onChange={(e) => setProductionDate(e.target.value)}
+            className="w-full rounded-md border border-surface-border bg-surface-card px-2 py-1.5 text-sm text-white focus:border-coral focus:outline-none"
+            style={{ colorScheme: "dark" }}
+          />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setEditing(false)}
+          className="rounded-md px-2.5 py-1 text-xs text-gray-400 hover:text-white"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() =>
+            update.mutate({
+              id: order.id,
+              inHandsDate: customerDate
+                ? new Date(customerDate + "T12:00:00").toISOString()
+                : null,
+              productionDueDate: productionDate
+                ? new Date(productionDate + "T12:00:00").toISOString()
+                : null,
+            })
+          }
+          disabled={update.isPending}
+          className="rounded-md bg-coral px-3 py-1 text-xs font-medium text-white hover:bg-coral-dark disabled:opacity-50"
+        >
+          {update.isPending ? "Saving..." : "Save"}
+        </button>
+      </div>
     </div>
   );
 }

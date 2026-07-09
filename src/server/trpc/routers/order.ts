@@ -3,6 +3,9 @@ import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
 import { OrderStatus, OrderSource, PaymentTermType, Prisma } from "@prisma/client";
 import { generateOrderNumber } from "../../lib/order-number";
+import { generateQuoteNumber } from "../../lib/quote-number";
+import { sendEmail, reorderRequestEmail, staffEmails, appBaseUrl } from "@/server/lib/email";
+import { emitEvent } from "@/server/lib/automation";
 import { TRPCError } from "@trpc/server";
 
 // Valid status transitions per spec
@@ -91,15 +94,37 @@ export const orderRouter = router({
             orderBy: { sortOrder: "asc" },
             include: {
               vendor: { select: { id: true, name: true } },
+              imprints: {
+                orderBy: { sortOrder: "asc" },
+                include: {
+                  artworkAsset: {
+                    select: {
+                      id: true,
+                      name: true,
+                      filename: true,
+                      versions: {
+                        orderBy: { versionNumber: "desc" },
+                        take: 1,
+                        select: { thumbnailUrl: true, fileUrl: true },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
           quote: { select: { id: true, number: true } },
+          fees: { orderBy: { sortOrder: "asc" } },
           project: { select: { id: true, name: true, status: true, logoUrl: true } },
           invoices: {
             orderBy: { createdAt: "desc" },
             include: {
               items: true,
               payments: { select: { id: true, amount: true, paidAt: true } },
+              paymentRequests: {
+                where: { status: "OPEN" },
+                orderBy: { createdAt: "desc" },
+              },
               _count: { select: { payments: true } },
             },
           },
@@ -135,6 +160,7 @@ export const orderRouter = router({
         depositPercent: z.number().int().min(1).max(99).optional(),
         netDays: z.number().int().min(1).optional(),
         inHandsDate: z.string().datetime().optional(),
+        productionDueDate: z.string().datetime().optional(),
         poNumber: z.string().optional(),
         internalNotes: z.string().optional(),
         clientNotes: z.string().optional(),
@@ -173,6 +199,7 @@ export const orderRouter = router({
           depositPercent: input.depositPercent,
           netDays: input.netDays,
           inHandsDate: input.inHandsDate ? new Date(input.inHandsDate) : null,
+          productionDueDate: input.productionDueDate ? new Date(input.productionDueDate) : null,
           poNumber: input.poNumber,
           internalNotes: input.internalNotes,
           clientNotes: input.clientNotes,
@@ -207,6 +234,7 @@ export const orderRouter = router({
         internalNotes: z.string().nullable().optional(),
         clientNotes: z.string().nullable().optional(),
         inHandsDate: z.string().datetime().nullable().optional(),
+        productionDueDate: z.string().datetime().nullable().optional(),
         paymentTermType: z.nativeEnum(PaymentTermType).optional(),
         depositPercent: z.number().int().min(1).max(99).nullable().optional(),
         netDays: z.number().int().min(1).nullable().optional(),
@@ -231,6 +259,8 @@ export const orderRouter = router({
       if (data.clientNotes !== undefined) updateData.clientNotes = data.clientNotes;
       if (data.inHandsDate !== undefined)
         updateData.inHandsDate = data.inHandsDate ? new Date(data.inHandsDate) : null;
+      if (data.productionDueDate !== undefined)
+        updateData.productionDueDate = data.productionDueDate ? new Date(data.productionDueDate) : null;
       if (data.paymentTermType !== undefined) updateData.paymentTermType = data.paymentTermType;
       if (data.depositPercent !== undefined) updateData.depositPercent = data.depositPercent;
       if (data.netDays !== undefined) updateData.netDays = data.netDays;
@@ -261,6 +291,13 @@ export const orderRouter = router({
       const updated = await prisma.order.update({
         where: { id: input.id },
         data: { status: input.status },
+      });
+
+      await emitEvent({
+        type: "STATUS_CHANGED",
+        statusValue: input.status,
+        orderId: order.id,
+        actorUserId: ctx.user.id as string,
       });
 
       await prisma.auditLogEvent.create({
@@ -484,6 +521,184 @@ export const orderRouter = router({
 
   // ─── Activity Log ────────────────────────────────────────────────
 
+  // CALENDAR — staff-only: orders plotted on production due date
+  // (falling back to the customer in-hands date)
+  calendar: staffProcedure
+    .input(
+      z.object({
+        from: z.string().datetime(),
+        to: z.string().datetime(),
+        status: z.nativeEnum(OrderStatus).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const from = new Date(input.from);
+      const to = new Date(input.to);
+      const range = { gte: from, lte: to };
+
+      const orders = await prisma.order.findMany({
+        where: {
+          ...(input.status ? { status: input.status } : {}),
+          OR: [
+            { productionDueDate: range },
+            { AND: [{ productionDueDate: null }, { inHandsDate: range }] },
+          ],
+        },
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          status: true,
+          inHandsDate: true,
+          productionDueDate: true,
+          totalAmount: true,
+          company: { select: { id: true, name: true } },
+          invoices: {
+            select: { status: true },
+            where: { status: { not: "VOID" } },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return orders.map((o) => ({
+        id: o.id,
+        number: o.number,
+        title: o.title,
+        status: o.status,
+        companyName: o.company.name,
+        date: (o.productionDueDate ?? o.inHandsDate)!,
+        customerDate: o.inHandsDate,
+        productionDate: o.productionDueDate,
+        paid: o.invoices.length > 0 && o.invoices.every((i) => i.status === "PAID"),
+      }));
+    }),
+
+  // REORDER — deep-clone an order's line-item tree into a new DRAFT quote.
+  // Staff can reorder any order; clients only their own company's.
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        orderId: z.string().uuid(),
+        // Optional per-item quantity/size overrides collected in the
+        // confirmation dialog (keyed by the source order item id).
+        overrides: z
+          .array(
+            z.object({
+              itemId: z.string(),
+              quantity: z.number().int().positive().optional(),
+              sizeBreakdown: z
+                .record(z.string(), z.number().int().nonnegative())
+                .optional(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.role === "CCC_STAFF";
+
+      const order = await prisma.order.findUnique({
+        where: { id: input.orderId },
+        include: {
+          items: { orderBy: { sortOrder: "asc" }, include: { imprints: true } },
+          fees: { orderBy: { sortOrder: "asc" } },
+          company: { select: { name: true } },
+        },
+      });
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isStaff && order.companyId !== ctx.companyId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (order.items.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This order has no line items to reorder",
+        });
+      }
+
+      const overrideMap = new Map(
+        (input.overrides ?? []).map((o) => [o.itemId, o])
+      );
+
+      const number = await generateQuoteNumber(prisma as any);
+      const quote = await prisma.quote.create({
+        data: {
+          number,
+          companyId: order.companyId,
+          createdByUserId: ctx.user.id as string,
+          title: `REORDER: ${order.title}`,
+          status: "DRAFT",
+          sourceOrderId: order.id,
+          paymentTermType: order.paymentTermType,
+          depositPercent: order.depositPercent,
+          netDays: order.netDays,
+          items: {
+            create: order.items.map((item, idx) => {
+              const ov = overrideMap.get(item.id);
+              const sizes =
+                ov?.sizeBreakdown ??
+                (item.sizeBreakdown as Record<string, number> | null) ??
+                undefined;
+              const sizeSum = sizes
+                ? Object.values(sizes).reduce((a, b) => a + b, 0)
+                : 0;
+              const qty = sizeSum > 0 ? sizeSum : ov?.quantity ?? item.quantity;
+              return {
+                sortOrder: idx,
+                description: item.description,
+                sku: item.sku,
+                itemNumber: item.itemNumber,
+                color: item.color,
+                category: item.category,
+                unitPrice: item.unitPrice,
+                quantity: qty,
+                sizeBreakdown: sizes ?? undefined,
+                decorationNotes: item.decorationNotes,
+                lineTotal: Number(item.unitPrice) * qty,
+                clientProductId: item.clientProductId,
+                imprints: {
+                  create: item.imprints.map((imp) => ({
+                    method: imp.method,
+                    colorCount: imp.colorCount,
+                    placement: imp.placement,
+                    widthIn: imp.widthIn,
+                    heightIn: imp.heightIn,
+                    artworkAssetId: imp.artworkAssetId,
+                    notes: imp.notes,
+                    sortOrder: imp.sortOrder,
+                  })),
+                },
+              };
+            }),
+          },
+          fees: {
+            create: order.fees.map((f) => ({
+              description: f.description,
+              quantity: f.quantity,
+              unitAmount: f.unitAmount,
+              sortOrder: f.sortOrder,
+            })),
+          },
+        },
+      });
+
+      // Client-submitted reorders land in the staff queue — notify staff
+      if (!isStaff) {
+        const recipients = await staffEmails();
+        if (recipients.length > 0) {
+          const template = reorderRequestEmail({
+            companyName: order.company.name,
+            quoteTitle: quote.title,
+            quoteUrl: `${appBaseUrl()}/quotes/${quote.id}`,
+          });
+          await sendEmail({ to: recipients, ...template });
+        }
+      }
+
+      return { id: quote.id, number: quote.number, title: quote.title };
+    }),
+
   activity: protectedProcedure
     .input(z.object({ orderId: z.string().uuid() }))
     .query(async ({ input }) => {
@@ -498,8 +713,13 @@ export const orderRouter = router({
 
 // Helper: recalculate order totalAmount from line items
 async function recalculateOrderTotal(orderId: string) {
-  const items = await prisma.orderItem.findMany({ where: { orderId } });
-  const totalAmount = items.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+  const [items, fees] = await Promise.all([
+    prisma.orderItem.findMany({ where: { orderId } }),
+    prisma.feeLine.findMany({ where: { orderId } }),
+  ]);
+  const totalAmount =
+    items.reduce((sum, i) => sum + Number(i.lineTotal), 0) +
+    fees.reduce((sum, f) => sum + Number(f.unitAmount) * f.quantity, 0);
   await prisma.order.update({
     where: { id: orderId },
     data: { totalAmount },

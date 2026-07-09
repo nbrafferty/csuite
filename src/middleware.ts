@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/api/auth"];
+// /api/webhooks/* are protected by signature verification, not sessions
+const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/api/auth", "/api/webhooks"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

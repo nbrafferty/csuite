@@ -183,6 +183,8 @@ model Company {
   projects          Project[]
   proofs            Proof[]
   catalogProducts   CatalogProduct[]
+  clientProducts    ClientProduct[]
+  expenses          Expense[]
   tasks             Task[]
 
   @@map("companies")
@@ -229,6 +231,9 @@ model User {
   createdTasks        Task[]           @relation("TaskCreator")
   taskAssignments     TaskAssignee[]   @relation("TaskAssignments")
   passwordResetTokens PasswordResetToken[]
+  clientProductsCreated ClientProduct[] @relation("ClientProductCreator")
+  paymentRequestsMade   PaymentRequest[] @relation("PaymentRequester")
+  expensesCreated       Expense[]        @relation("ExpenseCreator")
 
   @@index([companyId])
   @@index([companyId, role])
@@ -333,8 +338,10 @@ model Quote {
   mockupUrl         String?         @db.Text @map("mockup_url")
 
   convertedAt       DateTime?       @map("converted_at")
+  sourceOrderId     String?         @map("source_order_id") // set when this quote is a reorder of an existing order
 
   items             QuoteItem[]
+  fees              FeeLine[]
   changeRequests    QuoteChangeRequest[]
 
   sentAt            DateTime?       @map("sent_at")
@@ -347,6 +354,7 @@ model Quote {
   company           Company         @relation(fields: [companyId], references: [id])
   project           Project?        @relation(fields: [projectId], references: [id])
   createdBy         User            @relation("QuoteCreator", fields: [createdByUserId], references: [id])
+  sourceOrder       Order?          @relation("ReorderSource", fields: [sourceOrderId], references: [id])
   convertedOrder    Order?
   quoteRequest      QuoteRequest?
   artworkLinks      ArtworkQuoteLink[]
@@ -371,7 +379,9 @@ model QuoteItem {
 
   description       String
   sku               String?
+  itemNumber        String?       @map("item_number")
   color             String?
+  category          String?       // e.g. Screen Printing, Embroidery, Signage
   unitPrice         Decimal       @map("unit_price") @db.Decimal(10, 2)
   quantity          Int
   decorationNotes   String?       @db.Text @map("decoration_notes")
@@ -379,8 +389,12 @@ model QuoteItem {
   sizeBreakdown     Json?         @map("size_breakdown")
   lineTotal         Decimal       @map("line_total") @db.Decimal(10, 2)
 
+  clientProductId   String?       @map("client_product_id")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  imprints          Imprint[]
+  clientProduct     ClientProduct? @relation(fields: [clientProductId], references: [id])
 
   @@index([quoteId])
   @@map("quote_items")
@@ -418,7 +432,8 @@ model Order {
   depositPercent    Int?            @map("deposit_percent")
   netDays           Int?            @map("net_days")
 
-  inHandsDate       DateTime?     @map("in_hands_date")
+  inHandsDate       DateTime?     @map("in_hands_date") // customer-facing due date
+  productionDueDate DateTime?     @map("production_due_date") // internal shop deadline
   poNumber          String?       @map("po_number")
   internalNotes     String?       @db.Text @map("internal_notes")
   clientNotes       String?       @db.Text @map("client_notes")
@@ -434,6 +449,10 @@ model Order {
   quote             Quote?        @relation(fields: [quoteId], references: [id])
 
   items             OrderItem[]
+  fees              FeeLine[]
+  reorderQuotes     Quote[]       @relation("ReorderSource")
+  sourcedProducts   ClientProduct[] @relation("ProductSourceOrder")
+  expenses          Expense[]
   artworkLinks      OrderArtworkLink[]
   invoices          Invoice[]
   shipments         Shipment[]
@@ -460,6 +479,8 @@ model OrderItem {
   quantity          Int             @default(1)
   lineTotal         Decimal         @default(0) @map("line_total") @db.Decimal(10, 2)
   sizeBreakdown     Json?           @map("size_breakdown")
+  itemNumber        String?         @map("item_number")
+  category          String?         // e.g. Screen Printing, Embroidery, Signage
   decorationNotes   String?         @db.Text @map("decoration_notes")
   vendorId          String?         @map("vendor_id")
   costPerUnit       Decimal?        @map("cost_per_unit") @db.Decimal(10, 2)
@@ -467,11 +488,112 @@ model OrderItem {
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
+  clientProductId   String?         @map("client_product_id")
+
   order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+  imprints          Imprint[]
+  clientProduct     ClientProduct?  @relation(fields: [clientProductId], references: [id])
 
   @@index([orderId])
+  @@index([clientProductId])
   @@map("order_items")
+}
+
+// Production imprint spec on a line item (method, placement, size, linked art).
+// Exactly one of quoteItemId / orderItemId is set.
+model Imprint {
+  id             String        @id @default(uuid())
+  quoteItemId    String?       @map("quote_item_id")
+  orderItemId    String?       @map("order_item_id")
+  method         String        @default("SCREEN_PRINT") // SCREEN_PRINT | EMBROIDERY | DTG | TRANSFER | OTHER
+  colorCount     Int?          @map("color_count")
+  placement      String?       // e.g. "Left chest", "Center back"
+  widthIn        Float?        @map("width_in")
+  heightIn       Float?        @map("height_in")
+  artworkAssetId String?       @map("artwork_asset_id")
+  notes          String?       @db.Text
+  sortOrder      Int           @default(0) @map("sort_order")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  quoteItem      QuoteItem?    @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+  orderItem      OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  artworkAsset   ArtworkAsset? @relation(fields: [artworkAssetId], references: [id], onDelete: SetNull)
+
+  @@index([quoteItemId])
+  @@index([orderItemId])
+  @@map("imprints")
+}
+
+// Flat fee/upcharge row on a quote or order (e.g. "XXL Upcharge x18 @ $2.00").
+// Copied into plain invoice items at invoicing time.
+model FeeLine {
+  id          String   @id @default(uuid())
+  quoteId     String?  @map("quote_id")
+  orderId     String?  @map("order_id")
+  description String
+  quantity    Int      @default(1)
+  unitAmount  Decimal  @map("unit_amount") @db.Decimal(10, 2)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quote       Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([orderId])
+  @@map("fee_lines")
+}
+
+// Per-client product library: a saved, fully-specced product with pinned
+// approved artwork that the client can reorder self-serve.
+model ClientProduct {
+  id                 String   @id @default(uuid())
+  companyId          String   @map("company_id")
+  name               String
+  blankBrand         String?  @map("blank_brand") // e.g. Gildan
+  blankStyle         String?  @map("blank_style") // e.g. 5000
+  itemNumber         String?  @map("item_number")
+  color              String?
+  category           String?
+  defaultUnitPrice   Decimal  @default(0) @map("default_unit_price") @db.Decimal(10, 2)
+  defaultSizeCurve   Json?    @map("default_size_curve")
+  status             String   @default("ACTIVE") // ACTIVE | RETIRED
+  createdFromOrderId String?  @map("created_from_order_id")
+  createdByUserId    String   @map("created_by_user_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  company          Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdFromOrder Order?                 @relation("ProductSourceOrder", fields: [createdFromOrderId], references: [id])
+  createdBy        User                   @relation("ClientProductCreator", fields: [createdByUserId], references: [id])
+  imprints         ClientProductImprint[]
+  quoteItems       QuoteItem[]
+  orderItems       OrderItem[]
+
+  @@index([companyId, status])
+  @@map("client_products")
+}
+
+// Imprint spec pinned to a ClientProduct. Artwork is required here —
+// a My Product reorder must reference approved art.
+model ClientProductImprint {
+  id              String       @id @default(uuid())
+  clientProductId String       @map("client_product_id")
+  method          String       @default("SCREEN_PRINT")
+  colorCount      Int?         @map("color_count")
+  placement       String?
+  widthIn         Float?       @map("width_in")
+  heightIn        Float?       @map("height_in")
+  artworkAssetId  String       @map("artwork_asset_id")
+  notes           String?      @db.Text
+  sortOrder       Int          @default(0) @map("sort_order")
+
+  clientProduct   ClientProduct @relation(fields: [clientProductId], references: [id], onDelete: Cascade)
+  artworkAsset    ArtworkAsset  @relation("ProductImprintArt", fields: [artworkAssetId], references: [id])
+
+  @@index([clientProductId])
+  @@map("client_product_imprints")
 }
 
 model OrderArtworkLink {
@@ -653,6 +775,8 @@ model ArtworkAsset {
   tags           ArtworkTag[]
   orderArtworkLinks OrderArtworkLink[]
   quoteArtworkLinks ArtworkQuoteLink[]
+  imprints          Imprint[]
+  productImprints   ClientProductImprint[] @relation("ProductImprintArt")
 
   @@index([companyId])
   @@map("artwork_assets")
@@ -864,6 +988,7 @@ model Invoice {
   company          Company       @relation(fields: [companyId], references: [id])
   items            InvoiceItem[]
   payments         Payment[]
+  paymentRequests  PaymentRequest[]
 
   @@index([companyId])
   @@index([orderId])
@@ -882,6 +1007,84 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+// Per-order (or unattached shop) cost entry for profitability tracking.
+// Staff-only — never exposed to client roles.
+model Expense {
+  id              String   @id @default(uuid())
+  orderId         String?  @map("order_id")
+  companyId       String?  @map("company_id")
+  description     String
+  category        String   @default("OTHER") // BLANKS | SUPPLIES | LABOR | SHIPPING | OUTSOURCE | OTHER
+  amount          Decimal  @db.Decimal(10, 2)
+  incurredAt      DateTime @default(now()) @map("incurred_at")
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy User     @relation("ExpenseCreator", fields: [createdByUserId], references: [id])
+
+  @@index([orderId])
+  @@index([incurredAt])
+  @@map("expenses")
+}
+
+// A toggleable automation rule: when <trigger> fires, run <action>.
+// Global (single-tenant shop), staff-editable, processed in sortOrder.
+model AutomationRule {
+  id          String   @id @default(uuid())
+  name        String
+  trigger     String   // STATUS_CHANGED | QUOTE_APPROVED | PROOF_APPROVED | PAID_IN_FULL | DEPOSIT_PAID
+  triggerParam String? @map("trigger_param") // e.g. the status value for STATUS_CHANGED
+  action      String   // SEND_CLIENT_EMAIL | CHANGE_STATUS | REQUEST_PAYMENT_PERCENT | CREATE_TASKS
+  actionParam Json?    @map("action_param")
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  runs AutomationRun[]
+
+  @@map("automation_rules")
+}
+
+// Log of each rule firing, for debugging in Settings → Automations
+model AutomationRun {
+  id         String   @id @default(uuid())
+  ruleId     String   @map("rule_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  success    Boolean
+  detail     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, createdAt])
+  @@map("automation_runs")
+}
+
+// A staff-issued request for a specific amount on an invoice (e.g. a 50%
+// deposit). Stripe or manual payments settle it; the client pays exactly
+// the requested amount.
+model PaymentRequest {
+  id                String    @id @default(uuid())
+  invoiceId         String    @map("invoice_id")
+  amount            Decimal   @db.Decimal(10, 2)
+  percentOfTotal    Int?      @map("percent_of_total")
+  note              String?   @db.Text
+  status            String    @default("OPEN") // OPEN | PAID | CANCELED
+  requestedByUserId String    @map("requested_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  paidAt            DateTime? @map("paid_at")
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  requestedBy User    @relation("PaymentRequester", fields: [requestedByUserId], references: [id])
+
+  @@index([invoiceId, status])
+  @@map("payment_requests")
 }
 
 model Payment {
@@ -936,6 +1139,7 @@ model Message {
   body           String
   senderType     String        @default("client")  @map("sender_type")
   attachmentUrls Json?         @map("attachment_urls")
+  via        String?  // null = portal, "email" = inbound email reply
   createdAt      DateTime      @default(now()) @map("created_at")
 
   thread         MessageThread @relation(fields: [threadId], references: [id])

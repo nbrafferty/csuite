@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, staffProcedure } from "../trpc";
 import { prisma } from "@/server/db/prisma";
-import { sendEmail, invoiceSentEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
+import { sendEmail, invoiceSentEmail, paymentRequestEmail, clientAdminEmails, appBaseUrl } from "@/server/lib/email";
 import { InvoiceStatus, PaymentMethod, Prisma } from "@prisma/client";
 import { generateInvoiceNumber } from "../../lib/invoice-number";
 import { getStripe, isStripeConfigured } from "../../lib/stripe";
@@ -82,6 +82,12 @@ export const invoiceRouter = router({
             orderBy: { paidAt: "desc" },
             include: {
               recordedBy: { select: { id: true, name: true } },
+            },
+          },
+          paymentRequests: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              requestedBy: { select: { id: true, name: true } },
             },
           },
         },
@@ -189,6 +195,7 @@ export const invoiceRouter = router({
         reference: z.string().optional(),
         notes: z.string().optional(),
         paidAt: z.string().datetime().optional(),
+        paymentRequestId: z.string().uuid().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -226,13 +233,128 @@ export const invoiceRouter = router({
         recordedByUserId: ctx.user.id,
         notes: input.notes,
         paidAt: input.paidAt ? new Date(input.paidAt) : undefined,
+        paymentRequestId: input.paymentRequestId,
+      });
+    }),
+
+  // REQUEST PAYMENT — staff asks the client for a specific amount or a
+  // percentage of the invoice total (e.g. a 50% deposit)
+  requestPayment: staffProcedure
+    .input(
+      z
+        .object({
+          invoiceId: z.string().uuid(),
+          percent: z.number().int().min(1).max(100).optional(),
+          amount: z.number().positive().optional(),
+          note: z.string().max(500).optional(),
+        })
+        .refine((v) => !!v.percent !== !!v.amount, {
+          message: "Provide exactly one of percent or amount",
+        })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const invoice = await prisma.invoice.findFirst({
+        where: { id: input.invoiceId },
+        include: { items: true, payments: true },
+      });
+      if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
+      if (invoice.status === "PAID" || invoice.status === "VOID") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice is already paid or voided",
+        });
+      }
+
+      const invoiceTotal = invoice.items.reduce(
+        (sum, i) => sum + Number(i.lineTotal),
+        0
+      );
+      const previouslyPaid = invoice.payments.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0
+      );
+      const outstanding = invoiceTotal - previouslyPaid;
+
+      const amount =
+        Math.round(
+          (input.percent ? (invoiceTotal * input.percent) / 100 : input.amount!) * 100
+        ) / 100;
+
+      if (amount < 0.5) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Amount is too small" });
+      }
+      if (amount > outstanding + 0.01) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Requested amount exceeds the outstanding balance of $${outstanding.toFixed(2)}`,
+        });
+      }
+
+      const request = await prisma.paymentRequest.create({
+        data: {
+          invoiceId: invoice.id,
+          amount,
+          percentOfTotal: input.percent,
+          note: input.note,
+          requestedByUserId: ctx.user.id as string,
+        },
+      });
+
+      // A DRAFT invoice is implicitly issued by requesting payment on it
+      if (invoice.status === "DRAFT") {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { status: "SENT", issuedAt: new Date() },
+        });
+      }
+
+      // Notify the client's admins (soft-fails when email unconfigured)
+      const recipients = await clientAdminEmails(invoice.companyId);
+      if (recipients.length > 0) {
+        const template = paymentRequestEmail({
+          invoiceNumber: invoice.number,
+          amountDue: amount.toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+          }),
+          note: input.note,
+          invoiceUrl: `${appBaseUrl()}/billing/${invoice.id}`,
+        });
+        await sendEmail({ to: recipients, ...template });
+      }
+
+      return request;
+    }),
+
+  // CANCEL PAYMENT REQUEST — staff only
+  cancelPaymentRequest: staffProcedure
+    .input(z.object({ requestId: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      const request = await prisma.paymentRequest.findUnique({
+        where: { id: input.requestId },
+      });
+      if (!request) throw new TRPCError({ code: "NOT_FOUND" });
+      if (request.status !== "OPEN") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only open requests can be canceled",
+        });
+      }
+      return prisma.paymentRequest.update({
+        where: { id: input.requestId },
+        data: { status: "CANCELED" },
       });
     }),
 
   // CREATE PAYMENT INTENT — client (or staff) starts a Stripe payment for
   // the outstanding balance of an invoice
   createPaymentIntent: protectedProcedure
-    .input(z.object({ invoiceId: z.string().uuid() }))
+    .input(
+      z.object({
+        invoiceId: z.string().uuid(),
+        paymentRequestId: z.string().uuid().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!isStripeConfigured()) {
         throw new TRPCError({
@@ -274,6 +396,31 @@ export const invoiceRouter = router({
         });
       }
 
+      // When paying a specific request, charge exactly its amount
+      let chargeAmount = outstanding;
+      if (input.paymentRequestId) {
+        const request = await prisma.paymentRequest.findFirst({
+          where: {
+            id: input.paymentRequestId,
+            invoiceId: invoice.id,
+            status: "OPEN",
+          },
+        });
+        if (!request) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This payment request is no longer open",
+          });
+        }
+        chargeAmount = Math.min(Number(request.amount), outstanding);
+        if (chargeAmount < 0.5) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Requested amount is below the minimum chargeable amount",
+          });
+        }
+      }
+
       const stripe = getStripe();
 
       // Ensure the company has a Stripe customer
@@ -291,7 +438,7 @@ export const invoiceRouter = router({
       }
 
       const intent = await stripe.paymentIntents.create({
-        amount: Math.round(outstanding * 100),
+        amount: Math.round(chargeAmount * 100),
         currency: "usd",
         customer: stripeCustomerId,
         description: `Invoice ${invoice.number}`,
@@ -299,13 +446,16 @@ export const invoiceRouter = router({
           invoiceId: invoice.id,
           invoiceNumber: invoice.number,
           companyId: invoice.companyId,
+          ...(input.paymentRequestId
+            ? { paymentRequestId: input.paymentRequestId }
+            : {}),
         },
         automatic_payment_methods: { enabled: true },
       });
 
       return {
         clientSecret: intent.client_secret,
-        amount: outstanding,
+        amount: chargeAmount,
       };
     }),
 });

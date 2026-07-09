@@ -13,11 +13,13 @@ import {
   BookOpen,
   MessageSquare,
   CreditCard,
-
   Settings,
   Building2,
   LogOut,
   CheckSquare,
+  Package,
+  CalendarDays,
+  Receipt,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc";
@@ -27,18 +29,22 @@ type NavItem = {
   href: string;
   icon: typeof LayoutDashboard;
   staffOnly?: boolean;
+  clientOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays, staffOnly: true },
+  { label: "My Products", href: "/my-products", icon: Package, clientOnly: true },
   { label: "Quotes", href: "/quotes", icon: ClipboardList },
   { label: "Catalog", href: "/catalog", icon: BookOpen },
   { label: "Artwork", href: "/artwork", icon: Image },
   { label: "Proofs", href: "/proofs", icon: Stamp },
   { label: "Tasks", href: "/tasks", icon: CheckSquare },
   { label: "Billing", href: "/billing", icon: CreditCard },
+  { label: "Expenses", href: "/expenses", icon: Receipt, staffOnly: true },
   { label: "Messages", href: "/messages", icon: MessageSquare },
   { label: "Clients", href: "/clients", icon: Building2, staffOnly: true },
 
@@ -69,7 +75,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
-        {navItems.filter((item) => !item.staffOnly || isStaff).map((item) => {
+        {navItems.filter((item) => (!item.staffOnly || isStaff) && (!item.clientOnly || !isStaff)).map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));

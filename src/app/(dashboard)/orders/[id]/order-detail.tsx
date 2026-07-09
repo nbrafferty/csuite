@@ -18,8 +18,11 @@ import {
   CheckSquare,
   Image,
   Stamp,
+  RotateCcw,
+  DollarSign,
 } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { ReorderDialog } from "@/components/orders/reorder-dialog";
 import { OrderStatusTimeline } from "@/components/orders/order-status-timeline";
 import { OrderOverviewTab } from "./tabs/overview-tab";
 import { OrderLineItemsTab } from "./tabs/line-items-tab";
@@ -29,6 +32,7 @@ import { OrderActivityTab } from "./tabs/activity-tab";
 import { OrderTasksTab } from "./tabs/tasks-tab";
 import { OrderArtworkTab } from "./tabs/artwork-tab";
 import { OrderProofsTab } from "./tabs/proofs-tab";
+import { OrderExpensesTab } from "./tabs/expenses-tab";
 import { ProjectPicker } from "@/components/projects/project-picker";
 
 const NEXT_STATUS: Record<string, { label: string; value: string } | null> = {
@@ -51,6 +55,7 @@ const TABS = [
   { id: "artwork", label: "Artwork", icon: Image },
   { id: "proofs", label: "Proofs", icon: Stamp },
   { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "expenses", label: "Expenses", icon: DollarSign, staffOnly: true },
   { id: "activity", label: "Activity", icon: Clock },
 ] as const;
 
@@ -62,6 +67,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showReorder, setShowReorder] = useState(false);
 
   const { data: order, isLoading } = trpc.order.get.useQuery(
     { id: orderId },
@@ -154,6 +160,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </div>
 
           {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowReorder(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-coral/40 bg-coral/10 px-4 py-2 text-sm font-medium text-coral transition-colors hover:bg-coral/20"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reorder
+            </button>
           {isStaff && (
             <div className="flex items-center gap-2">
               {nextAction && (
@@ -214,6 +228,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Status Timeline */}
@@ -235,7 +250,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         if (!payable) return null;
         const total = (payable.items ?? []).reduce((s: number, i: any) => s + Number(i.lineTotal), 0);
         const paid = (payable.payments ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
-        const outstanding = total - paid;
+        // An open payment request (e.g. 50% deposit) gates production on
+        // exactly the requested amount rather than the full balance
+        const openRequest = (payable.paymentRequests ?? [])[0];
+        const outstanding = openRequest ? Number(openRequest.amount) : total - paid;
         return (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-coral/40 bg-coral/10 px-4 py-3">
             <div className="flex items-center gap-3">
@@ -277,7 +295,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
       {/* Tabs */}
       <div className="mb-6 flex border-b border-surface-border">
-        {TABS.map((tab) => (
+        {TABS.filter((tab: any) => !tab.staffOnly || isStaff).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -308,7 +326,15 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         />
       )}
       {activeTab === "billing" && <OrderBillingTab order={order} isStaff={isStaff} />}
+      {activeTab === "expenses" && isStaff && <OrderExpensesTab orderId={order.id} />}
       {activeTab === "activity" && <OrderActivityTab orderId={order.id} />}
+
+      <ReorderDialog
+        open={showReorder}
+        onClose={() => setShowReorder(false)}
+        orderId={order.id}
+        isStaff={isStaff}
+      />
     </div>
   );
 }

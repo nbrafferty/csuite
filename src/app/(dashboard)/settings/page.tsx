@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { TeamSettings } from "@/components/settings/team-settings";
+import { AutomationSettings } from "@/components/settings/automation-settings";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -50,6 +51,9 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Automations (staff) */}
+      {role === "CCC_STAFF" && <AutomationSettings />}
 
       {/* Team management */}
       {canManageTeam && <TeamSettings />}

@@ -27,6 +27,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const { data: session } = useSession();
   const isStaff = (session?.user as any)?.role === "CCC_STAFF";
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
 
   const { data: invoice, isLoading } = trpc.invoice.get.useQuery(
     { id: invoiceId },
@@ -34,6 +35,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   );
 
   const utils = trpc.useUtils();
+
+  const cancelRequest = trpc.invoice.cancelPaymentRequest.useMutation({
+    onSuccess: () => utils.invoice.get.invalidate({ id: invoiceId }),
+  });
 
   const sendMutation = trpc.invoice.send.useMutation({
     onSuccess: () => utils.invoice.get.invalidate({ id: invoiceId }),
@@ -112,6 +117,14 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               >
                 <Send className="h-4 w-4" />
                 {sendMutation.isPending ? "Sending..." : "Send Invoice"}
+              </button>
+            )}
+            {invoice.status !== "PAID" && invoice.status !== "VOID" && (
+              <button
+                onClick={() => setShowRequestForm(true)}
+                className="rounded-lg bg-coral/10 border border-coral/40 px-4 py-2 text-sm font-medium text-coral hover:bg-coral/20"
+              >
+                Request Payment
               </button>
             )}
             {invoice.status !== "PAID" && invoice.status !== "VOID" && (
@@ -221,6 +234,75 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Payment requests (deposits etc.) */}
+      {((invoice as any).paymentRequests ?? []).length > 0 && (
+        <div className="mb-6 space-y-3">
+          {((invoice as any).paymentRequests ?? []).map((req: any) => (
+            <div key={req.id}>
+              {req.status === "OPEN" ? (
+                !isStaff && outstanding > 0.5 && isStripeEnabled() ? (
+                  <StripePaymentSection
+                    invoiceId={invoiceId}
+                    outstanding={Math.min(Number(req.amount), outstanding)}
+                    paymentRequestId={req.id}
+                    label={`Deposit due: ${formatCurrency(Number(req.amount))}`}
+                  />
+                ) : (
+                  <div className="flex items-center justify-between rounded-lg border border-coral/40 bg-coral/10 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        {req.percentOfTotal
+                          ? `Deposit requested: ${formatCurrency(Number(req.amount))} (${req.percentOfTotal}%)`
+                          : `Payment requested: ${formatCurrency(Number(req.amount))}`}
+                      </p>
+                      {req.note && (
+                        <p className="text-xs text-gray-400">{req.note}</p>
+                      )}
+                    </div>
+                    {isStaff && (
+                      <button
+                        onClick={() => cancelRequest.mutate({ requestId: req.id })}
+                        disabled={cancelRequest.isPending}
+                        className="rounded-md border border-surface-border px-2.5 py-1.5 text-xs text-gray-400 hover:text-white disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-card px-4 py-2.5 text-sm">
+                  <span className="text-gray-400">
+                    {req.percentOfTotal
+                      ? `${req.percentOfTotal}% deposit — ${formatCurrency(Number(req.amount))}`
+                      : `Payment request — ${formatCurrency(Number(req.amount))}`}
+                  </span>
+                  <span
+                    className={
+                      req.status === "PAID"
+                        ? "font-medium text-green-400"
+                        : "text-gray-500"
+                    }
+                  >
+                    {req.status === "PAID" ? "Paid" : "Canceled"}
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Request payment form (staff) */}
+      {showRequestForm && isStaff && (
+        <RequestPaymentForm
+          invoiceId={invoiceId}
+          invoiceTotal={invoiceTotal}
+          outstanding={outstanding}
+          onClose={() => setShowRequestForm(false)}
+        />
+      )}
 
       {/* Online payment — clients pay open invoices via Stripe */}
       {!isStaff &&
@@ -384,6 +466,138 @@ function RecordPaymentForm({
           {mutation.isPending ? "Recording..." : `Record ${formatCurrency(amount)}`}
         </button>
       </div>
+    </div>
+  );
+}
+
+
+function RequestPaymentForm({
+  invoiceId,
+  invoiceTotal,
+  outstanding,
+  onClose,
+}: {
+  invoiceId: string;
+  invoiceTotal: number;
+  outstanding: number;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<"percent" | "amount">("percent");
+  const [percent, setPercent] = useState("50");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+
+  const utils = trpc.useUtils();
+  const request = trpc.invoice.requestPayment.useMutation({
+    onSuccess: () => {
+      utils.invoice.get.invalidate({ id: invoiceId });
+      onClose();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const previewAmount =
+    mode === "percent"
+      ? (invoiceTotal * (parseInt(percent) || 0)) / 100
+      : parseFloat(amount) || 0;
+
+  return (
+    <div className="mb-6 rounded-lg border border-coral/30 bg-surface-card p-5">
+      <h3 className="mb-3 text-sm font-semibold text-white">Request Payment</h3>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex rounded-lg border border-surface-border p-0.5">
+          {(["percent", "amount"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={
+                "rounded-md px-3 py-1.5 text-xs font-medium " +
+                (mode === m ? "bg-coral text-white" : "text-gray-400 hover:text-white")
+              }
+            >
+              {m === "percent" ? "% of total" : "$ amount"}
+            </button>
+          ))}
+        </div>
+        {mode === "percent" ? (
+          <div className="flex items-center gap-1.5">
+            {["25", "50", "100"].map((p) => (
+              <button
+                key={p}
+                onClick={() => setPercent(p)}
+                className={
+                  "rounded-md border px-2.5 py-1.5 text-xs font-medium " +
+                  (percent === p
+                    ? "border-coral text-coral"
+                    : "border-surface-border text-gray-400 hover:text-white")
+                }
+              >
+                {p}%
+              </button>
+            ))}
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={percent}
+              onChange={(e) => setPercent(e.target.value)}
+              className="w-16 rounded-md border border-surface-border bg-surface-bg px-2 py-1.5 text-center text-sm text-white focus:border-coral focus:outline-none"
+            />
+          </div>
+        ) : (
+          <input
+            type="number"
+            step="0.01"
+            min="0.5"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="w-28 rounded-md border border-surface-border bg-surface-bg px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+          />
+        )}
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Note to client (optional)"
+          className="min-w-40 flex-1 rounded-md border border-surface-border bg-surface-bg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:border-coral focus:outline-none"
+        />
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          Client will be asked to pay{" "}
+          <span className="font-medium text-white">
+            {previewAmount.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+          </span>
+          {" · "}outstanding balance{" "}
+          {outstanding.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-sm text-gray-400 hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              setError("");
+              request.mutate({
+                invoiceId,
+                percent: mode === "percent" ? parseInt(percent) || undefined : undefined,
+                amount: mode === "amount" ? parseFloat(amount) || undefined : undefined,
+                note: note.trim() || undefined,
+              });
+            }}
+            disabled={request.isPending || previewAmount < 0.5}
+            className="rounded-lg bg-coral px-4 py-1.5 text-sm font-medium text-white hover:bg-coral-dark disabled:opacity-50"
+          >
+            {request.isPending ? "Requesting..." : "Send Request"}
+          </button>
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
   );
 }

@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
           reference: intent.id,
           stripePaymentIntentId: intent.id,
           notes: "Paid online via Stripe",
+          paymentRequestId: intent.metadata?.paymentRequestId || undefined,
         });
         break;
       }
